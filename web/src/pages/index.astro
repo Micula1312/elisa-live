@@ -1,0 +1,112 @@
+---
+---
+
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Elisa Live — Social</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif}
+    body{background:#000;color:#fff;overflow:hidden}
+    button{font:inherit}
+    #faceScene{position:fixed;inset:0;background:#050505;display:flex;align-items:center;justify-content:center;z-index:20}
+    .login{width:340px;text-align:center}
+    .face-frame{position:relative;width:260px;height:260px;margin:0 auto 28px;overflow:hidden;border-radius:32px;background:#111}
+    #camera{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:0;transition:opacity .8s ease}
+    #camera.visible{opacity:1}
+    .corners{position:absolute;inset:20px;pointer-events:none}
+    .corner{position:absolute;width:42px;height:42px;border-color:#fff;border-style:solid}
+    .tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:15px 0 0}
+    .tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 15px 0 0}
+    .bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 15px}
+    .br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 15px}
+    #status{font-size:14px;letter-spacing:.08em;opacity:.65;text-transform:uppercase}
+    #start{margin-top:24px;border:1px solid #444;border-radius:100px;padding:10px 18px;background:#111;color:#fff;cursor:pointer}
+    #feedScene{display:none;position:fixed;inset:0;background:#fafafa;color:#111;overflow-y:auto}
+    .feed-header{position:sticky;top:0;height:70px;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(250,250,250,.94);backdrop-filter:blur(12px);border-bottom:1px solid #ddd}
+    .brand{font-size:22px;font-weight:700;letter-spacing:-.04em}
+    .header-icons{display:flex;gap:18px;font-size:22px}
+    .profile{max-width:950px;margin:auto;padding:55px 24px 28px;display:grid;grid-template-columns:180px 1fr;gap:60px;align-items:center}
+    .avatar{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle at 60% 35%,#eee 0 12%,transparent 13%),linear-gradient(135deg,#222,#aaa)}
+    .username{font-size:28px;margin-bottom:20px}
+    .stats{display:flex;gap:28px;margin-bottom:20px}
+    .bio{line-height:1.45;max-width:500px}
+    .grid{width:min(950px,100%);margin:auto;padding:1px 0 80px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+    .post{aspect-ratio:4/5;overflow:hidden;position:relative;background:#ddd}
+    .post:nth-child(3n+1){background:#151515}.post:nth-child(3n+2){background:#bcbcbc}.post:nth-child(3n){background:#565656}
+    .placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:clamp(28px,5vw,72px);letter-spacing:-.06em;color:#fff}
+  </style>
+</head>
+<body>
+  <section id="faceScene">
+    <div class="login">
+      <div class="face-frame">
+        <video id="camera" autoplay playsinline muted></video>
+        <div class="corners">
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+        </div>
+      </div>
+      <div id="status">identity required</div>
+      <button id="start">authenticate</button>
+    </div>
+  </section>
+
+  <section id="feedScene">
+    <header class="feed-header">
+      <div class="brand">archive</div>
+      <div class="header-icons"><span>♡</span><span>⊕</span><span>☰</span></div>
+    </header>
+    <section class="profile">
+      <div class="avatar"></div>
+      <div>
+        <div class="username">elisa.archive</div>
+        <div class="stats"><span><strong>42</strong> posts</span><span><strong>∞</strong> followers</span><span><strong>1</strong> following</span></div>
+        <div class="bio">reactive archive<br/>images / bodies / traces</div>
+      </div>
+    </section>
+    <main class="grid">
+      <div class="post"><div class="placeholder">01</div></div>
+      <div class="post"><div class="placeholder">02</div></div>
+      <div class="post"><div class="placeholder">03</div></div>
+      <div class="post"><div class="placeholder">04</div></div>
+      <div class="post"><div class="placeholder">05</div></div>
+      <div class="post"><div class="placeholder">06</div></div>
+      <div class="post"><div class="placeholder">07</div></div>
+      <div class="post"><div class="placeholder">08</div></div>
+      <div class="post"><div class="placeholder">09</div></div>
+      <div class="post"><div class="placeholder">10</div></div>
+      <div class="post"><div class="placeholder">11</div></div>
+      <div class="post"><div class="placeholder">12</div></div>
+    </main>
+  </section>
+
+  <script>
+    const start=document.querySelector('#start');
+    const camera=document.querySelector('#camera');
+    const status=document.querySelector('#status');
+    const faceScene=document.querySelector('#faceScene');
+    const feedScene=document.querySelector('#feedScene');
+
+    async function authenticate(){
+      start.style.display='none';
+      status.textContent='camera initializing';
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+        camera.srcObject=stream;
+        setTimeout(()=>{camera.classList.add('visible');status.textContent='scanning'},600);
+        setTimeout(()=>{status.textContent='identity detected'},2600);
+        setTimeout(()=>{status.textContent='access granted'},3800);
+        setTimeout(()=>{faceScene.style.display='none';feedScene.style.display='block'},4700);
+      }catch(error){
+        status.textContent='camera unavailable';
+        start.style.display='';
+        console.error(error);
+      }
+    }
+    start.addEventListener('click',authenticate);
+  </script>
+</body>
+</html>
