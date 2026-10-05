@@ -56,6 +56,10 @@
     .post.detached .placeholder{z-index:3;box-shadow:0 18px 55px rgba(0,0,0,.32)}
     .post.floating{z-index:40;background:#050505}
     .post.floating .placeholder{z-index:4;box-shadow:0 28px 80px rgba(0,0,0,.42)}
+    .grid.spatial{perspective:900px;perspective-origin:50% 45%;transform-style:preserve-3d;background:#050505}
+    .grid.spatial .post{transform-style:preserve-3d}
+    .grid.spatial .post.floating .placeholder{backface-visibility:hidden;box-shadow:0 35px 95px rgba(0,0,0,.55)}
+    #cueHud{position:fixed;left:14px;bottom:14px;z-index:9998;background:rgba(0,0,0,.78);color:#fff;padding:7px 10px;border-radius:6px;font:11px/1.2 monospace;letter-spacing:.05em;pointer-events:none;opacity:.7}
 
   
     #audioPanel{position:fixed;right:16px;bottom:16px;width:310px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
@@ -125,6 +129,7 @@
     start.addEventListener('click',authenticate);
   </script>
 
+  <div id="cueHud">D BREAK · F FLOAT · G 3D · H ORBIT · J PIXEL · K VORTEX · L HOLE</div>
   <aside id="audioPanel">
     <div class="ap-head"><span class="ap-title">ELISA / AUDIO IN</span><span class="ap-state" id="audioState">OFF</span></div>
     <select id="audioDevice"><option value="">Default audio input</option></select>
@@ -172,7 +177,7 @@
   const feed=document.querySelector("#feedScene"), grid=document.querySelector(".grid");
   const seed=[...grid.querySelectorAll(".post")].map((el,i)=>({html:el.innerHTML,index:i}));
   let batch=1, feedStartedAt=0, breathEnabled=false, lastLow=0, lastMid=0, lastHigh=0;
-  let motionClock=0,lastAudioFrame=performance.now(),slipEnabled=false,floatEnabled=false;
+  let motionClock=0,lastAudioFrame=performance.now(),slipEnabled=false,floatEnabled=false,spatialEnabled=false,orbitEnabled=false,pixelEnabled=false,vortexEnabled=false,holeEnabled=false;
   // Drop performance images in /web/public/feed/. Add/remove filenames here only.
   // Missing files gracefully fall back to the black/white/red placeholder.
   const FEED_IMAGES=[
@@ -242,7 +247,7 @@
     setTimeout(()=>{breathEnabled=true},55000);
   });
 
-  // S = auto-scroll / B = breathing / D = detach / F = float.
+  // Narrative row: D BREAK → F FLOAT → G 3D → H ORBIT → J PIXEL → K VORTEX → L HOLE.
   document.addEventListener("keydown",e=>{
     if(e.key.toLowerCase()==="s"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) setAutoScroll(!autoScroll);
   });
@@ -263,7 +268,6 @@
       });
     }
     if(e.key.toLowerCase()==="f"){
-      // F is a second state, never a hidden no-op: if needed it arms D first.
       if(!slipEnabled){slipEnabled=true;grid.classList.add("breaking")}
       floatEnabled=!floatEnabled;
       [...grid.querySelectorAll(".post")].forEach((post,i)=>{
@@ -272,6 +276,20 @@
         post.classList.toggle("floating",floatEnabled&&chosen);
       });
     }
+    if(e.key.toLowerCase()==="g"){
+      // G is cumulative: guarantee BREAK + FLOAT, then give the same DOM tiles real Z perspective.
+      slipEnabled=true;floatEnabled=true;spatialEnabled=!spatialEnabled;
+      grid.classList.add("breaking");grid.classList.toggle("spatial",spatialEnabled);
+      [...grid.querySelectorAll(".post")].forEach((post,i)=>{
+        const chosen=(i%2===0)||(i%5===1);
+        post.classList.toggle("detached",chosen);post.classList.toggle("floating",chosen);
+      });
+    }
+    // Reserve the rest of the physical keyboard row now; implementations follow in this order.
+    if(e.key.toLowerCase()==="h")orbitEnabled=!orbitEnabled;
+    if(e.key.toLowerCase()==="j")pixelEnabled=!pixelEnabled;
+    if(e.key.toLowerCase()==="k")vortexEnabled=!vortexEnabled;
+    if(e.key.toLowerCase()==="l")holeEnabled=!holeEnabled;
   });
 
   window.addEventListener("elisa-audio",e=>{
@@ -322,10 +340,15 @@
       const driftX=sway*(3+lastMid*13)+(lane===2?float*lastHigh*8:0)+slipX;
       const driftY=float*(2+lastLow*9)+(lane===0?sway*lastLow*5:0)+slipY;
       const rot=(sway*lastMid*1.15)+(lane===2?float*lastHigh*.9:0)+(isSlip?sway*band*5.5:0)+(isFloat?Math.sin(motionClock+phase)*6:0);
+      const z=spatialEnabled&&isFloat?(-260+((i*97)%620)+lastLow*180):0;
+      const rx=spatialEnabled&&isFloat?Math.sin(motionClock*.35+phase)*10:0;
+      const ry=spatialEnabled&&isFloat?Math.cos(motionClock*.28+phase)*16:0;
       ph.style.setProperty("--pulse",(pulse*zoomOut).toFixed(4));
       ph.style.setProperty("--drift-x",driftX.toFixed(2)+"px");
       ph.style.setProperty("--drift-y",driftY.toFixed(2)+"px");
       ph.style.rotate=rot.toFixed(2)+"deg";
+      if(spatialEnabled&&isFloat) ph.style.transform=`translate3d(${driftX.toFixed(2)}px,${driftY.toFixed(2)}px,${z.toFixed(1)}px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) rotateZ(${rot.toFixed(2)}deg) scale(${(pulse*zoomOut).toFixed(4)})`;
+      else ph.style.transform="";
       ph.style.filter=`brightness(${(1+hit*(i%5===0?.16:.025)).toFixed(3)})`;
     });
   });
