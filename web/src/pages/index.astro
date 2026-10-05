@@ -129,7 +129,7 @@
     start.addEventListener('click',authenticate);
   </script>
 
-  <div id="cueHud">D BREAK · F FLOAT · G 3D · H ORBIT · J PIXEL · K VORTEX · L HOLE</div>
+  <div id="cueHud">S SCROLL · B PULSE · D DETACH · F FLOAT · G DEPTH · H 3D · J ORBIT · K DISSOLVE · L HOLE</div>
   <aside id="audioPanel">
     <div class="ap-head"><span class="ap-title">ELISA / AUDIO IN</span><span class="ap-state" id="audioState">OFF</span></div>
     <select id="audioDevice"><option value="">Default audio input</option></select>
@@ -216,7 +216,7 @@
     post.dataset.palette=palette;if(ph)ph.dataset.palette=palette;applyFeedMedia(post,i);
   });
   let autoScroll=false, autoScrollRaf=0, lastFrame=0;
-  const AUTO_SCROLL_DELAY=45000, AUTO_SCROLL_SPEED=34; // seconds after feed start / px per second
+  const AUTO_SCROLL_SPEED=34; // px per second; S is the only control
 
   function appendBatch(){
     // Deterministic reorder: recognisable repetitions, but never an obvious identical page loop.
@@ -263,9 +263,7 @@
 
   window.addEventListener("elisa-feed-start",()=>{
     feedStartedAt=performance.now();
-    // About one minute of apparently normal scrolling, then the first anomaly can emerge.
-    setTimeout(()=>setAutoScroll(true),AUTO_SCROLL_DELAY);
-    setTimeout(()=>{breathEnabled=true},55000);
+    // Performance state is manual: no delayed cue is allowed to change keyboard state.
   });
 
   // Keyboard is the visual instrument: every cue is reversible and legible.
@@ -283,6 +281,11 @@
     if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;
     const key=e.key.toLowerCase();
 
+    if(key==="s"){
+      setAutoScroll(!autoScroll);
+      return;
+    }
+
     if(key==="b"){
       breathEnabled=!breathEnabled;
       if(!breathEnabled){
@@ -296,7 +299,7 @@
       // D is the first visible extraction: selected posts leave their cells but remain tethered.
       breathEnabled=true;
       slipEnabled=!slipEnabled;
-      if(!slipEnabled){floatEnabled=false;spatialEnabled=false}
+      if(!slipEnabled){floatEnabled=false;spatialEnabled=false;orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false}
       grid.classList.toggle("breaking",slipEnabled);
       grid.classList.remove("spatial");
       [...grid.querySelectorAll(".post")].forEach((post,i)=>{
