@@ -339,21 +339,21 @@
       const band=i%3===0?lastLow:i%3===1?lastMid:lastHigh;
       const gate=Math.max(0,(band-(.08+(i%5)*.018))*2.8);
       const randomBody=.78+((i*37)%31)/100;
-      // Once D is active the selected tiles stop merely pulsing: they separate,
-      // alternate zoom-in/zoom-out and travel well beyond their original cell.
-      const detachWave=isSlip?Math.sin(motionClock*(1.15+(i%4)*.17)+phase):0;
-      // D: aggressive in/out punches. MID is deliberately dominant so the effect is obvious.
-      const dEnergy=isSlip?Math.min(1,lastMid*1.7+band*.65+hit*.35):0;
-      const zoomOut=isSlip?Math.max(.28,1+detachWave*(.38+dEnergy*.72)*randomBody):1;
-      let slipX=isSlip?(sway*(70+dEnergy*240)+float*lastHigh*90):0;
-      let slipY=isSlip?(float*(50+dEnergy*180)+sway*lastMid*85):0;
-      // F: tiles stop behaving like elastic grid cells and acquire a broad independent orbit.
+      // D = elastic extraction, not wandering. The tile stays centred on its own cell and
+      // pushes toward the viewer with scale. Different frequency bodies make the grid breathe
+      // asynchronously; pressing D again releases every tile exactly back into the grid.
+      const detachWave=isSlip?Math.max(0,Math.sin(motionClock*(1.05+(i%4)*.13)+phase)):0;
+      const dEnergy=isSlip?Math.min(1,lastMid*1.55+band*.55+hit*.28):0;
+      const zoomOut=isSlip?1+detachWave*(.16+dEnergy*.48)*randomBody:1;
+      let slipX=0;
+      let slipY=0;
+      // F is where translation finally begins: it explodes the already-scaled bodies outward.
       if(isFloat){
         const orbit=motionClock*(.34+(i%5)*.055)+phase;
         const radiusX=150+lastMid*330+((i*41)%120);
         const radiusY=95+lastLow*230+((i*23)%80);
-        slipX+=Math.cos(orbit)*radiusX;
-        slipY+=Math.sin(orbit*.83)*radiusY;
+        slipX=Math.cos(orbit)*radiusX;
+        slipY=Math.sin(orbit*.83)*radiusY;
       }
       const driftX=sway*(3+lastMid*13)+(lane===2?float*lastHigh*8:0)+slipX;
       const driftY=float*(2+lastLow*9)+(lane===0?sway*lastLow*5:0)+slipY;
