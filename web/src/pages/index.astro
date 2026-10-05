@@ -67,6 +67,7 @@
     #cueHud{position:fixed;left:14px;bottom:14px;z-index:9998;background:rgba(0,0,0,.78);color:#fff;padding:7px 10px;border-radius:6px;font:11px/1.2 monospace;letter-spacing:.05em;pointer-events:none;opacity:.7}
 
   
+    #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#000;overflow:hidden}#cycloneScene.on{display:block}#cycloneScene canvas{display:block;width:100%;height:100%}
     #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:9997;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 "IBM Plex Mono","JetBrains Mono",monospace;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
@@ -143,6 +144,7 @@
     start.addEventListener('click',authenticate);
   </script>
 
+  <div id="cycloneScene"></div>
   <div id="archiveHole"></div>
   <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
   <div id="cueHud">S SCROLL · B PULSE · D DETACH · F FLOAT · G DEPTH · H 3D · J ORBIT · K DISSOLVE · L HOLE</div>
@@ -180,7 +182,9 @@
 <script type="module">
   import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
   import dialogues from "../data/dialogues.js";
+  import * as THREE from "three";
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
+  const cycloneScene=document.querySelector("#cycloneScene");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -382,6 +386,61 @@
     archiveHole.classList.toggle("on",holeEnabled);
     [...grid.querySelectorAll(".post")].forEach((post,i)=>{post.classList.toggle("detached",slipEnabled&&((i%2===0)||(i%5===1)));post.classList.toggle("floating",floatEnabled)});
   };
+  // THREE.JS CYCLONE — H turns the current feed into a scroll-driven 3D archive current.
+  let cyclone=null,cycloneRaf=0,cycloneVelocity=0,cycloneTarget=0,cycloneScroll=0;
+  const cycloneCfg={radius:6.8,height:24,turns:3.4,depth:18,inertia:.91,sensitivity:.0019,base:.0018,audio:.75};
+  const cycloneTexture=(url)=>{
+    const loader=new THREE.TextureLoader();
+    const tx=loader.load(url);tx.colorSpace=THREE.SRGBColorSpace;tx.minFilter=THREE.LinearFilter;return tx;
+  };
+  const cycloneMedia=()=>[...grid.querySelectorAll(".placeholder.has-media")].map(ph=>ph.style.backgroundImage.match(/url\\(["']?(.*?)["']?\\)/)?.[1]).filter(Boolean);
+  const buildCyclone=()=>{
+    if(cyclone)return;
+    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
+    const scene=new THREE.Scene();scene.background=new THREE.Color(0x000000);
+    const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,100);camera.position.set(0,0,15);
+    cycloneScene.appendChild(renderer.domElement);
+    const group=new THREE.Group();scene.add(group);
+    const urls=cycloneMedia();const planes=[];
+    const count=Math.min(120,Math.max(36,urls.length||36));
+    for(let i=0;i<count;i++){
+      const u=urls.length?urls[i%urls.length]:null;
+      const mat=new THREE.MeshBasicMaterial({map:u?cycloneTexture(u):null,color:u?0xffffff:(i%3===0?0xe31b3d:0xffffff),side:THREE.DoubleSide,transparent:true,opacity:.96});
+      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2.15,2.7),mat);mesh.userData={phase:i/count,seed:(i*73)%101/101};group.add(mesh);planes.push(mesh);
+    }
+    cyclone={renderer,scene,camera,group,planes};
+    const resize=()=>{if(!cyclone)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)};addEventListener("resize",resize);
+    const loop=()=>{
+      if(!cyclone)return;
+      const a=window.ELISA_AUDIO?.get?.()||window.ELISA_AUDIO||{};const low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
+      cycloneVelocity+=(cycloneTarget-cycloneVelocity)*(1-cycloneCfg.inertia);cycloneTarget*=.86;
+      cycloneScroll+=cycloneVelocity+cycloneCfg.base*(.35+mid*cycloneCfg.audio);
+      const n=planes.length;
+      planes.forEach((m,i)=>{
+        let p=(m.userData.phase+cycloneScroll)%1;if(p<0)p+=1;
+        const theta=p*Math.PI*2*cycloneCfg.turns+i*.035;
+        const radius=cycloneCfg.radius*(.72+m.userData.seed*.48)+Math.sin(theta*1.7+i)*high*.75;
+        const y=(.5-p)*cycloneCfg.height;
+        m.position.set(Math.cos(theta)*radius,y,Math.sin(theta)*cycloneCfg.depth*.48-5+Math.sin(theta*.43)*2.5);
+        const pulse=1+mid*.12+hit*(i%7===0?.28:0);m.scale.setScalar(pulse);
+        // planes stay readable/front-facing while their positions form the helix
+        m.quaternion.copy(camera.quaternion);
+        m.material.opacity=.68+Math.min(.3,.12+low*.18+mid*.12);
+      });
+      group.position.x=spaceX/110;group.position.y=-spaceY/110;group.position.z=spaceZ/120;
+      camera.position.z=15/spaceZoom;
+      renderer.render(scene,camera);cycloneRaf=requestAnimationFrame(loop);
+    };loop();
+  };
+  const setCyclone=(on)=>{
+    if(on){buildCyclone();cycloneScene.classList.add("on");feed.style.opacity="0";freezeFeedScroll()}
+    else{cycloneScene.classList.remove("on");feed.style.opacity="1"}
+  };
+  addEventListener("wheel",e=>{
+    if(!orbitEnabled)return;
+    e.preventDefault();cycloneTarget+=e.deltaY*cycloneCfg.sensitivity;
+  },{passive:false});
+
   const toggleCue=(key)=>{
     const current={b:breathEnabled,d:slipEnabled,f:floatEnabled,g:spatialEnabled,h:orbitEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled}[key];
     clearFeedModes(key);
@@ -395,6 +454,7 @@
     if(key==="k")vortexEnabled=next;
     if(key==="l")holeEnabled=next;
     clearFeedModes(key);
+    setCyclone(orbitEnabled);
     if(next)freezeFeedScroll();
     syncCueMonitor();
   };
