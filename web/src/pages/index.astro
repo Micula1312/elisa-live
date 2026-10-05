@@ -165,6 +165,7 @@
   const feed=document.querySelector("#feedScene"), grid=document.querySelector(".grid");
   const seed=[...grid.querySelectorAll(".post")].map((el,i)=>({html:el.innerHTML,index:i}));
   let batch=1, feedStartedAt=0, breathEnabled=false, lastLow=0, lastMid=0, lastHigh=0;
+  let motionClock=0,lastAudioFrame=performance.now();
   // Drop performance images in /web/public/feed/. Add/remove filenames here only.
   // Missing files gracefully fall back to the black/white/red placeholder.
   const FEED_IMAGES=[
@@ -249,21 +250,29 @@
   window.addEventListener("elisa-audio",e=>{
     const low=e.detail.low||0,mid=e.detail.mid||0,high=e.detail.high||0,hit=e.detail.transient||0;
     lastLow+=(low-lastLow)*.16; lastMid+=(mid-lastMid)*.12; lastHigh+=(high-lastHigh)*.10;
-    const elapsed=feedStartedAt?(performance.now()-feedStartedAt)/1000:0;
-    const amount=breathEnabled?Math.min(.018,.004+Math.max(0,elapsed-55)*.00025):0;
+    const now=performance.now(),dt=Math.min(.05,(now-lastAudioFrame)/1000);lastAudioFrame=now;
+    motionClock+=dt*(.75+lastLow*.8+lastMid*.35);
+    const elapsed=feedStartedAt?(now-feedStartedAt)/1000:0;
+    const amount=breathEnabled?.012:0;
     grid.style.setProperty("--breath",(1+lastLow*amount).toFixed(4));
     if(!breathEnabled)return;
     const posts=[...grid.querySelectorAll(".post")];
     posts.forEach((post,i)=>{
       const ph=post.querySelector(".placeholder"); if(!ph)return;
-      const lane=i%3;
+      const lane=i%3,phase=i*1.618;
       const energy=lane===0?lastLow:lane===1?lastMid:lastHigh;
-      const pulse=1+energy*(lane===0?.10:lane===1?.075:.055)+hit*((i%5===0)?.05:0);
-      const driftX=Math.sin(elapsed*.72+i*1.71)*energy*(lane===2?12:7);
-      const driftY=Math.cos(elapsed*.58+i*.93)*energy*(lane===1?10:6);
+      // Each tile gets its own musical body: bass = weight/scale, mids = sway, highs = nervous edge.
+      const pulse=1+lastLow*(.025+(i%4)*.006)+mid*(lane===1?.018:.007)+hit*((i%7===0)?.055:.008);
+      const sway=Math.sin(motionClock*(lane===1?1.25:.82)+phase);
+      const float=Math.cos(motionClock*(lane===2?1.65:.68)+phase*.73);
+      const driftX=sway*(3+lastMid*13)+(lane===2?float*lastHigh*8:0);
+      const driftY=float*(2+lastLow*9)+(lane===0?sway*lastLow*5:0);
+      const rot=(sway*lastMid*1.15)+(lane===2?float*lastHigh*.9:0);
       ph.style.setProperty("--pulse",pulse.toFixed(4));
       ph.style.setProperty("--drift-x",driftX.toFixed(2)+"px");
       ph.style.setProperty("--drift-y",driftY.toFixed(2)+"px");
+      ph.style.rotate=rot.toFixed(2)+"deg";
+      ph.style.filter=`brightness(${(1+hit*(i%5===0?.16:.025)).toFixed(3)})`;
     });
   });
 </script>
