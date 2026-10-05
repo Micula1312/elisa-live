@@ -56,12 +56,19 @@
     .post.detached .placeholder{z-index:3;box-shadow:0 18px 55px rgba(0,0,0,.32)}
     .post.floating{z-index:40;background:#050505}
     .post.floating .placeholder{z-index:4;box-shadow:0 28px 80px rgba(0,0,0,.42)}
-    .grid.spatial{perspective:900px;perspective-origin:50% 45%;transform-style:preserve-3d;background:#050505}
+    .grid.spatial{perspective:900px;perspective-origin:50% 45%;transform-style:preserve-3d;background:transparent}
     .grid.spatial .post{transform-style:preserve-3d}
     .grid.spatial .post.floating .placeholder{backface-visibility:hidden;box-shadow:0 35px 95px rgba(0,0,0,.55)}
     #cueHud{position:fixed;left:14px;bottom:14px;z-index:9998;background:rgba(0,0,0,.78);color:#fff;padding:7px 10px;border-radius:6px;font:11px/1.2 monospace;letter-spacing:.05em;pointer-events:none;opacity:.7}
 
   
+    #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
+    #videoPanel.open{display:block}.vp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.vp-grid button,.vp-reset{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:8px;cursor:pointer}.vp-grid button.on{background:#fff;color:#111}.vp-row{display:grid;grid-template-columns:58px 1fr 36px;align-items:center;gap:7px;margin:8px 0}.vp-row input{width:100%}.vp-hint{opacity:.55;margin-top:9px;font-size:10px}
+    #feedScene{--fx-acid:0;--fx-glitch:0;--fx-pixel:0;--fx-contrast:1;--fx-hue:0deg;filter:contrast(var(--fx-contrast)) hue-rotate(var(--fx-hue));}
+    #feedScene.fx-acid{filter:contrast(var(--fx-contrast)) saturate(calc(1 + var(--fx-acid)*2.4)) hue-rotate(var(--fx-hue))}
+    #feedScene.fx-glitch .placeholder{filter:contrast(calc(1 + var(--fx-glitch)*.9)) brightness(calc(1 + var(--fx-glitch)*.12))!important}
+    #feedScene.fx-pixel .placeholder{image-rendering:pixelated}
+
     #audioPanel{position:fixed;right:16px;bottom:16px;width:310px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #audioPanel.open{display:block} .ap-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ap-title{font-weight:700}.ap-state{opacity:.6}
     #audioDevice{width:100%;background:#181b20;color:#fff;border:1px solid #333943;border-radius:6px;padding:7px;margin-bottom:8px}
@@ -130,6 +137,13 @@
   </script>
 
   <div id="cueHud">S SCROLL · B PULSE · D DETACH · F FLOAT · G DEPTH · H 3D · J ORBIT · K DISSOLVE · L HOLE</div>
+  <aside id="videoPanel">
+    <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
+    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="videoReset" class="vp-reset">CLEAN</button></div>
+    <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
+    <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
+    <div class="vp-hint">V = show/hide · effects use the shared ELISA_AUDIO state</div>
+  </aside>
   <aside id="audioPanel">
     <div class="ap-head"><span class="ap-title">ELISA / AUDIO IN</span><span class="ap-state" id="audioState">OFF</span></div>
     <select id="audioDevice"><option value="">Default audio input</option></select>
@@ -149,7 +163,7 @@
 
 <script type="module">
   import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
-  const panel=document.querySelector("#audioPanel"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
+  const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -160,7 +174,7 @@
       if([...device.options].some(o=>o.value===selected))device.value=selected;
     }catch(e){astate.textContent="DEVICE ERROR"}
   }
-  document.addEventListener("keydown",e=>{if(e.key.toLowerCase()==="a"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))panel.classList.toggle("open")});
+  document.addEventListener("keydown",e=>{if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;const k=e.key.toLowerCase();if(k==="a")panel.classList.toggle("open");if(k==="v")videoPanel.classList.toggle("open")});
   refresh.addEventListener("click",populate);
   arm.addEventListener("click",async()=>{try{astate.textContent="REQUESTING…";await startAudio(device.value);astate.textContent="LIVE IN";arm.textContent="RE-ARM LIVE";await populate()}catch(e){astate.textContent=(e.name||"AUDIO ERROR");console.error("ELISA live audio input:",e)}});
   trackPlay.addEventListener("click",async()=>{try{if(window.ELISA_AUDIO?.source==="track"&&!master.paused){master.pause();trackPlay.textContent="RESUME MASTER";astate.textContent="MASTER PAUSED";return}if(window.ELISA_AUDIO?.source!=="track")await startTrack(master);else await master.play();trackPlay.textContent="PAUSE MASTER";astate.textContent="MASTER TRACK"}catch(e){astate.textContent=e.name||"TRACK ERROR";console.error("ELISA master track:",e)}});
@@ -171,6 +185,16 @@
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
   window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}});
   populate();
+  const videoFx={acid:false,glitch:false,pixel:false};
+  const syncVideoFx=()=>{
+    for(const [fx,on] of Object.entries(videoFx)){feedScene?.classList.toggle("fx-"+fx,on);videoPanel.querySelector('[data-fx="'+fx+'"]')?.classList.toggle("on",on)}
+    const active=Object.entries(videoFx).filter(([,v])=>v).map(([k])=>k.toUpperCase());
+    videoState.textContent=active.join("+")||"CLEAN";
+  };
+  videoPanel.querySelectorAll("[data-fx]").forEach(btn=>btn.addEventListener("click",()=>{videoFx[btn.dataset.fx]=!videoFx[btn.dataset.fx];syncVideoFx()}));
+  videoReset.addEventListener("click",()=>{Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()});
+  videoAmount.addEventListener("input",()=>vAmount.textContent=Number(videoAmount.value).toFixed(2));
+  videoReact.addEventListener("input",()=>vReact.textContent=Number(videoReact.value).toFixed(1));
   // Dev/rehearsal source: /public/audio/elisa_master.mp3. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
@@ -337,6 +361,13 @@
 
   window.addEventListener("elisa-audio",e=>{
     const low=e.detail.low||0,mid=e.detail.mid||0,high=e.detail.high||0,hit=e.detail.transient||0;
+    const fxAmount=Number(videoAmount.value),fxReact=Number(videoReact.value);
+    const fxEnergy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
+    feed.style.setProperty("--fx-acid",(fxAmount*fxEnergy).toFixed(3));
+    feed.style.setProperty("--fx-glitch",(fxAmount*(high*.65+hit*.8)*fxReact).toFixed(3));
+    feed.style.setProperty("--fx-pixel",(fxAmount*(mid*.35+high*.65)*fxReact).toFixed(3));
+    feed.style.setProperty("--fx-contrast",(1+(videoFx.glitch?fxAmount*fxEnergy*.8:0)).toFixed(3));
+    feed.style.setProperty("--fx-hue",(videoFx.acid?(fxAmount*(20+mid*170+high*90)*fxReact).toFixed(1):0)+"deg");
     lastLow+=(low-lastLow)*.16; lastMid+=(mid-lastMid)*.12; lastHigh+=(high-lastHigh)*.10;
     const now=performance.now(),dt=Math.min(.05,(now-lastAudioFrame)/1000);lastAudioFrame=now;
     motionClock+=dt*(.75+lastLow*.8+lastMid*.35);
