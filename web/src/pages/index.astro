@@ -213,27 +213,47 @@
   videoAmount.addEventListener("input",()=>vAmount.textContent=Number(videoAmount.value).toFixed(2));
   videoReact.addEventListener("input",()=>vReact.textContent=Number(videoReact.value).toFixed(1));
 
-  let subtitlesEnabled=false,lastSubtitleKey="";
-  const legacyDialogueScenes=[
+  let subtitlesEnabled=false,lastSubtitleKey="",subtitlePreviewUntil=0;
+  // Master-track absolute starts from the current regia backup.
+  const dialogueScenes=[
     {start:0,module:"intro"},{start:120,module:"genesis"},{start:680,module:"hypnosis"},
     {start:1460,module:"resonance"},{start:1840,module:"farewell"}
   ];
-  const renderSubtitle=()=>{
-    if(!subtitlesEnabled){subtitleLayer.classList.remove("on");return}
-    const t=master.currentTime||0;
-    let scene=null;
-    for(const s of legacyDialogueScenes)if(t>=s.start)scene=s;
-    if(!scene){subtitleLayer.classList.remove("on");return}
-    const local=t-scene.start;
-    const cue=(dialogues[scene.module]||[]).find(q=>local>=q.time&&local<q.end);
-    const key=cue?scene.module+":"+cue.time:"";
+  const setSubtitle=(cue,key)=>{
     if(!cue){subtitleLayer.classList.remove("on");lastSubtitleKey="";return}
-    if(key!==lastSubtitleKey){subtitleLayer.innerHTML='<span class="subtitle-speaker">'+(cue.speaker||"aicha")+'</span>'+cue.text.replace(/\n/g,"<br>");lastSubtitleKey=key}
+    if(key!==lastSubtitleKey){
+      subtitleLayer.innerHTML='<span class="subtitle-speaker">'+(cue.speaker||"aicha")+'</span>'+cue.text.replace(/\n/g,"<br>");
+      lastSubtitleKey=key;
+    }
     subtitleLayer.classList.add("on");
   };
-  subtitleToggle.addEventListener("click",()=>{subtitlesEnabled=!subtitlesEnabled;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);renderSubtitle()});
+  const renderSubtitle=()=>{
+    if(!subtitlesEnabled){subtitleLayer.classList.remove("on");return}
+    if(performance.now()<subtitlePreviewUntil)return;
+    const t=master.currentTime||0;
+    let scene=null;
+    for(const s of dialogueScenes)if(t>=s.start)scene=s;
+    if(!scene){setSubtitle(null,"");return}
+    const local=t-scene.start;
+    const cue=(dialogues[scene.module]||[]).find(q=>local>=q.time&&local<q.end);
+    setSubtitle(cue,cue?scene.module+":"+cue.time:"");
+  };
+  const previewSubtitle=()=>{
+    const cue=dialogues.intro?.[0];
+    if(!cue)return;
+    subtitlePreviewUntil=performance.now()+2600;
+    setSubtitle(cue,"preview");
+    setTimeout(()=>{subtitlePreviewUntil=0;renderSubtitle()},2650);
+  };
+  subtitleToggle.addEventListener("click",()=>{
+    subtitlesEnabled=!subtitlesEnabled;
+    subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");
+    subtitleToggle.classList.toggle("on",subtitlesEnabled);
+    if(subtitlesEnabled)previewSubtitle(); else setSubtitle(null,"");
+  });
   master.addEventListener("timeupdate",renderSubtitle);
   master.addEventListener("seeked",renderSubtitle);
+  master.addEventListener("play",renderSubtitle);
   // Dev/rehearsal source: /public/audio/elisa_master.mp3. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
