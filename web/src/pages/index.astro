@@ -180,17 +180,31 @@
   let motionClock=0,lastAudioFrame=performance.now(),slipEnabled=false,floatEnabled=false,spatialEnabled=false,orbitEnabled=false,pixelEnabled=false,vortexEnabled=false,holeEnabled=false;
   // Drop performance images in /web/public/feed/. Add/remove filenames here only.
   // Missing files gracefully fall back to the black/white/red placeholder.
-  const FEED_IMAGES=[
-    "01.jpg","02.jpg","03.jpg","04.jpg","05.jpg","06.jpg",
-    "07.jpg","08.jpg","09.jpg","10.jpg","11.jpg","12.jpg"
-  ];
-  function applyFeedMedia(post,sourceIndex){
-    const ph=post.querySelector(".placeholder"),file=FEED_IMAGES[sourceIndex%FEED_IMAGES.length];
-    if(!ph||!file)return;
-    const img=new Image();
-    img.onload=()=>{ph.style.backgroundImage=`url("/feed/${file}")`;ph.classList.add("has-media")};
-    img.src=`/feed/${file}`;
+  let FEED_IMAGES=[];
+  let mediaCursor=0;
+  async function loadFeedManifest(){
+    try{
+      const res=await fetch("/feed/manifest.json",{cache:"no-store"});
+      if(!res.ok)throw new Error("manifest missing");
+      const files=await res.json();
+      FEED_IMAGES=Array.isArray(files)?files.filter(Boolean):[];
+    }catch(err){
+      console.warn("[ELISA] /feed/manifest.json missing: keeping placeholders.",err);
+      FEED_IMAGES=[];
+    }
   }
+  function applyFeedMedia(post,sourceIndex){
+    const ph=post.querySelector(".placeholder");
+    if(!ph||!FEED_IMAGES.length)return;
+    // Walk through the whole archive instead of looping the same 12 files.
+    const file=FEED_IMAGES[(mediaCursor+sourceIndex)%FEED_IMAGES.length];
+    const url="/feed/"+file.split("/").map(encodeURIComponent).join("/");
+    const img=new Image();
+    img.onload=()=>{ph.style.backgroundImage=`url("${url}")`;ph.classList.add("has-media")};
+    img.onerror=()=>ph.classList.remove("has-media");
+    img.src=url;
+  }
+  await loadFeedManifest();
   [...grid.querySelectorAll(".post")].forEach((post,i)=>{
     const palette=["black","white","red"][i%3],ph=post.querySelector(".placeholder");
     post.dataset.palette=palette;if(ph)ph.dataset.palette=palette;applyFeedMedia(post,i);
@@ -215,6 +229,7 @@
       applyFeedMedia(post,seedIndex);
       grid.appendChild(post);
     });
+    mediaCursor=(mediaCursor+order.length)%Math.max(1,FEED_IMAGES.length);
     batch++;
   }
 
