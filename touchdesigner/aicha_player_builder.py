@@ -104,9 +104,6 @@ hint.par.w = 700
 hint.par.h = 100
 hint.par.text = 'SOURCE  [ ELISA MASTER / LIVE INPUT ]\nPLAY  ·  RESTART  ·  SENSITIVITY\nLOW / MID / HIGH → ANALYSIS_OUT'
 
-# Component viewer shows PLAYER_UI when you open AICHA_PLAYER.
-a.par.viewer = True
-
 # --- RESTART pulse callback DAT ----------------------------------------------
 cb = a.create(parameterexecuteDAT, 'CONTROLS')
 cb.nodeX, cb.nodeY = -50, 260
