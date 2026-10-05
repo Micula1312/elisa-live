@@ -247,49 +247,67 @@
     setTimeout(()=>{breathEnabled=true},55000);
   });
 
-  // Narrative row: D BREAK → F FLOAT → G 3D → H ORBIT → J PIXEL → K VORTEX → L HOLE.
-  document.addEventListener("keydown",e=>{
-    if(e.key.toLowerCase()==="s"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) setAutoScroll(!autoScroll);
-  });
-
-  // B = manual breathing cue. D = selected tiles begin slipping out of the grid, but remain tethered.
+  // Keyboard is the visual instrument: every cue is reversible and legible.
+  // B = pulse/rest (second press restores neutral tiles)
+  // D = detach/re-attach, F = explode/float, G = depth.
+  const resetTileMotion=()=>{
+    [...grid.querySelectorAll(".post")].forEach(post=>{
+      post.classList.remove("detached","floating");
+      const ph=post.querySelector(".placeholder");
+      if(ph){ph.style.transform="";ph.style.rotate="";ph.style.filter="";ph.style.setProperty("--pulse","1");ph.style.setProperty("--drift-x","0px");ph.style.setProperty("--drift-y","0px")}
+    });
+    grid.classList.remove("breaking","spatial");
+  };
   document.addEventListener("keydown",e=>{
     if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;
-    if(e.key.toLowerCase()==="b") breathEnabled=!breathEnabled;
-    if(e.key.toLowerCase()==="d"){
+    const key=e.key.toLowerCase();
+
+    if(key==="b"){
+      breathEnabled=!breathEnabled;
+      if(!breathEnabled){
+        slipEnabled=floatEnabled=spatialEnabled=orbitEnabled=pixelEnabled=vortexEnabled=holeEnabled=false;
+        resetTileMotion();
+      }
+      return;
+    }
+
+    if(key==="d"){
+      // D is the first visible extraction: selected posts leave their cells but remain tethered.
+      breathEnabled=true;
       slipEnabled=!slipEnabled;
-      if(!slipEnabled)floatEnabled=false;
+      if(!slipEnabled){floatEnabled=false;spatialEnabled=false}
       grid.classList.toggle("breaking",slipEnabled);
+      grid.classList.remove("spatial");
       [...grid.querySelectorAll(".post")].forEach((post,i)=>{
-        // D must be unmistakable: about half the visible archive becomes unstable.
         const chosen=(i%2===0)||(i%5===1);
         post.classList.toggle("detached",slipEnabled&&chosen);
-        if(!slipEnabled)post.classList.remove("floating");
+        post.classList.remove("floating");
       });
+      return;
     }
-    if(e.key.toLowerCase()==="f"){
-      if(!slipEnabled){slipEnabled=true;grid.classList.add("breaking")}
+
+    if(key==="f"){
+      // F only makes sense after D: it turns the detached layer into an explosive free field.
+      if(!slipEnabled)return;
       floatEnabled=!floatEnabled;
+      spatialEnabled=false;grid.classList.remove("spatial");
       [...grid.querySelectorAll(".post")].forEach((post,i)=>{
         const chosen=(i%2===0)||(i%5===1);
-        post.classList.toggle("detached",chosen);
         post.classList.toggle("floating",floatEnabled&&chosen);
       });
+      return;
     }
-    if(e.key.toLowerCase()==="g"){
-      // G is cumulative: guarantee BREAK + FLOAT, then give the same DOM tiles real Z perspective.
-      slipEnabled=true;floatEnabled=true;spatialEnabled=!spatialEnabled;
-      grid.classList.add("breaking");grid.classList.toggle("spatial",spatialEnabled);
-      [...grid.querySelectorAll(".post")].forEach((post,i)=>{
-        const chosen=(i%2===0)||(i%5===1);
-        post.classList.toggle("detached",chosen);post.classList.toggle("floating",chosen);
-      });
+
+    if(key==="g"){
+      if(!floatEnabled)return;
+      spatialEnabled=!spatialEnabled;
+      grid.classList.toggle("spatial",spatialEnabled);
+      return;
     }
-    // Reserve the rest of the physical keyboard row now; implementations follow in this order.
-    if(e.key.toLowerCase()==="h")orbitEnabled=!orbitEnabled;
-    if(e.key.toLowerCase()==="j")pixelEnabled=!pixelEnabled;
-    if(e.key.toLowerCase()==="k")vortexEnabled=!vortexEnabled;
-    if(e.key.toLowerCase()==="l")holeEnabled=!holeEnabled;
+    if(key==="h")orbitEnabled=!orbitEnabled;
+    if(key==="j")pixelEnabled=!pixelEnabled;
+    if(key==="k")vortexEnabled=!vortexEnabled;
+    if(key==="l")holeEnabled=!holeEnabled;
   });
 
   window.addEventListener("elisa-audio",e=>{
