@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "id": "elisa-live",
+  "title": "ELISA LIVE — master regia",
+  "status": "working-score",
+  "notes": [
+    "Backup/master score for the new live performance. Macro cues remain manual.",
+    "Dialogue cue times are relative to scene start.",
+    "Imported legacy scene starts are preserved as reference; they are not yet authoritative for the new live score.",
+    "The uploaded dialogues file and uploaded performance JSON disagree in some section labels/timing comments; no silent reconciliation has been applied."
+  ],
+  "controls": {
+    "A": "audio-panel",
+    "V": "video-panel",
+    "S": "scroll",
+    "B": "pulse",
+    "D": "detach",
+    "F": "float",
+    "G": "depth",
+    "H": "3d",
+    "J": "orbit",
+    "K": "flow",
+    "L": "hole",
+    "subtitles": "video-panel toggle"
+  },
+  "timeline": {
+    "clock": "master-track",
+    "audio": "/audio/elisa_master.mp3",
+    "autoplay": false,
+    "macroAutomation": false,
+    "reactiveSource": "ELISA_AUDIO"
+  },
+  "dialogues": {
+    "source": "../web/src/data/dialogues.js",
+    "modules": [
+      "intro",
+      "genesis",
+      "hypnosis",
+      "resonance",
+      "crossing",
+      "farewell"
+    ],
+    "optional": [
+      "crossing"
+    ]
+  },
+  "legacyReference": {
+    "duration": "32:27",
+    "source": "uploaded performance(5).json"
+  },
+  "scenes": [
+    {
+      "id": "text-intro",
+      "order": 1,
+      "start": "00:00",
+      "title": "ELISA — Intro",
+      "type": "text",
+      "dialogue": "intro"
+    },
+    {
+      "id": "clock-face-id",
+      "order": 2,
+      "start": "01:00",
+      "title": "Face ID",
+      "type": "video"
+    },
+    {
+      "id": "loader",
+      "order": 3,
+      "start": "01:30",
+      "title": "Loader",
+      "type": "video",
+      "fx": "glitch"
+    },
+    {
+      "id": "hydra-intro",
+      "order": 4,
+      "start": "02:00",
+      "title": "HYDRA I — Intro",
+      "type": "hydra",
+      "dialogue": "genesis"
+    },
+    {
+      "id": "photo-memory",
+      "order": 5,
+      "start": "04:20",
+      "title": "Foto",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "vertical-body",
+      "order": 6,
+      "start": "05:13",
+      "title": "Video verticale",
+      "type": "video",
+      "fx": "soft-gradient"
+    },
+    {
+      "id": "photo-memory-2",
+      "order": 7,
+      "start": "06:20",
+      "title": "Foto",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "touch-3d",
+      "order": 8,
+      "start": "08:20",
+      "title": "3D Touch",
+      "type": "video",
+      "fx": "glitch"
+    },
+    {
+      "id": "hydra-hypnosis",
+      "order": 9,
+      "start": "11:20",
+      "title": "HYDRA II — Hypnosis",
+      "type": "hydra",
+      "dialogue": "hypnosis"
+    },
+    {
+      "id": "rotazioni",
+      "order": 10,
+      "start": "13:20",
+      "title": "Rotazioni",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "forest-numbers",
+      "order": 11,
+      "start": "15:00",
+      "title": "Foresta + Numeri",
+      "type": "video",
+      "fx": "glitch"
+    },
+    {
+      "id": "forest-images",
+      "order": 12,
+      "start": "18:00",
+      "title": "Foresta + Immagini",
+      "type": "video",
+      "fx": "glitch"
+    },
+    {
+      "id": "archivio-3d",
+      "order": 13,
+      "start": "20:40",
+      "title": "Archivio 3D",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "hydra-resonance",
+      "order": 14,
+      "start": "24:20",
+      "title": "HYDRA III — Resonance",
+      "type": "hydra",
+      "dialogue": "resonance"
+    },
+    {
+      "id": "transizione",
+      "order": 15,
+      "start": "25:50",
+      "title": "Transizione",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "cacofonia",
+      "order": 16,
+      "start": "26:50",
+      "title": "Nucleo Rosso",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "albero",
+      "order": 17,
+      "start": "28:00",
+      "title": "Albero",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "blivet",
+      "order": 18,
+      "start": "29:30",
+      "title": "Blivet",
+      "type": "video",
+      "fx": "defocus"
+    },
+    {
+      "id": "hydra-farewell",
+      "order": 19,
+      "start": "30:40",
+      "title": "HYDRA IV — Farewell",
+      "type": "hydra",
+      "dialogue": "farewell"
+    }
+  ]
+}
