@@ -67,6 +67,8 @@
     #cueHud{position:fixed;left:14px;bottom:14px;z-index:9998;background:rgba(0,0,0,.78);color:#fff;padding:7px 10px;border-radius:6px;font:11px/1.2 monospace;letter-spacing:.05em;pointer-events:none;opacity:.7}
 
   
+    #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:9997;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 "IBM Plex Mono","JetBrains Mono",monospace;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
+    #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #videoPanel.open{display:block}.vp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.vp-grid button,.vp-reset{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:8px;cursor:pointer}.vp-grid button.on{background:#fff;color:#111}.vp-row{display:grid;grid-template-columns:58px 1fr 36px;align-items:center;gap:7px;margin:8px 0}.vp-row input{width:100%}.vp-hint{opacity:.55;margin-top:9px;font-size:10px}.cue-monitor{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}.cue-led{border:1px solid #353a43;border-radius:6px;padding:6px 4px;text-align:center;opacity:.45}.cue-led.on{background:#fff;color:#111;opacity:1}.cue-led b{display:block;font-size:12px}.cue-led small{font-size:8px;letter-spacing:.04em}
     #feedScene{--fx-acid:0;--fx-glitch:0;--fx-pixel:0;--fx-contrast:1;--fx-hue:0deg;filter:contrast(var(--fx-contrast)) hue-rotate(var(--fx-hue));}
@@ -142,10 +144,11 @@
   </script>
 
   <div id="archiveHole"></div>
+  <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
   <div id="cueHud">S SCROLL · B PULSE · D DETACH · F FLOAT · G DEPTH · H 3D · J ORBIT · K DISSOLVE · L HOLE</div>
   <aside id="videoPanel">
     <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
-    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="videoReset" class="vp-reset">CLEAN</button></div>
+    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
     <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor">
@@ -175,7 +178,8 @@
 
 <script type="module">
   import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
-  const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
+  import dialogues from "../data/dialogues.js";
+  const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -207,6 +211,28 @@
   videoReset.addEventListener("click",()=>{Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()});
   videoAmount.addEventListener("input",()=>vAmount.textContent=Number(videoAmount.value).toFixed(2));
   videoReact.addEventListener("input",()=>vReact.textContent=Number(videoReact.value).toFixed(1));
+
+  let subtitlesEnabled=false,lastSubtitleKey="";
+  const legacyDialogueScenes=[
+    {start:0,module:"intro"},{start:120,module:"genesis"},{start:680,module:"hypnosis"},
+    {start:1460,module:"resonance"},{start:1840,module:"farewell"}
+  ];
+  const renderSubtitle=()=>{
+    if(!subtitlesEnabled){subtitleLayer.classList.remove("on");return}
+    const t=master.currentTime||0;
+    let scene=null;
+    for(const s of legacyDialogueScenes)if(t>=s.start)scene=s;
+    if(!scene){subtitleLayer.classList.remove("on");return}
+    const local=t-scene.start;
+    const cue=(dialogues[scene.module]||[]).find(q=>local>=q.time&&local<q.end);
+    const key=cue?scene.module+":"+cue.time:"";
+    if(!cue){subtitleLayer.classList.remove("on");lastSubtitleKey="";return}
+    if(key!==lastSubtitleKey){subtitleLayer.innerHTML='<span class="subtitle-speaker">'+(cue.speaker||"aicha")+'</span>'+cue.text.replace(/\n/g,"<br>");lastSubtitleKey=key}
+    subtitleLayer.classList.add("on");
+  };
+  subtitleToggle.addEventListener("click",()=>{subtitlesEnabled=!subtitlesEnabled;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);renderSubtitle()});
+  master.addEventListener("timeupdate",renderSubtitle);
+  master.addEventListener("seeked",renderSubtitle);
   // Dev/rehearsal source: /public/audio/elisa_master.mp3. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
