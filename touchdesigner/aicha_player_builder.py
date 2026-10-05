@@ -91,18 +91,12 @@ title = panel.create(textCOMP, 'TITLE')
 title.par.w = 700
 title.par.h = 85
 title.par.text = 'AICHA / ELISA MEDIA PLAYER'
-title.par.textcolorr = 1
-title.par.textcolorg = 0.35
-title.par.textcolorb = 0.9
 
 status = panel.create(textCOMP, 'STATUS')
 status.nodeY = -100
 status.par.w = 700
 status.par.h = 90
 status.par.text = '✦ MEDIA SOUL : ONLINE ✦\nSIGNAL POSSESSED / WAITING FOR ELISA'
-status.par.textcolorr = 0.75
-status.par.textcolorg = 0.9
-status.par.textcolorb = 1
 
 hint = panel.create(textCOMP, 'HINT')
 hint.nodeY = -210
