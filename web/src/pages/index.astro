@@ -32,6 +32,7 @@
     .auth-meta{display:flex;justify-content:center;gap:8px;align-items:center;margin-top:17px;color:#9aa1ab;font-size:11px}
     .dot{width:4px;height:4px;background:#b4bac2;border-radius:50%}
     #feedScene{display:none;position:fixed;inset:0;background:#fafafa;color:#111;overflow-y:auto}
+    .post{cursor:pointer}.post.focused{z-index:40!important;transition:transform .32s cubic-bezier(.2,.8,.2,1)!important}.post.focused .placeholder{box-shadow:0 16px 55px rgba(0,0,0,.28)}
     .feed-header{position:sticky;top:0;height:70px;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(250,250,250,.94);backdrop-filter:blur(12px);border-bottom:1px solid #ddd}
     .brand{font-size:22px;font-weight:700;letter-spacing:-.04em}.header-icons{display:flex;gap:18px;font-size:22px}
     .profile{max-width:950px;margin:auto;padding:55px 24px 28px;display:grid;grid-template-columns:180px 1fr;gap:60px;align-items:center}
@@ -303,7 +304,9 @@
     const palette=["black","white","red"][i%3],ph=post.querySelector(".placeholder");
     post.dataset.palette=palette;if(ph)ph.dataset.palette=palette;applyFeedMedia(post,i);
   });
-  let autoScroll=false, autoScrollRaf=0, lastFrame=0;
+  let autoScroll=false, autoScrollRaf=0, lastFrame=0,focusPauseUntil=0,focusedPost=null,focusedPlane=null;
+  const FOCUS_HOLD=2600;
+  const holdMotion=()=>{focusPauseUntil=performance.now()+FOCUS_HOLD};
   const AUTO_SCROLL_SPEED=34; // px per second; S is the only control
 
   function appendBatch(){
@@ -335,11 +338,21 @@
   // Start with enough depth that scrolling never reaches an artificial bottom.
   appendBatch(); appendBatch(); appendBatch();
   feed.addEventListener("scroll",ensureScrollBuffer,{passive:true});
+  grid.addEventListener("click",e=>{
+    if(spatialEnabled)return;
+    const post=e.target.closest(".post");if(!post)return;
+    e.preventDefault();e.stopPropagation();holdMotion();
+    focusedPost?.classList.remove("focused");focusedPost=post;post.classList.add("focused");
+    const r=post.getBoundingClientRect(),dx=innerWidth/2-(r.left+r.width/2),dy=innerHeight/2-(r.top+r.height/2);
+    post.style.transform="translate("+dx.toFixed(1)+"px,"+dy.toFixed(1)+"px) scale(1.08)";
+    setTimeout(()=>{if(focusedPost===post){post.classList.remove("focused");post.style.transform="";focusedPost=null}},FOCUS_HOLD);
+  });
 
   function autoScrollLoop(now){
     if(!autoScroll){autoScrollRaf=0;return}
     if(!lastFrame)lastFrame=now;
     const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;
+    if(now<focusPauseUntil){autoScrollRaf=requestAnimationFrame(autoScrollLoop);return}
     if(spatialEnabled||orbitEnabled){
       morphWheel+=AUTO_SCROLL_SPEED*dt*.0019;
       morphTarget=Math.min(1,morphTarget+AUTO_SCROLL_SPEED*dt*.00028);
@@ -416,6 +429,7 @@
     const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
     const scene=new THREE.Scene();scene.background=null;renderer.setClearColor(0xffffff,0);
     const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,120);camera.position.set(0,0,18);
+    const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
     cycloneScene.appendChild(renderer.domElement);
     const group=new THREE.Group();scene.add(group);
     const urls=cycloneMedia(),planes=[],count=Math.min(120,urls.length),planeGeometry=new THREE.PlaneGeometry(1.72,2.15);
@@ -444,14 +458,24 @@
     const pg=new THREE.BufferGeometry();pg.setAttribute("position",new THREE.BufferAttribute(positions,3));
     const pm=new THREE.PointsMaterial({color:0xffffff,size:.055,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
     const particles=new THREE.Points(pg,pm);scene.add(particles);
-    cyclone={renderer,scene,camera,group,planes,particles,particlePositions:positions,particleSeeds};
+    cyclone={renderer,scene,camera,group,planes,particles,particlePositions:positions,particleSeeds,raycaster,pointer};
     addEventListener("resize",()=>{if(!cyclone)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+    renderer.domElement.addEventListener("pointerdown",e=>{
+      if(!spatialEnabled)return;
+      const rect=renderer.domElement.getBoundingClientRect();
+      pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(pointer,camera);
+      const hitPlane=raycaster.intersectObjects(planes,false)[0]?.object;if(!hitPlane)return;
+      holdMotion();focusedPlane=hitPlane;
+      hitPlane.userData.focusUntil=performance.now()+FOCUS_HOLD;
+      hitPlane.userData.focusStart=performance.now();
+    });
     const loop=()=>{
       if(!cyclone)return;
       if(!spatialEnabled&&Number(cycloneScene.style.opacity||0)<=0){cycloneRaf=requestAnimationFrame(loop);return}
       const a=window.ELISA_AUDIO?.get?.()||window.ELISA_AUDIO||{},low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
       morphProgress+=(morphTarget-morphProgress)*.055;
-      morphWheel*=cycloneCfg.inertia;morphScroll+=morphWheel;
+      if(performance.now()>=focusPauseUntil){morphWheel*=cycloneCfg.inertia;morphScroll+=morphWheel}else{morphWheel*=.72;}
       const p=Math.max(0,Math.min(1,morphProgress));
       // No full-screen rectangle on F→G: canvas starts transparent over the real feed.
       // Darkness grows only after depth is established.
@@ -495,7 +519,14 @@
           const pull=.055+hit*.08+holeMix*.22;
           x*=Math.max(.02,1-pull-holeMix*.72);y*=Math.max(.02,1-pull-holeMix*.72);
         }
-        m.position.set(x,y,z);
+        const focusLeft=Math.max(0,(m.userData.focusUntil||0)-performance.now());
+        if(focusLeft>0){
+          const age=performance.now()-(m.userData.focusStart||performance.now()),edge=Math.min(1,age/260,focusLeft/360);
+          x=THREE.MathUtils.lerp(x,0,edge*.92);y=THREE.MathUtils.lerp(y,0,edge*.92);
+          m.position.set(x,y,THREE.MathUtils.lerp(z,5.2,edge*.82));
+          m.userData.focusScale=1+edge*.72;
+        }else{m.position.set(x,y,z);m.userData.focusScale=1;}
+
         const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
         const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
         let stageScale=audioScale*perspectiveScale*(m.userData.audioBreath||1);
@@ -504,7 +535,7 @@
         if(pixelEnabled)stageScale*=.16;
         if(vortexEnabled)stageScale*=.10;
         if(holeEnabled)stageScale*=.055;
-        m.scale.setScalar(stageScale);
+        m.scale.setScalar(stageScale*(m.userData.focusScale||1));
         m.quaternion.copy(camera.quaternion);
         if(m.material.map)m.material.opacity=(.98-high*.08)*(1-particleMix*.82)*(1-holeMix*.75);
       });
