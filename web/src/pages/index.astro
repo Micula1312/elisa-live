@@ -208,7 +208,7 @@
   populate();
   const videoFx={acid:false,glitch:false,pixel:false};
   const syncVideoFx=()=>{
-    for(const [fx,on] of Object.entries(videoFx)){feedScene?.classList.toggle("fx-"+fx,on);videoPanel.querySelector('[data-fx="'+fx+'"]')?.classList.toggle("on",on)}
+    for(const [fx,on] of Object.entries(videoFx)){feedScene?.classList.toggle("fx-"+fx,on);cycloneScene?.classList.toggle("fx-"+fx,on);videoPanel.querySelector('[data-fx="'+fx+'"]')?.classList.toggle("on",on)}
     const active=Object.entries(videoFx).filter(([,v])=>v).map(([k])=>k.toUpperCase());
     videoState.textContent=active.join("+")||"CLEAN";
   };
@@ -473,20 +473,19 @@
       });
       group.position.set(spaceX/120,-spaceY/120,spaceZ/120);
       camera.position.z=18/spaceZoom;
+      // Same live VIDEO FX controls also process the Three.js canvas.
+      const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
+      const fxEnergy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
+      const filters=[];
+      if(videoFx.acid)filters.push("hue-rotate("+((20+mid*170+high*90)*fxAmount*fxReact).toFixed(1)+"deg)","saturate("+(1+fxAmount*(.8+fxEnergy)).toFixed(2)+")");
+      if(videoFx.glitch)filters.push("contrast("+(1+fxAmount*fxEnergy*.9).toFixed(2)+")","brightness("+(1+hit*fxAmount*.18).toFixed(2)+")");
+      if(videoFx.pixel)filters.push("contrast("+(1+fxAmount*(mid*.25+high*.55)).toFixed(2)+")","saturate("+(1-fxAmount*.38).toFixed(2)+")");
+      renderer.domElement.style.filter=filters.join(" ")||"none";
+      renderer.domElement.style.transform=videoFx.glitch&&hit>.08?"translate("+((high-.5)*fxAmount*7).toFixed(1)+"px,"+((mid-.5)*fxAmount*5).toFixed(1)+"px)":"none";
       renderer.render(scene,camera);cycloneRaf=requestAnimationFrame(loop);
     };loop();
   };
-  const setCyclone=(on)=>{
-    if(on){
-      buildCyclone();cycloneScene.classList.add("on");
-      // H never swaps scenes. If G was not finished, finish the SAME continuous morph.
-      if(Number(depthMorph?.value||0)<1)applyDepthMorph(1);
-      cycloneScene.style.opacity="1";feed.style.opacity=".04";morphTarget=1;
-    }else{
-      // Returning from H lands on the current G slider state instead of snapping to DOM.
-      applyDepthMorph(Number(depthMorph?.value||0));
-    }
-  };
+  const setCyclone=(on)=>{on?enter3D():leave3D()};
   addEventListener("wheel",e=>{
     if(!orbitEnabled)return;
     e.preventDefault();
