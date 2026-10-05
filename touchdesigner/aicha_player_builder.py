@@ -15,11 +15,11 @@ a.nodeY = 250
 a.color = (0.35, 0.08, 0.42)
 
 page = a.appendCustomPage('AICHA')
-p = page.appendMenu('Source', label='SOURCE')
-p.menuNames = ['master', 'live']
-p.menuLabels = ['ELISA MASTER', 'LIVE INPUT']
-p = page.appendStr('Masterfile', label='MASTER FILE')
-p.val = project.folder + '/web/public/audio/elisa_master.mp3'
+sourcePar = page.appendMenu('Source', label='SOURCE')[0]
+sourcePar.menuNames = ['master', 'live']
+sourcePar.menuLabels = ['ELISA MASTER', 'LIVE INPUT']
+masterPar = page.appendStr('Masterfile', label='MASTER FILE')[0]
+masterPar.val = project.folder + '/web/public/audio/elisa_master.mp3'
 page.appendToggle('Play', label='PLAY / PAUSE')
 page.appendPulse('Restart', label='RESTART')
 sens = page.appendFloat('Sensitivity', label='SENSITIVITY')
