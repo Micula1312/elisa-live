@@ -147,19 +147,19 @@
   <div id="cycloneScene"></div>
   <div id="archiveHole"></div>
   <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
-  <div id="cueHud">S SCROLL · B PULSE · D DETACH · F FLOAT · G DEPTH · H 2D→3D · J ORBIT · K DISSOLVE · L HOLE</div>
+  <div id="cueHud">S SCROLL · B BREATH I · D BREATH II · F FLOAT · G DEPTH · H 2D→3D · J ORBIT · K DISSOLVE · L HOLE</div>
   <aside id="videoPanel">
     <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
     <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
     <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor">
-      <button class="cue-led" data-cue="b"><b>B</b><small>BREATH</small></button><button class="cue-led" data-cue="d"><b>D</b><small>DETACH</small></button>
+      <button class="cue-led" data-cue="b"><b>B</b><small>BREATH I</small></button><button class="cue-led" data-cue="d"><b>D</b><small>BREATH II</small></button>
       <button class="cue-led" data-cue="f"><b>F</b><small>FLOAT</small></button><button class="cue-led" data-cue="g"><b>G</b><small>DEPTH</small></button>
       <button class="cue-led" data-cue="h"><b>H</b><small>2D→3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
       <button class="cue-led" data-cue="k"><b>K</b><small>FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>HOLE</small></button>
     </div>
-    <div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div></div>
+    <label class="vp-row"><span>G DEPTH</span><input id="depthMorph" type="range" min="0" max="1" step=".01" value="0"><span id="depthMorphValue">0.00</span></label><div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div></div>
     <div class="vp-hint">V = show/hide · every cue is independent · white = ON</div>
   </aside>
   <aside id="audioPanel">
@@ -184,7 +184,7 @@
   import dialogues from "../data/dialogues.js";
   import * as THREE from "three";
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
-  const cycloneScene=document.querySelector("#cycloneScene");
+  const cycloneScene=document.querySelector("#cycloneScene"),depthMorph=document.querySelector("#depthMorph"),depthMorphValue=document.querySelector("#depthMorphValue");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -340,8 +340,13 @@
     if(!autoScroll){autoScrollRaf=0;return}
     if(!lastFrame)lastFrame=now;
     const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;
-    feed.scrollTop+=AUTO_SCROLL_SPEED*dt;
-    ensureScrollBuffer();
+    if(orbitEnabled){
+      morphWheel+=AUTO_SCROLL_SPEED*dt*.0019;
+      morphTarget=Math.min(1,morphTarget+AUTO_SCROLL_SPEED*dt*.00028);
+    }else{
+      feed.scrollTop+=AUTO_SCROLL_SPEED*dt;
+      ensureScrollBuffer();
+    }
     autoScrollRaf=requestAnimationFrame(autoScrollLoop);
   }
   function setAutoScroll(on){
@@ -384,7 +389,7 @@
     if(except!=="l")holeEnabled=false;
     grid.classList.toggle("breaking",slipEnabled);grid.classList.toggle("spatial",spatialEnabled);grid.classList.toggle("true3d",orbitEnabled);grid.classList.toggle("orbiting",pixelEnabled);grid.classList.toggle("dissolve",vortexEnabled);
     archiveHole.classList.toggle("on",holeEnabled);
-    [...grid.querySelectorAll(".post")].forEach((post,i)=>{post.classList.toggle("detached",slipEnabled&&((i%2===0)||(i%5===1)));post.classList.toggle("floating",floatEnabled)});
+    [...grid.querySelectorAll(".post")].forEach(post=>{post.classList.remove("detached");post.classList.toggle("floating",floatEnabled)});
   };
   // THREE.JS FEED MORPH — the vertical scroll is progressively reinterpreted as depth.
   // H is no longer a hard cut: it arms the 2D → tunnel → first-turn transition.
@@ -393,19 +398,23 @@
   const cycloneTexture=(url)=>{
     const tx=new THREE.TextureLoader().load(url);tx.colorSpace=THREE.SRGBColorSpace;tx.minFilter=THREE.LinearFilter;return tx;
   };
-  const cycloneMedia=()=>[...grid.querySelectorAll(".placeholder.has-media")].map(ph=>ph.style.backgroundImage.match(/url\\(["']?(.*?)["']?\\)/)?.[1]).filter(Boolean);
+  const cycloneMedia=()=>{
+    // Use the manifest as source of truth. DOM background-image parsing was dropping media on the handoff.
+    const files=FEED_IMAGES.length?FEED_IMAGES:[];
+    return files.map(file=>new URL("/feed/"+file,window.location.origin).href);
+  };
   const buildCyclone=()=>{
     if(cyclone)return;
     const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
     const scene=new THREE.Scene();scene.background=new THREE.Color(0x000000);
-    const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,120);camera.position.set(0,0,15);
+    const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,120);camera.position.set(0,0,18);
     cycloneScene.appendChild(renderer.domElement);
     const group=new THREE.Group();scene.add(group);
     const urls=cycloneMedia(),planes=[],count=Math.min(120,Math.max(48,urls.length||48));
     for(let i=0;i<count;i++){
       const u=urls.length?urls[i%urls.length]:null;
       const mat=new THREE.MeshBasicMaterial({map:u?cycloneTexture(u):null,color:u?0xffffff:0xffffff,transparent:true,opacity:1,side:THREE.DoubleSide});
-      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2.35,2.94),mat);
+      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.72,2.15),mat);
       mesh.userData={index:i,row:Math.floor(i/3),lane:(i%3)-1,seed:((i*73)%101)/101};group.add(mesh);planes.push(mesh);
     }
     cyclone={renderer,scene,camera,group,planes};
@@ -416,7 +425,9 @@
       morphProgress+=(morphTarget-morphProgress)*.055;
       morphWheel*=cycloneCfg.inertia;morphScroll+=morphWheel;
       const p=Math.max(0,Math.min(1,morphProgress));
-      const spiral=Math.max(0,(p-.58)/.42),tunnel=Math.max(0,(p-.18)/.82);
+      const spiral=Math.max(0,(p-.62)/.38),tunnel=Math.max(0,(p-.24)/.76);
+      // First movement is a clean zoom-out: the familiar 3-column feed becomes small and centred.
+      const preZoom=1-THREE.MathUtils.smoothstep(p,0,.24)*.28;
       planes.forEach((m,i)=>{
         // Start as a three-column vertical feed, then bend that SAME layout into Z.
         const row=m.userData.row,lane=m.userData.lane;
@@ -424,7 +435,7 @@
         while(feedY < -18)feedY+=38;while(feedY>20)feedY-=38;
         const travel=(5.6-feedY)/23;
         const z=-tunnel*(2+travel*cycloneCfg.depth);
-        const spread=3.0*(1-tunnel*.28);
+        const spread=2.05*preZoom*(1-tunnel*.22);
         const baseX=lane*spread;
         // Only the last part begins the horizontal-axis vortex: angle grows from vertical travel.
         const theta=travel*Math.PI*2.1 + morphScroll*.32;
@@ -432,7 +443,7 @@
         const spiralX=Math.cos(theta)*r;
         const spiralY=Math.sin(theta)*r*.62;
         const x=THREE.MathUtils.lerp(baseX,spiralX,spiral);
-        const y=THREE.MathUtils.lerp(feedY,spiralY,spiral);
+        const y=THREE.MathUtils.lerp(feedY*preZoom,spiralY,spiral);
         m.position.set(x,y,z);
         const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
         const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
@@ -441,7 +452,7 @@
         m.material.opacity=.98-high*.08;
       });
       group.position.set(spaceX/120,-spaceY/120,spaceZ/120);
-      camera.position.z=15/spaceZoom;
+      camera.position.z=18/spaceZoom;
       renderer.render(scene,camera);cycloneRaf=requestAnimationFrame(loop);
     };loop();
   };
@@ -449,8 +460,8 @@
     if(on){
       buildCyclone();cycloneScene.classList.add("on");
       // Crossfade instead of scene cut: first frame is still an ordered 3-column feed.
-      feed.style.transition="opacity .7s ease";feed.style.opacity=".12";freezeFeedScroll();
-      morphTarget=Math.max(morphTarget,.04);
+      feed.style.transition="opacity .7s ease";feed.style.opacity=".08";
+      morphTarget=Math.max(morphTarget,Number(depthMorph?.value||0));
     }else{
       morphTarget=0;cycloneScene.classList.remove("on");feed.style.opacity="1";
     }
@@ -464,12 +475,22 @@
     morphTarget=Math.max(0,Math.min(1,morphTarget+d*cycloneCfg.sensitivity));
   },{passive:false});
 
+  depthMorph?.addEventListener("input",()=>{
+    const v=Number(depthMorph.value);depthMorphValue.textContent=v.toFixed(2);
+    // G is now a rehearsal/manual transition control: 0 = flat feed, 1 = threshold of H.
+    spatialEnabled=v>0;
+    if(v>0){buildCyclone();cycloneScene.classList.add("on");feed.style.transition="opacity .5s ease";feed.style.opacity=String(Math.max(.08,1-v*1.08));}
+    else if(!orbitEnabled){cycloneScene.classList.remove("on");feed.style.opacity="1";}
+    morphTarget=v*.58;
+    syncCueMonitor();
+  });
+
   const toggleCue=(key)=>{
     const current={b:breathEnabled,d:slipEnabled,f:floatEnabled,g:spatialEnabled,h:orbitEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled}[key];
     clearFeedModes(key);
     const next=!current;
     if(key==="b")breathEnabled=next;
-    if(key==="d")slipEnabled=next;
+    if(key==="d"){slipEnabled=next;breathEnabled=next;}
     if(key==="f")floatEnabled=next;
     if(key==="g")spatialEnabled=next;
     if(key==="h")orbitEnabled=next;
@@ -478,7 +499,7 @@
     if(key==="l")holeEnabled=next;
     clearFeedModes(key);
     setCyclone(orbitEnabled);
-    if(next)freezeFeedScroll();
+    if(next&&!["b","d","h"].includes(key))freezeFeedScroll();
     syncCueMonitor();
   };
   const moveSpace=(dx,dy,dz=0)=>{spaceX+=dx;spaceY+=dy;spaceZ+=dz;syncCueMonitor()};
@@ -514,7 +535,7 @@
     const now=performance.now(),dt=Math.min(.05,(now-lastAudioFrame)/1000);lastAudioFrame=now;
     motionClock+=dt*(.75+lastLow*.8+lastMid*.35);
     const elapsed=feedStartedAt?(now-feedStartedAt)/1000:0;
-    const amount=breathEnabled?.012:0;
+    const amount=breathEnabled?(slipEnabled?.026:.012):0;
     grid.style.setProperty("--breath",(1+lastLow*amount).toFixed(4));
     if(!breathEnabled)return;
     const posts=[...grid.querySelectorAll(".post")];
@@ -530,7 +551,7 @@
       const pulse=1+lastLow*(.025+(i%4)*.009)+midPulse*(1.10+((i%5)*.10))+lastHigh*((i%4===2)?.055:.012)+hit*((i%7===0)?.12:.025);
       const sway=Math.sin(motionClock*(lane===1?1.25:.82)+phase);
       const float=Math.cos(motionClock*(lane===2?1.65:.68)+phase*.73);
-      const isSlip=slipEnabled&&post.classList.contains("detached");
+      const isSlip=false;
       const isFloat=floatEnabled&&post.classList.contains("floating");
       // D cue: selected tiles "breathe out" of the grid. Each tile is assigned a different
       // frequency body so bass/mids/highs create asynchronous zoom-outs instead of one global move.
