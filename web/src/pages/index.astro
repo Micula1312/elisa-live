@@ -41,6 +41,9 @@
     .post{aspect-ratio:4/5;overflow:hidden;position:relative;background:#ddd;transform-origin:center;will-change:transform}
     .post .placeholder{--pulse:1;--drift-x:0px;--drift-y:0px;transform:translate3d(var(--drift-x),var(--drift-y),0) scale(calc(var(--breath,1) * var(--pulse)));}
     .post:nth-child(3n+1),.post[data-palette="black"]{background:#050505}.post:nth-child(3n+2),.post[data-palette="white"]{background:#f5f5f2}.post:nth-child(3n),.post[data-palette="red"]{background:#d71920}
+    .placeholder[data-palette="black"]{background:#050505!important;color:#fff}
+    .placeholder[data-palette="white"]{background:#f5f5f2!important;color:#111}
+    .placeholder[data-palette="red"]{background:#d71920!important;color:#fff}
     .post:nth-child(3n+2) .placeholder,.post[data-palette="white"] .placeholder{color:#111}
     .post[data-palette="black"] .placeholder,.post[data-palette="red"] .placeholder{color:#fff}
     .placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:clamp(28px,5vw,72px);letter-spacing:-.06em;color:#fff;will-change:transform;transform:scale(var(--breath,1));transition:transform .12s linear}
@@ -173,7 +176,10 @@
     img.onload=()=>{ph.style.backgroundImage=`url("/feed/${file}")`;ph.classList.add("has-media")};
     img.src=`/feed/${file}`;
   }
-  [...grid.querySelectorAll(".post")].forEach((post,i)=>applyFeedMedia(post,i));
+  [...grid.querySelectorAll(".post")].forEach((post,i)=>{
+    const palette=["black","white","red"][i%3],ph=post.querySelector(".placeholder");
+    post.dataset.palette=palette;if(ph)ph.dataset.palette=palette;applyFeedMedia(post,i);
+  });
   let autoScroll=false, autoScrollRaf=0, lastFrame=0;
   const AUTO_SCROLL_DELAY=45000, AUTO_SCROLL_SPEED=34; // seconds after feed start / px per second
 
@@ -183,13 +189,14 @@
     order.forEach((seedIndex,pos)=>{
       const post=document.createElement("div");
       post.className="post repeat";
-      post.dataset.palette=["black","white","red"][pos%3];
+      const palette=["black","white","red"][pos%3];
+      post.dataset.palette=palette;
       post.dataset.source=String(seedIndex+1);
       post.dataset.batch=String(batch);
       post.innerHTML=seed[seedIndex].html;
       // Keep source identity visible for now; real media will replace these placeholders.
       const ph=post.querySelector(".placeholder");
-      if(ph) ph.textContent=String(seedIndex+1).padStart(2,"0");
+      if(ph){ph.textContent=String(seedIndex+1).padStart(2,"0");ph.dataset.palette=palette;}
       applyFeedMedia(post,seedIndex);
       grid.appendChild(post);
     });
