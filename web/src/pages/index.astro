@@ -147,7 +147,7 @@
   <div id="cycloneScene"></div>
   <div id="archiveHole"></div>
   <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
-  <div id="cueHud">S SCROLL · B PULSE · D DETACH · F FLOAT · G DEPTH · H 3D · J ORBIT · K DISSOLVE · L HOLE</div>
+  <div id="cueHud">S SCROLL · B PULSE · D DETACH · F FLOAT · G DEPTH · H 2D→3D · J ORBIT · K DISSOLVE · L HOLE</div>
   <aside id="videoPanel">
     <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
     <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
@@ -156,7 +156,7 @@
     <div class="cue-monitor" id="cueMonitor">
       <button class="cue-led" data-cue="b"><b>B</b><small>BREATH</small></button><button class="cue-led" data-cue="d"><b>D</b><small>DETACH</small></button>
       <button class="cue-led" data-cue="f"><b>F</b><small>FLOAT</small></button><button class="cue-led" data-cue="g"><b>G</b><small>DEPTH</small></button>
-      <button class="cue-led" data-cue="h"><b>H</b><small>3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
+      <button class="cue-led" data-cue="h"><b>H</b><small>2D→3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
       <button class="cue-led" data-cue="k"><b>K</b><small>FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>HOLE</small></button>
     </div>
     <div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div></div>
@@ -386,59 +386,82 @@
     archiveHole.classList.toggle("on",holeEnabled);
     [...grid.querySelectorAll(".post")].forEach((post,i)=>{post.classList.toggle("detached",slipEnabled&&((i%2===0)||(i%5===1)));post.classList.toggle("floating",floatEnabled)});
   };
-  // THREE.JS CYCLONE — H turns the current feed into a scroll-driven 3D archive current.
-  let cyclone=null,cycloneRaf=0,cycloneVelocity=0,cycloneTarget=0,cycloneScroll=0;
-  const cycloneCfg={radius:6.8,height:24,turns:3.4,depth:18,inertia:.91,sensitivity:.0019,base:.0018,audio:.75};
+  // THREE.JS FEED MORPH — the vertical scroll is progressively reinterpreted as depth.
+  // H is no longer a hard cut: it arms the 2D → tunnel → first-turn transition.
+  let cyclone=null,cycloneRaf=0,morphProgress=0,morphTarget=0,morphWheel=0,morphScroll=0;
+  const cycloneCfg={depth:28,radius:7.2,inertia:.92,sensitivity:.00085,audio:.72};
   const cycloneTexture=(url)=>{
-    const loader=new THREE.TextureLoader();
-    const tx=loader.load(url);tx.colorSpace=THREE.SRGBColorSpace;tx.minFilter=THREE.LinearFilter;return tx;
+    const tx=new THREE.TextureLoader().load(url);tx.colorSpace=THREE.SRGBColorSpace;tx.minFilter=THREE.LinearFilter;return tx;
   };
   const cycloneMedia=()=>[...grid.querySelectorAll(".placeholder.has-media")].map(ph=>ph.style.backgroundImage.match(/url\\(["']?(.*?)["']?\\)/)?.[1]).filter(Boolean);
   const buildCyclone=()=>{
     if(cyclone)return;
-    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
+    const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
     const scene=new THREE.Scene();scene.background=new THREE.Color(0x000000);
-    const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,100);camera.position.set(0,0,15);
+    const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,120);camera.position.set(0,0,15);
     cycloneScene.appendChild(renderer.domElement);
     const group=new THREE.Group();scene.add(group);
-    const urls=cycloneMedia();const planes=[];
-    const count=Math.min(120,Math.max(36,urls.length||36));
+    const urls=cycloneMedia(),planes=[],count=Math.min(120,Math.max(48,urls.length||48));
     for(let i=0;i<count;i++){
       const u=urls.length?urls[i%urls.length]:null;
-      const mat=new THREE.MeshBasicMaterial({map:u?cycloneTexture(u):null,color:u?0xffffff:(i%3===0?0xe31b3d:0xffffff),side:THREE.DoubleSide,transparent:true,opacity:.96});
-      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2.15,2.7),mat);mesh.userData={phase:i/count,seed:(i*73)%101/101};group.add(mesh);planes.push(mesh);
+      const mat=new THREE.MeshBasicMaterial({map:u?cycloneTexture(u):null,color:u?0xffffff:0xffffff,transparent:true,opacity:1,side:THREE.DoubleSide});
+      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2.35,2.94),mat);
+      mesh.userData={index:i,row:Math.floor(i/3),lane:(i%3)-1,seed:((i*73)%101)/101};group.add(mesh);planes.push(mesh);
     }
     cyclone={renderer,scene,camera,group,planes};
-    const resize=()=>{if(!cyclone)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)};addEventListener("resize",resize);
+    addEventListener("resize",()=>{if(!cyclone)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
     const loop=()=>{
       if(!cyclone)return;
-      const a=window.ELISA_AUDIO?.get?.()||window.ELISA_AUDIO||{};const low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
-      cycloneVelocity+=(cycloneTarget-cycloneVelocity)*(1-cycloneCfg.inertia);cycloneTarget*=.86;
-      cycloneScroll+=cycloneVelocity+cycloneCfg.base*(.35+mid*cycloneCfg.audio);
-      const n=planes.length;
+      const a=window.ELISA_AUDIO?.get?.()||window.ELISA_AUDIO||{},low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
+      morphProgress+=(morphTarget-morphProgress)*.055;
+      morphWheel*=cycloneCfg.inertia;morphScroll+=morphWheel;
+      const p=Math.max(0,Math.min(1,morphProgress));
+      const spiral=Math.max(0,(p-.58)/.42),tunnel=Math.max(0,(p-.18)/.82);
       planes.forEach((m,i)=>{
-        let p=(m.userData.phase+cycloneScroll)%1;if(p<0)p+=1;
-        const theta=p*Math.PI*2*cycloneCfg.turns+i*.035;
-        const radius=cycloneCfg.radius*(.72+m.userData.seed*.48)+Math.sin(theta*1.7+i)*high*.75;
-        const y=(.5-p)*cycloneCfg.height;
-        m.position.set(Math.cos(theta)*radius,y,Math.sin(theta)*cycloneCfg.depth*.48-5+Math.sin(theta*.43)*2.5);
-        const pulse=1+mid*.12+hit*(i%7===0?.28:0);m.scale.setScalar(pulse);
-        // planes stay readable/front-facing while their positions form the helix
+        // Start as a three-column vertical feed, then bend that SAME layout into Z.
+        const row=m.userData.row,lane=m.userData.lane;
+        let feedY=5.6-row*3.15+morphScroll*2.2;
+        while(feedY < -18)feedY+=38;while(feedY>20)feedY-=38;
+        const travel=(5.6-feedY)/23;
+        const z=-tunnel*(2+travel*cycloneCfg.depth);
+        const spread=3.0*(1-tunnel*.28);
+        const baseX=lane*spread;
+        // Only the last part begins the horizontal-axis vortex: angle grows from vertical travel.
+        const theta=travel*Math.PI*2.1 + morphScroll*.32;
+        const r=cycloneCfg.radius*(.42+.58*m.userData.seed);
+        const spiralX=Math.cos(theta)*r;
+        const spiralY=Math.sin(theta)*r*.62;
+        const x=THREE.MathUtils.lerp(baseX,spiralX,spiral);
+        const y=THREE.MathUtils.lerp(feedY,spiralY,spiral);
+        m.position.set(x,y,z);
+        const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
+        const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
+        m.scale.setScalar(audioScale*perspectiveScale);
         m.quaternion.copy(camera.quaternion);
-        m.material.opacity=.68+Math.min(.3,.12+low*.18+mid*.12);
+        m.material.opacity=.98-high*.08;
       });
-      group.position.x=spaceX/110;group.position.y=-spaceY/110;group.position.z=spaceZ/120;
+      group.position.set(spaceX/120,-spaceY/120,spaceZ/120);
       camera.position.z=15/spaceZoom;
       renderer.render(scene,camera);cycloneRaf=requestAnimationFrame(loop);
     };loop();
   };
   const setCyclone=(on)=>{
-    if(on){buildCyclone();cycloneScene.classList.add("on");feed.style.opacity="0";freezeFeedScroll()}
-    else{cycloneScene.classList.remove("on");feed.style.opacity="1"}
+    if(on){
+      buildCyclone();cycloneScene.classList.add("on");
+      // Crossfade instead of scene cut: first frame is still an ordered 3-column feed.
+      feed.style.transition="opacity .7s ease";feed.style.opacity=".12";freezeFeedScroll();
+      morphTarget=Math.max(morphTarget,.04);
+    }else{
+      morphTarget=0;cycloneScene.classList.remove("on");feed.style.opacity="1";
+    }
   };
   addEventListener("wheel",e=>{
     if(!orbitEnabled)return;
-    e.preventDefault();cycloneTarget+=e.deltaY*cycloneCfg.sensitivity;
+    e.preventDefault();
+    const d=Math.max(-140,Math.min(140,e.deltaY));
+    morphWheel+=d*.0016;
+    // Down-scroll progressively converts page travel into depth and finally the first vortex turn.
+    morphTarget=Math.max(0,Math.min(1,morphTarget+d*cycloneCfg.sensitivity));
   },{passive:false});
 
   const toggleCue=(key)=>{
