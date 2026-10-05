@@ -155,12 +155,12 @@
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
       <button class="cue-led" data-cue="b"><b>B</b><small>BREATH I</small></button><button class="cue-led" data-cue="d"><b>D</b><small>BREATH II</small></button>
-      <button class="cue-led" data-cue="f"><b>F</b><small>FLOAT</small></button><button class="cue-led" data-cue="g"><b>G</b><small>DEPTH</small></button>
-      <button class="cue-led" data-cue="h"><b>H</b><small>2D→3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
+      <button class="cue-led" data-cue="f"><b>F</b><small>ZOOM DRIFT</small></button><button class="cue-led" data-cue="g"><b>G</b><small>ENTER 3D</small></button>
+      <button class="cue-led" data-cue="h"><b>H</b><small>ORBIT 3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
       <button class="cue-led" data-cue="k"><b>K</b><small>FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>HOLE</small></button>
     </div>
-    <label class="vp-row"><span>G DEPTH</span><input id="depthMorph" type="range" min="0" max="1" step=".01" value="0"><span id="depthMorphValue">0.00</span></label><div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div><div class="space-readout" id="media3dState">3D MEDIA — waiting</div></div>
-    <div class="vp-hint">V = show/hide · S = autoscroll (continues in 3D) · G slider = 2D→3D handoff</div>
+    <div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div><div class="space-readout" id="media3dState">3D MEDIA — waiting</div></div>
+    <div class="vp-hint">V = show/hide · S starts persistent autoscroll · G enters matched 3D · wheel/arrows navigate</div>
   </aside>
   <aside id="audioPanel">
     <div class="ap-head"><span class="ap-title">ELISA / AUDIO IN</span><span class="ap-state" id="audioState">OFF</span></div>
@@ -184,7 +184,7 @@
   import dialogues from "../data/dialogues.js";
   import * as THREE from "three";
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
-  const cycloneScene=document.querySelector("#cycloneScene"),depthMorph=document.querySelector("#depthMorph"),depthMorphValue=document.querySelector("#depthMorphValue"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
+  const cycloneScene=document.querySelector("#cycloneScene"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -340,7 +340,7 @@
     if(!autoScroll){autoScrollRaf=0;return}
     if(!lastFrame)lastFrame=now;
     const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;
-    if(orbitEnabled){
+    if(spatialEnabled||orbitEnabled){
       morphWheel+=AUTO_SCROLL_SPEED*dt*.0019;
       morphTarget=Math.min(1,morphTarget+AUTO_SCROLL_SPEED*dt*.00028);
     }else{
@@ -353,7 +353,7 @@
     autoScroll=on;lastFrame=0;autoScrollBtn?.classList.toggle("on",on);
     if(on&&!autoScrollRaf)autoScrollRaf=requestAnimationFrame(autoScrollLoop);
   }
-  autoScrollBtn?.addEventListener("click",()=>setAutoScroll(!autoScroll));
+  autoScrollBtn?.addEventListener("click",()=>setAutoScroll(true));
   const freezeFeedScroll=()=>setAutoScroll(false);
 
   window.addEventListener("elisa-feed-start",()=>{
@@ -390,7 +390,7 @@
     if(except!=="l")holeEnabled=false;
     grid.classList.toggle("breaking",slipEnabled);grid.classList.toggle("spatial",spatialEnabled);grid.classList.toggle("true3d",orbitEnabled);grid.classList.toggle("orbiting",pixelEnabled);grid.classList.toggle("dissolve",vortexEnabled);
     archiveHole.classList.toggle("on",holeEnabled);
-    [...grid.querySelectorAll(".post")].forEach(post=>{post.classList.remove("detached");post.classList.toggle("floating",floatEnabled)});
+    [...grid.querySelectorAll(".post")].forEach(post=>{post.classList.remove("detached","floating")});
   };
   // THREE.JS FEED MORPH — the vertical scroll is progressively reinterpreted as depth.
   // H is no longer a hard cut: it arms the 2D → tunnel → first-turn transition.
@@ -454,12 +454,17 @@
         const r=cycloneCfg.radius*(.42+.58*m.userData.seed);
         const spiralX=Math.cos(theta)*r;
         const spiralY=Math.sin(theta)*r*.62;
-        const x=THREE.MathUtils.lerp(baseX,spiralX,spiral);
-        const y=THREE.MathUtils.lerp(feedY*preZoom,spiralY,spiral);
+        let x=THREE.MathUtils.lerp(baseX,spiralX,spiral);
+        let y=THREE.MathUtils.lerp(feedY*preZoom,spiralY,spiral);
+        if(m.userData.handoff&&p<.46){
+          const hand=THREE.MathUtils.smoothstep(p,.30,.46);
+          x=THREE.MathUtils.lerp(m.userData.handoff.x,x,hand);
+          y=THREE.MathUtils.lerp(m.userData.handoff.y,y,hand);
+        }
         m.position.set(x,y,z);
         const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
         const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
-        m.scale.setScalar(audioScale*perspectiveScale);
+        m.scale.setScalar(audioScale*perspectiveScale*(m.userData.audioBreath||1));
         m.quaternion.copy(camera.quaternion);
         if(m.material.map)m.material.opacity=.98-high*.08;
       });
@@ -488,38 +493,42 @@
     morphTarget=Math.max(0,Math.min(1,morphTarget+d*cycloneCfg.sensitivity));
   },{passive:false});
 
-  const applyDepthMorph=(v)=>{
-    v=Math.max(0,Math.min(1,Number(v)||0));depthMorph.value=String(v);depthMorphValue.textContent=v.toFixed(2);
-    spatialEnabled=v>0;
-    if(v>0){
-      buildCyclone();cycloneScene.classList.add("on");
-      // G is the actual handoff: DOM remains dominant first, then Three.js gradually replaces it.
-      const mix=THREE.MathUtils.smoothstep(v,.08,.88);
-      feed.style.transition="none";feed.style.opacity=String(1-mix*.96);
-      cycloneScene.style.opacity=String(mix);
-      morphTarget=v;
-    }else if(!orbitEnabled){
-      morphTarget=0;cycloneScene.style.opacity="0";cycloneScene.classList.remove("on");feed.style.opacity="1";
-    }
+  const captureHandoff=()=>{
+    // Snapshot the exact visible 2D cells so the first 3D frame inherits their media/order.
+    const visible=[...grid.querySelectorAll(".post")].filter(post=>{
+      const r=post.getBoundingClientRect();return r.bottom>70&&r.top<innerHeight;
+    }).slice(0,18);
+    if(!cyclone||!visible.length)return;
+    visible.forEach((post,i)=>{
+      const plane=cyclone.planes[i];if(!plane)return;
+      const ph=post.querySelector(".placeholder.has-media");
+      const raw=ph?.style.backgroundImage.match(/url\\(["']?(.*?)["']?\\)/)?.[1];
+      if(raw&&plane.userData.url!==raw){
+        cycloneTexture(raw,tex=>{plane.material.map=tex;plane.material.opacity=1;plane.material.needsUpdate=true;plane.userData.url=raw});
+      }
+      const r=post.getBoundingClientRect();
+      plane.userData.handoff={x:(r.left+r.width/2-innerWidth/2)/(innerWidth/9.2),y:-(r.top+r.height/2-innerHeight/2)/(innerHeight/10.4)};
+    });
+  };
+  const enter3D=()=>{
+    buildCyclone();captureHandoff();spatialEnabled=true;orbitEnabled=false;
+    cycloneScene.classList.add("on");cycloneScene.style.opacity="1";
+    feed.style.transition="opacity .65s ease";feed.style.opacity="0";
+    morphProgress=.30;morphTarget=.52; // already distant, not yet vortex
     syncCueMonitor();
   };
-  depthMorph?.addEventListener("input",()=>applyDepthMorph(depthMorph.value));
 
   const toggleCue=(key)=>{
-    const current={b:breathEnabled,d:slipEnabled,f:floatEnabled,g:spatialEnabled,h:orbitEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled}[key];
-    clearFeedModes(key);
+    if(key==="g"){enter3D();return}
+    if(key==="h"){if(!spatialEnabled)enter3D();orbitEnabled=!orbitEnabled;morphTarget=orbitEnabled?1:.52;syncCueMonitor();return}
+    const current={b:breathEnabled,d:slipEnabled,f:floatEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled}[key];
     const next=!current;
-    if(key==="b")breathEnabled=next;
-    if(key==="d"){slipEnabled=next;breathEnabled=next;}
+    if(key==="b"){breathEnabled=next;slipEnabled=false}
+    if(key==="d"){slipEnabled=next;breathEnabled=next}
     if(key==="f")floatEnabled=next;
-    if(key==="g"){videoPanel.classList.add("open");depthMorph?.focus();return;}
-    if(key==="h")orbitEnabled=next;
     if(key==="j")pixelEnabled=next;
     if(key==="k")vortexEnabled=next;
     if(key==="l")holeEnabled=next;
-    clearFeedModes(key);
-    setCyclone(orbitEnabled);
-    if(next&&!["b","d","f","h"].includes(key))freezeFeedScroll();
     syncCueMonitor();
   };
   const moveSpace=(dx,dy,dz=0)=>{spaceX+=dx;spaceY+=dy;spaceZ+=dz;syncCueMonitor()};
@@ -530,7 +539,7 @@
   document.addEventListener("keydown",e=>{
     if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;
     const key=e.key.toLowerCase();
-    if(key==="s"){setAutoScroll(!autoScroll);return}
+    if(key==="s"){setAutoScroll(true);return}
     if(["b","d","f","g","h","j","k","l"].includes(key)){toggleCue(key);return}
     if(e.key==="ArrowLeft"){e.preventDefault();moveSpace(-55,0);return}
     if(e.key==="ArrowRight"){e.preventDefault();moveSpace(55,0);return}
@@ -557,6 +566,21 @@
     const elapsed=feedStartedAt?(now-feedStartedAt)/1000:0;
     const amount=breathEnabled?(slipEnabled?.026:.012):0;
     grid.style.setProperty("--breath",(1+lastLow*amount).toFixed(4));
+    if(floatEnabled&&!spatialEnabled){
+      const drift=.82+((Math.sin(motionClock*.38)+1)*.5)*.18+lastLow*.035;
+      grid.style.transform=`scale(${drift.toFixed(4)})`;
+      grid.style.transformOrigin="50% 45%";
+    }else if(!spatialEnabled){grid.style.transform="";}
+    if(cyclone&&spatialEnabled){
+      cyclone.planes.forEach((m,i)=>{
+        if(!m.material.map)return;
+        const seed=.55+((i*47)%41)/100;
+        const wave=Math.max(0,Math.sin(motionClock*(.62+(i%5)*.09)+i*1.37));
+        const band=i%3===0?lastLow:i%3===1?lastMid:lastHigh;
+        const strength=slipEnabled?.24:breathEnabled?.10:.055;
+        m.userData.audioBreath=1+wave*band*strength*seed+hit*((i%11===0)?strength*.7:0);
+      });
+    }
     if(!breathEnabled)return;
     const posts=[...grid.querySelectorAll(".post")];
     posts.forEach((post,i)=>{
@@ -568,7 +592,10 @@
       // Different phase/weight per tile prevents a synchronized "equalizer" look.
       const midBoom=Math.max(0,lastMid-(.10+(i%4)*.018));
       const midPulse=midBoom*(.22+((i*29)%17)/100);
-      const pulse=1+lastLow*(.025+(i%4)*.009)+midPulse*(1.10+((i%5)*.10))+lastHigh*((i%4===2)?.055:.012)+hit*((i%7===0)?.12:.025);
+      const randomWave=Math.max(0,Math.sin(motionClock*(.58+(i%6)*.11)+i*2.17));
+      const bBand=i%3===0?lastLow:i%3===1?lastMid:lastHigh;
+      const bStrength=slipEnabled?.20:.075;
+      const pulse=1+randomWave*bBand*bStrength*(.55+((i*31)%37)/100)+hit*((slipEnabled&&i%5===0)?.10:.018);
       const sway=Math.sin(motionClock*(lane===1?1.25:.82)+phase);
       const float=Math.cos(motionClock*(lane===2?1.65:.68)+phase*.73);
       const isSlip=false;
