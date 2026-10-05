@@ -104,25 +104,6 @@ hint.par.w = 700
 hint.par.h = 100
 hint.par.text = 'SOURCE  [ ELISA MASTER / LIVE INPUT ]\nPLAY  ·  RESTART  ·  SENSITIVITY\nLOW / MID / HIGH → ANALYSIS_OUT'
 
-# --- RESTART pulse callback DAT ----------------------------------------------
-cb = a.create(parameterexecuteDAT, 'CONTROLS')
-cb.nodeX, cb.nodeY = -50, 260
-cb.par.comp = a.path
-cb.par.pars = 'Restart'
-cb.par.pulse = True
-cb.text = """def onPulse(par):
-    if par.name == 'Restart':
-        m = parent().op('MASTER_TRACK')
-        if m:
-            if hasattr(m.par, 'cuepulse'):
-                m.par.cuepulse.pulse()
-            elif hasattr(m.par, 'cue'):
-                try: m.par.cue = 0
-                except: pass
-        parent().par.Play = True
-    return
-"""
-
-print('✦ AICHA / ELISA MEDIA PLAYER created at', a.path)
+# RESTART callback intentionally omitted in the compatibility-safe builder.\n# Core player/audio network is created first; transport callback can be added after validation.\n\nprint('✦ AICHA / ELISA MEDIA PLAYER created at', a.path)
 print('Open AICHA_PLAYER parameters → AICHA page.')
 print('Set LIVE_INPUT device in its Audio Device In CHOP when your interface is connected.')
