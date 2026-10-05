@@ -15,7 +15,6 @@
     <canvas id="hydra-canvas"></canvas>
 
     <script is:inline>
-      // hydra-synth's browser bundle expects a Node-style global.
       window.global = window;
     </script>
 
@@ -24,12 +23,11 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      // Dynamic import happens only after window.global exists.
       const { default: Hydra } = await import('hydra-synth');
 
       const hydra = new Hydra({
         canvas,
-        detectAudio: false,
+        detectAudio: true,
         enableStreamCapture: false,
         makeGlobal: false,
         autoLoop: true,
@@ -38,21 +36,48 @@
       });
 
       const { synth } = hydra;
+      const audio = hydra.synth.a;
+
+      // Hydra's native analyser: four FFT bands.
+      // Keep smoothing high so IMPLODE can flow into Hydra instead of snapping.
+      if (audio) {
+        audio.setBins(4);
+        audio.setSmooth(0.82);
+        audio.setCutoff(1);
+        audio.setScale(6);
+        audio.show();
+      }
+
+      const low = () => audio?.fft?.[0] ?? 0;
+      const mid = () => ((audio?.fft?.[1] ?? 0) + (audio?.fft?.[2] ?? 0)) * 0.5;
+      const high = () => audio?.fft?.[3] ?? 0;
 
       synth
         .voronoi(350, 0.15)
-        .modulateScale(synth.osc(8).rotate(() => Math.sin(synth.time)), 0.5)
-        .thresh(0.8)
-        .modulateRotate(synth.osc(7), 0.4)
-        .thresh(0.7)
-        .diff(synth.src(synth.o0).scale(1.8))
-        .modulateScale(synth.osc(2).modulateRotate(synth.o0, 0.74))
+        // LOW: the image gains weight and expands.
+        .modulateScale(
+          synth.osc(8, 0.08, 0).rotate(() => Math.sin(synth.time)),
+          () => 0.42 + low() * 0.75
+        )
+        .thresh(() => 0.82 - low() * 0.16)
+        // MID: movement / torsion.
+        .modulateRotate(
+          synth.osc(() => 6.5 + mid() * 5),
+          () => 0.30 + mid() * 0.75
+        )
+        .thresh(() => 0.72 - mid() * 0.10)
+        .diff(synth.src(synth.o0).scale(() => 1.76 + low() * 0.16))
+        // HIGH: fine instability, without destroying the original patch.
+        .modulateScale(
+          synth.osc(() => 2 + high() * 8).modulateRotate(synth.o0, 0.74),
+          () => 0.08 + high() * 0.30
+        )
         .diff(
           synth.src(synth.o0)
             .rotate([-0.012, 0.01, -0.002, 0])
             .scrollY(0, [-1 / 199800, 0].fast(0.7))
         )
-        .brightness([-0.02, -0.17].smooth().fast(0.5))
+        .brightness(() => -0.06 - high() * 0.12)
         .out(synth.o0);
 
       synth.render(synth.o0);
