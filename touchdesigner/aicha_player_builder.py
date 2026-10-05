@@ -91,20 +91,15 @@ title = panel.create(textCOMP, 'TITLE')
 title.par.w = 700
 title.par.h = 85
 title.par.text = 'AICHA / ELISA MEDIA PLAYER'
-title.par.fontsizex = 34
-title.par.fontsizey = 34
 title.par.textcolorr = 1
 title.par.textcolorg = 0.35
 title.par.textcolorb = 0.9
-title.par.align = 'Center'
 
 status = panel.create(textCOMP, 'STATUS')
 status.nodeY = -100
 status.par.w = 700
 status.par.h = 90
 status.par.text = '✦ MEDIA SOUL : ONLINE ✦\nSIGNAL POSSESSED / WAITING FOR ELISA'
-status.par.fontsizex = 18
-status.par.fontsizey = 18
 status.par.textcolorr = 0.75
 status.par.textcolorg = 0.9
 status.par.textcolorb = 1
@@ -114,8 +109,6 @@ hint.nodeY = -210
 hint.par.w = 700
 hint.par.h = 100
 hint.par.text = 'SOURCE  [ ELISA MASTER / LIVE INPUT ]\nPLAY  ·  RESTART  ·  SENSITIVITY\nLOW / MID / HIGH → ANALYSIS_OUT'
-hint.par.fontsizex = 15
-hint.par.fontsizey = 15
 
 # Component viewer shows PLAYER_UI when you open AICHA_PLAYER.
 a.par.viewer = True
