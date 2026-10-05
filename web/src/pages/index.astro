@@ -159,7 +159,7 @@
       <button class="cue-led" data-cue="h"><b>H</b><small>2D→3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
       <button class="cue-led" data-cue="k"><b>K</b><small>FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>HOLE</small></button>
     </div>
-    <label class="vp-row"><span>G DEPTH</span><input id="depthMorph" type="range" min="0" max="1" step=".01" value="0"><span id="depthMorphValue">0.00</span></label><div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div></div>
+    <label class="vp-row"><span>G DEPTH</span><input id="depthMorph" type="range" min="0" max="1" step=".01" value="0"><span id="depthMorphValue">0.00</span></label><div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div><div class="space-readout" id="media3dState">3D MEDIA — waiting</div></div>
     <div class="vp-hint">V = show/hide · every cue is independent · white = ON</div>
   </aside>
   <aside id="audioPanel">
@@ -184,7 +184,7 @@
   import dialogues from "../data/dialogues.js";
   import * as THREE from "three";
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
-  const cycloneScene=document.querySelector("#cycloneScene"),depthMorph=document.querySelector("#depthMorph"),depthMorphValue=document.querySelector("#depthMorphValue");
+  const cycloneScene=document.querySelector("#cycloneScene"),depthMorph=document.querySelector("#depthMorph"),depthMorphValue=document.querySelector("#depthMorphValue"),media3dState=document.querySelector("#media3dState");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -395,13 +395,17 @@
   // H is no longer a hard cut: it arms the 2D → tunnel → first-turn transition.
   let cyclone=null,cycloneRaf=0,morphProgress=0,morphTarget=0,morphWheel=0,morphScroll=0;
   const cycloneCfg={depth:28,radius:7.2,inertia:.92,sensitivity:.00085,audio:.72};
-  const cycloneTexture=(url)=>{
-    const tx=new THREE.TextureLoader().load(url);tx.colorSpace=THREE.SRGBColorSpace;tx.minFilter=THREE.LinearFilter;return tx;
+  const cycloneLoader=new THREE.TextureLoader();
+  const cycloneTexture=(url,onLoad,onError)=>{
+    const tx=cycloneLoader.load(url,tex=>{
+      tex.colorSpace=THREE.SRGBColorSpace;tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;
+      tex.generateMipmaps=true;onLoad?.(tex);
+    },undefined,onError);
+    tx.colorSpace=THREE.SRGBColorSpace;return tx;
   };
   const cycloneMedia=()=>{
-    // Use the manifest as source of truth. DOM background-image parsing was dropping media on the handoff.
-    const files=FEED_IMAGES.length?FEED_IMAGES:[];
-    return files.map(file=>new URL("/feed/"+file,window.location.origin).href);
+    // Manifest is generated before every dev/build. Encode every path segment so spaces/#/unicode survive in Three.js.
+    return FEED_IMAGES.map(file=>"/feed/"+file.split("/").map(encodeURIComponent).join("/"));
   };
   const buildCyclone=()=>{
     if(cyclone)return;
@@ -410,12 +414,19 @@
     const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,120);camera.position.set(0,0,18);
     cycloneScene.appendChild(renderer.domElement);
     const group=new THREE.Group();scene.add(group);
-    const urls=cycloneMedia(),planes=[],count=Math.min(120,Math.max(48,urls.length||48));
+    const urls=cycloneMedia(),planes=[],count=Math.min(120,urls.length);
+    let loaded=0,failed=0;
+    if(media3dState)media3dState.textContent="3D MEDIA — loading 0/"+count;
+    if(!count){console.error("[ELISA 3D] No feed images in manifest");if(media3dState)media3dState.textContent="3D MEDIA — manifest empty";}
     for(let i=0;i<count;i++){
-      const u=urls.length?urls[i%urls.length]:null;
-      const mat=new THREE.MeshBasicMaterial({map:u?cycloneTexture(u):null,color:u?0xffffff:0xffffff,transparent:true,opacity:1,side:THREE.DoubleSide});
+      const u=urls[i];
+      const mat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,side:THREE.DoubleSide});
       const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.72,2.15),mat);
-      mesh.userData={index:i,row:Math.floor(i/3),lane:(i%3)-1,seed:((i*73)%101)/101};group.add(mesh);planes.push(mesh);
+      mesh.userData={index:i,row:Math.floor(i/3),lane:(i%3)-1,seed:((i*73)%101)/101,url:u};group.add(mesh);planes.push(mesh);
+      cycloneTexture(u,tex=>{
+        mat.map=tex;mat.opacity=1;mat.needsUpdate=true;loaded++;
+        if(media3dState)media3dState.textContent="3D MEDIA — "+loaded+"/"+count+(failed?" · "+failed+" failed":"");
+      },err=>{failed++;console.warn("[ELISA 3D] texture failed",u,err);if(media3dState)media3dState.textContent="3D MEDIA — "+loaded+"/"+count+" · "+failed+" failed";});
     }
     cyclone={renderer,scene,camera,group,planes};
     addEventListener("resize",()=>{if(!cyclone)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
@@ -449,7 +460,7 @@
         const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
         m.scale.setScalar(audioScale*perspectiveScale);
         m.quaternion.copy(camera.quaternion);
-        m.material.opacity=.98-high*.08;
+        if(m.material.map)m.material.opacity=.98-high*.08;
       });
       group.position.set(spaceX/120,-spaceY/120,spaceZ/120);
       camera.position.z=18/spaceZoom;
@@ -492,14 +503,14 @@
     if(key==="b")breathEnabled=next;
     if(key==="d"){slipEnabled=next;breathEnabled=next;}
     if(key==="f")floatEnabled=next;
-    if(key==="g")spatialEnabled=next;
+    if(key==="g"){videoPanel.classList.add("open");depthMorph?.focus();return;}
     if(key==="h")orbitEnabled=next;
     if(key==="j")pixelEnabled=next;
     if(key==="k")vortexEnabled=next;
     if(key==="l")holeEnabled=next;
     clearFeedModes(key);
     setCyclone(orbitEnabled);
-    if(next&&!["b","d","h"].includes(key))freezeFeedScroll();
+    if(next&&!["b","d","f","h"].includes(key))freezeFeedScroll();
     syncCueMonitor();
   };
   const moveSpace=(dx,dy,dz=0)=>{spaceX+=dx;spaceY+=dy;spaceZ+=dz;syncCueMonitor()};
