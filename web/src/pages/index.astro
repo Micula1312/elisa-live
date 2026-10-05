@@ -156,6 +156,8 @@
   const feed=document.querySelector("#feedScene"), grid=document.querySelector(".grid");
   const seed=[...grid.querySelectorAll(".post")].map((el,i)=>({html:el.innerHTML,index:i}));
   let batch=1, feedStartedAt=0, breathEnabled=false, lastLow=0;
+  let autoScroll=false, autoScrollRaf=0, lastFrame=0;
+  const AUTO_SCROLL_DELAY=45000, AUTO_SCROLL_SPEED=34; // seconds after feed start / px per second
 
   function appendBatch(){
     // Deterministic reorder: recognisable repetitions, but never an obvious identical page loop.
@@ -183,10 +185,29 @@
   appendBatch(); appendBatch(); appendBatch();
   feed.addEventListener("scroll",ensureScrollBuffer,{passive:true});
 
+  function autoScrollLoop(now){
+    if(!autoScroll){autoScrollRaf=0;return}
+    if(!lastFrame)lastFrame=now;
+    const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;
+    feed.scrollTop+=AUTO_SCROLL_SPEED*dt;
+    ensureScrollBuffer();
+    autoScrollRaf=requestAnimationFrame(autoScrollLoop);
+  }
+  function setAutoScroll(on){
+    autoScroll=on;lastFrame=0;
+    if(on&&!autoScrollRaf)autoScrollRaf=requestAnimationFrame(autoScrollLoop);
+  }
+
   window.addEventListener("elisa-feed-start",()=>{
     feedStartedAt=performance.now();
     // About one minute of apparently normal scrolling, then the first anomaly can emerge.
+    setTimeout(()=>setAutoScroll(true),AUTO_SCROLL_DELAY);
     setTimeout(()=>{breathEnabled=true},55000);
+  });
+
+  // S = auto-scroll cue / B = breathing cue. Both remain manually overrideable live.
+  document.addEventListener("keydown",e=>{
+    if(e.key.toLowerCase()==="s"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) setAutoScroll(!autoScroll);
   });
 
   // B = manual breathing cue. Useful in rehearsal/live: never forces us to wait 55 seconds.
