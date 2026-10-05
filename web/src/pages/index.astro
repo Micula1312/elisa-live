@@ -41,6 +41,13 @@
     .post{aspect-ratio:4/5;overflow:hidden;position:relative;background:#ddd}
     .post:nth-child(3n+1){background:#151515}.post:nth-child(3n+2){background:#bcbcbc}.post:nth-child(3n){background:#565656}
     .placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:clamp(28px,5vw,72px);letter-spacing:-.06em;color:#fff}
+  
+    #audioPanel{position:fixed;right:16px;bottom:16px;width:310px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
+    #audioPanel.open{display:block} .ap-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ap-title{font-weight:700}.ap-state{opacity:.6}
+    #audioDevice{width:100%;background:#181b20;color:#fff;border:1px solid #333943;border-radius:6px;padding:7px;margin-bottom:8px}
+    .ap-actions{display:flex;gap:6px;margin-bottom:10px}.ap-actions button{flex:1;background:#20242b;color:#fff;border:1px solid #393f49;border-radius:6px;padding:7px;cursor:pointer}
+    .meter-row{display:grid;grid-template-columns:38px 1fr 34px;gap:7px;align-items:center;margin:5px 0}.meter{height:7px;background:#222831;border-radius:20px;overflow:hidden}.meter i{display:block;width:0;height:100%;background:#f1f1f1;border-radius:inherit}
+    .sens{display:grid;grid-template-columns:75px 1fr 30px;gap:7px;align-items:center;margin-top:10px}.sens input{width:100%}.ap-hint{opacity:.45;margin-top:9px;font-size:10px}
   </style>
 </head>
 <body>
@@ -101,5 +108,38 @@
     }
     start.addEventListener('click',authenticate);
   </script>
+
+  <aside id="audioPanel">
+    <div class="ap-head"><span class="ap-title">ELISA / AUDIO IN</span><span class="ap-state" id="audioState">OFF</span></div>
+    <select id="audioDevice"><option value="">Default audio input</option></select>
+    <div class="ap-actions"><button id="audioRefresh">REFRESH</button><button id="audioArm">ARM AUDIO</button></div>
+    <div class="meter-row"><span>LVL</span><div class="meter"><i id="mLevel"></i></div><span id="vLevel">0.00</span></div>
+    <div class="meter-row"><span>LOW</span><div class="meter"><i id="mLow"></i></div><span id="vLow">0.00</span></div>
+    <div class="meter-row"><span>MID</span><div class="meter"><i id="mMid"></i></div><span id="vMid">0.00</span></div>
+    <div class="meter-row"><span>HIGH</span><div class="meter"><i id="mHigh"></i></div><span id="vHigh">0.00</span></div>
+    <div class="meter-row"><span>HIT</span><div class="meter"><i id="mHit"></i></div><span id="vHit">0.00</span></div>
+    <label class="sens"><span>SENSITIVITY</span><input id="audioSensitivity" type="range" min=".2" max="5" step=".1" value="1.6"><span id="sensValue">1.6</span></label>
+    <div class="ap-hint">A = show/hide · panel is local show-control only</div>
+  </aside>
 </body>
+
+<script type="module">
+  import {listAudioInputs,startAudio,setSensitivity} from "../lib/audio-engine.js";
+  const panel=document.querySelector("#audioPanel"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
+  const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
+  async function populate(){
+    try{
+      const inputs=await listAudioInputs(), selected=device.value;
+      device.innerHTML='<option value="">Default audio input</option>';
+      inputs.forEach((d,i)=>{const o=document.createElement("option");o.value=d.deviceId;o.textContent=d.label||("Audio input "+(i+1));device.appendChild(o)});
+      if([...device.options].some(o=>o.value===selected))device.value=selected;
+    }catch(e){astate.textContent="DEVICE ERROR"}
+  }
+  document.addEventListener("keydown",e=>{if(e.key.toLowerCase()==="a"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))panel.classList.toggle("open")});
+  refresh.addEventListener("click",populate);
+  arm.addEventListener("click",async()=>{try{astate.textContent="REQUESTING…";await startAudio(device.value);astate.textContent="LIVE";arm.textContent="RE-ARM";await populate()}catch(e){astate.textContent="DENIED";console.error(e)}});
+  sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
+  window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}});
+  populate();
+</script>
 </html>
