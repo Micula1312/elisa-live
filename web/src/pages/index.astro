@@ -413,8 +413,8 @@
   };
   const buildCyclone=()=>{
     if(cyclone)return;
-    const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
-    const scene=new THREE.Scene();scene.background=new THREE.Color(0xffffff);
+    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
+    const scene=new THREE.Scene();scene.background=null;renderer.setClearColor(0xffffff,0);
     const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,120);camera.position.set(0,0,18);
     cycloneScene.appendChild(renderer.domElement);
     const group=new THREE.Group();scene.add(group);
@@ -446,9 +446,11 @@
       morphProgress+=(morphTarget-morphProgress)*.055;
       morphWheel*=cycloneCfg.inertia;morphScroll+=morphWheel;
       const p=Math.max(0,Math.min(1,morphProgress));
-      const darkTarget=(spatialEnabled?THREE.MathUtils.smoothstep(p,.18,.72):0);
-      sceneDark+=(darkTarget-sceneDark)*.045;
-      scene.background.setRGB(1-sceneDark,1-sceneDark,1-sceneDark);
+      // No full-screen rectangle on F→G: canvas starts transparent over the real feed.
+      // Darkness grows only after depth is established.
+      const darkTarget=(spatialEnabled?THREE.MathUtils.smoothstep(p,.38,.88):0);
+      sceneDark+=(darkTarget-sceneDark)*.035;
+      renderer.setClearColor(0x000000,sceneDark);
       const spiral=Math.max(0,(p-.72)/.28),tunnel=Math.max(0,(p-.30)/.70);
       // First movement is a clean zoom-out: the familiar 3-column feed becomes small and centred.
       // G must inherit the visual width of F: begin broad, then only recede once depth develops.
@@ -569,22 +571,22 @@
     buildCyclone();captureHandoff();spatialEnabled=true;orbitEnabled=false;
     clearTimeout(handoffTimer);
     // Threshold: F first recedes as a whole; Three.js appears only when sizes nearly match.
-    feed.style.transition="transform .85s cubic-bezier(.2,.75,.2,1),opacity .48s ease";
-    feed.style.transformOrigin="50% 45%";feed.style.transform="scale(.72)";
-    morphProgress=0;morphTarget=.30;
+    feed.style.transition="opacity .9s ease";
+    feed.style.transformOrigin="50% 45%";feed.style.transform="";
+    morphProgress=0;morphTarget=.30;sceneDark=0;
     cycloneScene.classList.add("on");cycloneScene.style.opacity="0";
-    handoffTimer=setTimeout(()=>{
-      cycloneScene.style.opacity="1";feed.style.opacity="0";
-    },520);
+    // Overlay the matching 3D planes on top of F first; only then dissolve the DOM away.
+    requestAnimationFrame(()=>{cycloneScene.style.opacity="1"});
+    handoffTimer=setTimeout(()=>{feed.style.opacity="0"},680);
     syncCueMonitor();
   };
   const leave3D=()=>{
     if(!spatialEnabled)return;
     clearTimeout(handoffTimer);orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false;particleMix=0;holeMix=0;slashLight?.classList.remove("on");morphTarget=0;
+    feed.style.display="block";feed.style.opacity="1";feed.style.transform="";
     cycloneScene.style.opacity="0";
-    feed.style.display="block";feed.style.opacity="0";feed.style.transform="scale(.72)";
     handoffTimer=setTimeout(()=>{
-      spatialEnabled=false;cycloneScene.classList.remove("on");feed.style.opacity="1";feed.style.transform="scale(1)";
+      spatialEnabled=false;cycloneScene.classList.remove("on");feed.style.opacity="1";feed.style.transform="";
       breathEnabled=true;slipEnabled=true;floatEnabled=true;syncCueMonitor();
     },500);
   };
