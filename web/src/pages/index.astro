@@ -254,7 +254,7 @@
     [...grid.querySelectorAll(".post")].forEach(post=>{
       post.classList.remove("detached","floating");
       const ph=post.querySelector(".placeholder");
-      if(ph){ph.style.transform="";ph.style.rotate="";ph.style.filter="";ph.style.setProperty("--pulse","1");ph.style.setProperty("--drift-x","0px");ph.style.setProperty("--drift-y","0px")}
+      if(ph){ph.style.transform="";ph.style.filter="";ph.style.setProperty("--pulse","1");ph.style.setProperty("--drift-x","0px");ph.style.setProperty("--drift-y","0px")}
     });
     grid.classList.remove("breaking","spatial");
   };
@@ -329,7 +329,7 @@
       // Different phase/weight per tile prevents a synchronized "equalizer" look.
       const midBoom=Math.max(0,lastMid-(.10+(i%4)*.018));
       const midPulse=midBoom*(.22+((i*29)%17)/100);
-      const pulse=1+lastLow*(.018+(i%4)*.005)+midPulse+hit*((i%7===0)?.075:.012);
+      const pulse=1+lastLow*(.025+(i%4)*.009)+midPulse*(1.10+((i%5)*.10))+lastHigh*((i%4===2)?.055:.012)+hit*((i%7===0)?.12:.025);
       const sway=Math.sin(motionClock*(lane===1?1.25:.82)+phase);
       const float=Math.cos(motionClock*(lane===2?1.65:.68)+phase*.73);
       const isSlip=slipEnabled&&post.classList.contains("detached");
@@ -350,22 +350,20 @@
       // F is where translation finally begins: it explodes the already-scaled bodies outward.
       if(isFloat){
         const orbit=motionClock*(.34+(i%5)*.055)+phase;
-        const radiusX=150+lastMid*330+((i*41)%120);
-        const radiusY=95+lastLow*230+((i*23)%80);
-        slipX=Math.cos(orbit)*radiusX;
-        slipY=Math.sin(orbit*.83)*radiusY;
+        const radiusX=105+lastMid*390+lastHigh*120+((i*41)%105);
+        const radiusY=75+lastLow*300+lastMid*120+((i*23)%75);
+        const hitKick=hit*(45+((i*17)%85));
+        slipX=Math.cos(orbit)*radiusX + Math.sign(Math.cos(phase))*lastHigh*95 + Math.cos(phase)*hitKick;
+        slipY=Math.sin(orbit*.83)*radiusY + Math.sign(Math.sin(phase))*lastLow*70 + Math.sin(phase)*hitKick;
       }
       const driftX=sway*(3+lastMid*13)+(lane===2?float*lastHigh*8:0)+slipX;
       const driftY=float*(2+lastLow*9)+(lane===0?sway*lastLow*5:0)+slipY;
-      const rot=(sway*lastMid*1.15)+(lane===2?float*lastHigh*.9:0)+(isSlip?sway*band*5.5:0)+(isFloat?Math.sin(motionClock+phase)*6:0);
+      // No planar rotation: scale/pulse/translation are the visual vocabulary.
       const z=spatialEnabled&&isFloat?(-260+((i*97)%620)+lastLow*180):0;
-      const rx=spatialEnabled&&isFloat?Math.sin(motionClock*.35+phase)*10:0;
-      const ry=spatialEnabled&&isFloat?Math.cos(motionClock*.28+phase)*16:0;
       ph.style.setProperty("--pulse",(pulse*zoomOut).toFixed(4));
       ph.style.setProperty("--drift-x",driftX.toFixed(2)+"px");
       ph.style.setProperty("--drift-y",driftY.toFixed(2)+"px");
-      ph.style.rotate=rot.toFixed(2)+"deg";
-      if(spatialEnabled&&isFloat) ph.style.transform=`translate3d(${driftX.toFixed(2)}px,${driftY.toFixed(2)}px,${z.toFixed(1)}px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) rotateZ(${rot.toFixed(2)}deg) scale(${(pulse*zoomOut).toFixed(4)})`;
+      if(spatialEnabled&&isFloat) ph.style.transform=`translate3d(${driftX.toFixed(2)}px,${driftY.toFixed(2)}px,${z.toFixed(1)}px) scale(${(pulse*zoomOut).toFixed(4)})`;
       else ph.style.transform="";
       ph.style.filter=`brightness(${(1+hit*(i%5===0?.16:.025)).toFixed(3)})`;
     });
