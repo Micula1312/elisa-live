@@ -8,45 +8,51 @@
     <title>ELISA — HYDRA</title>
     <style>
       html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-      #hydra-canvas { display: block; width: 100vw; height: 100vh; }
+      #hydra-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
     </style>
   </head>
   <body>
     <canvas id="hydra-canvas"></canvas>
+
     <script>
       import Hydra from 'hydra-synth';
 
       const canvas = document.getElementById('hydra-canvas');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
       const hydra = new Hydra({
         canvas,
         detectAudio: false,
         enableStreamCapture: false,
-        makeGlobal: true,
+        makeGlobal: false,
         autoLoop: true,
+        width: window.innerWidth,
+        height: window.innerHeight,
       });
 
-      // HYDRA I — starting patch
-      voronoi(350, 0.15)
-        .modulateScale(osc(8).rotate(() => Math.sin(time)), 0.5)
+      const { synth } = hydra;
+
+      synth
+        .voronoi(350, 0.15)
+        .modulateScale(synth.osc(8).rotate(() => Math.sin(synth.time)), 0.5)
         .thresh(0.8)
-        .modulateRotate(osc(7), 0.4)
+        .modulateRotate(synth.osc(7), 0.4)
         .thresh(0.7)
-        .diff(src(o0).scale(1.8))
-        .modulateScale(osc(2).modulateRotate(o0, 0.74))
+        .diff(synth.src(synth.o0).scale(1.8))
+        .modulateScale(synth.osc(2).modulateRotate(synth.o0, 0.74))
         .diff(
-          src(o0)
+          synth.src(synth.o0)
             .rotate([-0.012, 0.01, -0.002, 0])
             .scrollY(0, [-1 / 199800, 0].fast(0.7))
         )
         .brightness([-0.02, -0.17].smooth().fast(0.5))
-        .out(o0);
+        .out(synth.o0);
 
-      render(o0);
+      synth.render(synth.o0);
 
       window.addEventListener('resize', () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        setResolution(window.innerWidth, window.innerHeight);
+        synth.setResolution(window.innerWidth, window.innerHeight);
       });
     </script>
   </body>
