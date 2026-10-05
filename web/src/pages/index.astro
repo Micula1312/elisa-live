@@ -67,7 +67,7 @@
     #cueHud{position:fixed;left:14px;bottom:14px;z-index:9998;background:rgba(0,0,0,.78);color:#fff;padding:7px 10px;border-radius:6px;font:11px/1.2 monospace;letter-spacing:.05em;pointer-events:none;opacity:.7}
 
   
-    #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#000;overflow:hidden}#cycloneScene.on{display:block}#cycloneScene canvas{display:block;width:100%;height:100%}
+    #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#fff;overflow:hidden;opacity:0;transition:opacity .75s ease,background-color 1.15s ease}#cycloneScene.on{display:block}#cycloneScene.dark{background:#000}#cycloneScene canvas{display:block;width:100%;height:100%}
     #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:9997;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 "IBM Plex Mono","JetBrains Mono",monospace;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
@@ -156,8 +156,8 @@
     <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
       <button class="cue-led" data-cue="b"><b>B</b><small>BREATH I</small></button><button class="cue-led" data-cue="d"><b>D</b><small>BREATH II</small></button>
       <button class="cue-led" data-cue="f"><b>F</b><small>ZOOM DRIFT</small></button><button class="cue-led" data-cue="g"><b>G</b><small>ENTER 3D</small></button>
-      <button class="cue-led" data-cue="h"><b>H</b><small>ORBIT 3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
-      <button class="cue-led" data-cue="k"><b>K</b><small>FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>HOLE</small></button>
+      <button class="cue-led" data-cue="h"><b>H</b><small>ORBIT 3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>DISTANCE</small></button>
+      <button class="cue-led" data-cue="k"><b>K</b><small>POINT FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>IMPLODE</small></button>
     </div>
     <div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div><div class="space-readout" id="media3dState">3D MEDIA — waiting</div></div>
     <div class="vp-hint">V = show/hide · S starts persistent autoscroll · G enters matched 3D · wheel/arrows navigate</div>
@@ -397,7 +397,7 @@
   };
   // THREE.JS FEED MORPH — the vertical scroll is progressively reinterpreted as depth.
   // H is no longer a hard cut: it arms the 2D → tunnel → first-turn transition.
-  let cyclone=null,cycloneRaf=0,morphProgress=0,morphTarget=0,morphWheel=0,morphScroll=0;
+  let cyclone=null,cycloneRaf=0,morphProgress=0,morphTarget=0,morphWheel=0,morphScroll=0,handoffTimer=0,sceneDark=0;
   const cycloneCfg={depth:28,radius:7.2,inertia:.92,sensitivity:.00085,audio:.72};
   const cycloneLoader=new THREE.TextureLoader();
   const cycloneTexture=(url,onLoad,onError)=>{
@@ -440,6 +440,9 @@
       morphProgress+=(morphTarget-morphProgress)*.055;
       morphWheel*=cycloneCfg.inertia;morphScroll+=morphWheel;
       const p=Math.max(0,Math.min(1,morphProgress));
+      const darkTarget=(spatialEnabled?THREE.MathUtils.smoothstep(p,.18,.72):0);
+      sceneDark+=(darkTarget-sceneDark)*.045;
+      scene.background.setRGB(1-sceneDark,1-sceneDark,1-sceneDark);
       const spiral=Math.max(0,(p-.72)/.28),tunnel=Math.max(0,(p-.30)/.70);
       // First movement is a clean zoom-out: the familiar 3-column feed becomes small and centred.
       const preZoom=1-THREE.MathUtils.smoothstep(p,0,.24)*.28;
@@ -464,10 +467,26 @@
           x=THREE.MathUtils.lerp(m.userData.handoff.x,x,hand);
           y=THREE.MathUtils.lerp(m.userData.handoff.y,y,hand);
         }
+        if(pixelEnabled){
+          const j=.78;
+          x*=1.15+j*.35;y*=1.15+j*.35;
+        }
+        if(vortexEnabled){
+          const flow=morphScroll*.75+i*.13;
+          x+=Math.sin(flow+i)*1.8;y+=Math.cos(flow*.73+i*.4)*1.2;
+        }
+        if(holeEnabled){
+          const pull=.055+hit*.08;
+          x*=1-pull;y*=1-pull;
+        }
         m.position.set(x,y,z);
         const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
         const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
-        m.scale.setScalar(audioScale*perspectiveScale*(m.userData.audioBreath||1));
+        let stageScale=audioScale*perspectiveScale*(m.userData.audioBreath||1);
+        if(pixelEnabled)stageScale*=.16;
+        if(vortexEnabled)stageScale*=.10;
+        if(holeEnabled)stageScale*=.055;
+        m.scale.setScalar(stageScale);
         m.quaternion.copy(camera.quaternion);
         if(m.material.map)m.material.opacity=.98-high*.08;
       });
@@ -513,21 +532,28 @@
     });
   };
   const enter3D=()=>{
+    if(spatialEnabled)return;
     buildCyclone();captureHandoff();spatialEnabled=true;orbitEnabled=false;
-    cycloneScene.classList.add("on");cycloneScene.style.opacity="1";
-    feed.style.transition="opacity .65s ease";feed.style.opacity="0";
-    morphProgress=0;morphTarget=.30; // level 0 visually matches the final F composition
+    clearTimeout(handoffTimer);
+    // Threshold: F first recedes as a whole; Three.js appears only when sizes nearly match.
+    feed.style.transition="transform .85s cubic-bezier(.2,.75,.2,1),opacity .48s ease";
+    feed.style.transformOrigin="50% 45%";feed.style.transform="scale(.72)";
+    morphProgress=0;morphTarget=.30;
+    cycloneScene.classList.add("on");cycloneScene.style.opacity="0";
+    handoffTimer=setTimeout(()=>{
+      cycloneScene.style.opacity="1";feed.style.opacity="0";
+    },520);
     syncCueMonitor();
   };
-
   const leave3D=()=>{
-    spatialEnabled=false;orbitEnabled=false;morphTarget=.30;
-    cycloneScene.style.opacity="0";cycloneScene.classList.remove("on");
-    feed.style.transition="opacity .45s ease";feed.style.opacity="1";
-    // Return exactly to the last 2D stage: F, with all tiles released from the grid.
-    breathEnabled=true;slipEnabled=true;floatEnabled=true;
-    grid.style.transform="";
-    syncCueMonitor();
+    if(!spatialEnabled)return;
+    clearTimeout(handoffTimer);orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false;morphTarget=0;
+    cycloneScene.style.opacity="0";
+    feed.style.display="block";feed.style.opacity="0";feed.style.transform="scale(.72)";
+    handoffTimer=setTimeout(()=>{
+      spatialEnabled=false;cycloneScene.classList.remove("on");feed.style.opacity="1";feed.style.transform="scale(1)";
+      breathEnabled=true;slipEnabled=true;floatEnabled=true;syncCueMonitor();
+    },500);
   };
   const toggleCue=(key)=>{
     if(key==="g"){spatialEnabled?leave3D():enter3D();return}
@@ -541,9 +567,9 @@
     if(key==="f"){
       const on=!floatEnabled;breathEnabled=on||breathEnabled;slipEnabled=on||slipEnabled;floatEnabled=on;
     }
-    if(key==="j")pixelEnabled=!pixelEnabled;
-    if(key==="k")vortexEnabled=!vortexEnabled;
-    if(key==="l")holeEnabled=!holeEnabled;
+    if(key==="j"){if(!spatialEnabled)enter3D();pixelEnabled=!pixelEnabled}
+    if(key==="k"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=!vortexEnabled}
+    if(key==="l"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=true;holeEnabled=!holeEnabled}
     [...grid.querySelectorAll(".post")].forEach((post,i)=>{
       post.classList.toggle("detached",slipEnabled&&((i%3===0)||(i%7===2)));
       post.classList.toggle("floating",floatEnabled);
