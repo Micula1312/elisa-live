@@ -276,14 +276,18 @@
       const sway=Math.sin(motionClock*(lane===1?1.25:.82)+phase);
       const float=Math.cos(motionClock*(lane===2?1.65:.68)+phase*.73);
       const isSlip=slipEnabled&&post.classList.contains("detached");
-      // D cue: only a few tiles cross the cell boundary. They still oscillate back toward home,
-      // so this reads as the first failure of the interface, not yet as a free-floating swarm.
-      const slipX=isSlip?sway*(18+lastMid*58)+float*lastHigh*26:0;
-      const slipY=isSlip?float*(12+lastLow*42)+sway*lastMid*18:0;
+      // D cue: selected tiles "breathe out" of the grid. Each tile is assigned a different
+      // frequency body so bass/mids/highs create asynchronous zoom-outs instead of one global move.
+      const band=i%3===0?lastLow:i%3===1?lastMid:lastHigh;
+      const gate=Math.max(0,(band-(.12+(i%5)*.025))*2.1);
+      const randomBody=.72+((i*37)%31)/100;
+      const zoomOut=isSlip?Math.max(.38,1-gate*randomBody):1;
+      const slipX=isSlip?sway*(10+gate*54)+float*lastHigh*18:0;
+      const slipY=isSlip?float*(8+gate*42)+sway*lastMid*12:0;
       const driftX=sway*(3+lastMid*13)+(lane===2?float*lastHigh*8:0)+slipX;
       const driftY=float*(2+lastLow*9)+(lane===0?sway*lastLow*5:0)+slipY;
-      const rot=(sway*lastMid*1.15)+(lane===2?float*lastHigh*.9:0)+(isSlip?sway*lastMid*2.2:0);
-      ph.style.setProperty("--pulse",pulse.toFixed(4));
+      const rot=(sway*lastMid*1.15)+(lane===2?float*lastHigh*.9:0)+(isSlip?sway*band*3.2:0);
+      ph.style.setProperty("--pulse",(pulse*zoomOut).toFixed(4));
       ph.style.setProperty("--drift-x",driftX.toFixed(2)+"px");
       ph.style.setProperty("--drift-y",driftY.toFixed(2)+"px");
       ph.style.rotate=rot.toFixed(2)+"deg";
