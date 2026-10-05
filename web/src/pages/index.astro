@@ -40,7 +40,7 @@
     .grid{width:min(950px,100%);margin:auto;padding:1px 0 80px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
     .post{aspect-ratio:4/5;overflow:hidden;position:relative;background:#ddd}
     .post:nth-child(3n+1){background:#151515}.post:nth-child(3n+2){background:#bcbcbc}.post:nth-child(3n){background:#565656}
-    .placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:clamp(28px,5vw,72px);letter-spacing:-.06em;color:#fff}
+    .placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:clamp(28px,5vw,72px);letter-spacing:-.06em;color:#fff;will-change:transform;transform:scale(var(--breath,1));transition:transform .12s linear}.post{will-change:transform}.post.repeat::after{content:"";position:absolute;inset:0;pointer-events:none;border:0 solid transparent}
   
     #audioPanel{position:fixed;right:16px;bottom:16px;width:310px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #audioPanel.open{display:block} .ap-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ap-title{font-weight:700}.ap-state{opacity:.6}
@@ -101,7 +101,7 @@
         setTimeout(()=>{camera.classList.add('visible');faceFrame.classList.add('scanning');status.textContent='Position your face in the circle';start.textContent='Verifying…'},500);
         setTimeout(()=>{status.textContent='Verifying identity…'},2200);
         setTimeout(()=>{faceFrame.classList.remove('scanning');status.textContent='Identity verified';status.classList.add('success');start.textContent='✓ Verified'},3500);
-        setTimeout(()=>{faceScene.style.display='none';feedScene.style.display='block'},4400);
+        setTimeout(()=>{faceScene.style.display='none';feedScene.style.display='block';window.dispatchEvent(new Event('elisa-feed-start'))},4400);
       }catch(error){
         status.textContent='Camera access is required to continue';start.disabled=false;start.textContent='Try again';console.error(error);
       }
@@ -141,5 +141,59 @@
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
   window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}});
   populate();
+
+  // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
+  const feed=document.querySelector("#feedScene"), grid=document.querySelector(".grid");
+  const seed=[...grid.querySelectorAll(".post")].map((el,i)=>({html:el.innerHTML,index:i}));
+  let batch=1, feedStartedAt=0, breathEnabled=false, lastLow=0;
+
+  function appendBatch(){
+    // Deterministic reorder: recognisable repetitions, but never an obvious identical page loop.
+    const order=batch%3===1?[4,1,8,0,10,6,3,11,2,7,5,9]:batch%3===2?[8,3,1,10,5,0,11,6,4,2,9,7]:[2,9,5,1,7,11,0,6,10,3,8,4];
+    order.forEach((seedIndex,pos)=>{
+      const post=document.createElement("div");
+      post.className="post repeat";
+      post.dataset.source=String(seedIndex+1);
+      post.dataset.batch=String(batch);
+      post.innerHTML=seed[seedIndex].html;
+      // Keep source identity visible for now; real media will replace these placeholders.
+      const ph=post.querySelector(".placeholder");
+      if(ph) ph.textContent=String(seedIndex+1).padStart(2,"0");
+      grid.appendChild(post);
+    });
+    batch++;
+  }
+
+  function ensureScrollBuffer(){
+    const remaining=feed.scrollHeight-feed.scrollTop-feed.clientHeight;
+    if(remaining<feed.clientHeight*2.2) appendBatch();
+  }
+
+  // Start with enough depth that scrolling never reaches an artificial bottom.
+  appendBatch(); appendBatch(); appendBatch();
+  feed.addEventListener("scroll",ensureScrollBuffer,{passive:true});
+
+  window.addEventListener("elisa-feed-start",()=>{
+    feedStartedAt=performance.now();
+    // About one minute of apparently normal scrolling, then the first anomaly can emerge.
+    setTimeout(()=>{breathEnabled=true},55000);
+  });
+
+  // B = manual breathing cue. Useful in rehearsal/live: never forces us to wait 55 seconds.
+  document.addEventListener("keydown",e=>{
+    if(e.key.toLowerCase()==="b"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)){
+      breathEnabled=!breathEnabled;
+    }
+  });
+
+  window.addEventListener("elisa-audio",e=>{
+    const low=e.detail.low||0;
+    lastLow+=(low-lastLow)*.16;
+    const elapsed=feedStartedAt?(performance.now()-feedStartedAt)/1000:0;
+    // Automatic onset is deliberately tiny. B can also arm it at any moment.
+    const amount=breathEnabled?Math.min(.018,.004+Math.max(0,elapsed-55)*.00025):0;
+    const scale=1+lastLow*amount;
+    grid.style.setProperty("--breath",scale.toFixed(4));
+  });
 </script>
 </html>
