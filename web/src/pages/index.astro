@@ -322,6 +322,7 @@
     autoScroll=on;lastFrame=0;
     if(on&&!autoScrollRaf)autoScrollRaf=requestAnimationFrame(autoScrollLoop);
   }
+  const freezeFeedScroll=()=>setAutoScroll(false);
 
   window.addEventListener("elisa-feed-start",()=>{
     feedStartedAt=performance.now();
@@ -354,26 +355,26 @@
       return;
     }
 
-    if(key==="b"){breathEnabled=!breathEnabled;syncCueMonitor();return;}
+    if(key==="b"){breathEnabled=!breathEnabled;if(breathEnabled)freezeFeedScroll();syncCueMonitor();return;}
 
     if(key==="d"){
-      slipEnabled=!slipEnabled;
+      slipEnabled=!slipEnabled;if(slipEnabled)freezeFeedScroll();
       grid.classList.toggle("breaking",slipEnabled);
       [...grid.querySelectorAll(".post")].forEach((post,i)=>post.classList.toggle("detached",slipEnabled&&((i%2===0)||(i%5===1))));
       syncCueMonitor();return;
     }
 
     if(key==="f"){
-      floatEnabled=!floatEnabled;
+      floatEnabled=!floatEnabled;if(floatEnabled)freezeFeedScroll();
       [...grid.querySelectorAll(".post")].forEach((post,i)=>post.classList.toggle("floating",floatEnabled&&((i%2===0)||(i%5===1))));
       syncCueMonitor();return;
     }
 
-    if(key==="g"){spatialEnabled=!spatialEnabled;grid.classList.toggle("spatial",spatialEnabled);syncCueMonitor();return;}
-    if(key==="h"){orbitEnabled=!orbitEnabled;grid.classList.toggle("true3d",orbitEnabled);syncCueMonitor();return;}
-    if(key==="j"){pixelEnabled=!pixelEnabled;grid.classList.toggle("orbiting",pixelEnabled);syncCueMonitor();return;}
-    if(key==="k"){vortexEnabled=!vortexEnabled;grid.classList.toggle("dissolve",vortexEnabled);syncCueMonitor();return;}
-    if(key==="l"){holeEnabled=!holeEnabled;archiveHole.classList.toggle("on",holeEnabled);syncCueMonitor();return;}
+    if(key==="g"){spatialEnabled=!spatialEnabled;if(spatialEnabled)freezeFeedScroll();grid.classList.toggle("spatial",spatialEnabled);syncCueMonitor();return;}
+    if(key==="h"){orbitEnabled=!orbitEnabled;if(orbitEnabled)freezeFeedScroll();grid.classList.toggle("true3d",orbitEnabled);syncCueMonitor();return;}
+    if(key==="j"){pixelEnabled=!pixelEnabled;if(pixelEnabled)freezeFeedScroll();grid.classList.toggle("orbiting",pixelEnabled);syncCueMonitor();return;}
+    if(key==="k"){vortexEnabled=!vortexEnabled;if(vortexEnabled)freezeFeedScroll();grid.classList.toggle("dissolve",vortexEnabled);syncCueMonitor();return;}
+    if(key==="l"){holeEnabled=!holeEnabled;if(holeEnabled)freezeFeedScroll();archiveHole.classList.toggle("on",holeEnabled);syncCueMonitor();return;}
   });
 
   window.addEventListener("elisa-audio",e=>{
@@ -421,18 +422,20 @@
       let slipX=0;
       let slipY=0;
       // F is where translation finally begins: it explodes the already-scaled bodies outward.
-      if(isFloat){
+      if(floatEnabled){
+        const bodyGain=isFloat?1:.42;
         const orbit=motionClock*(.34+(i%5)*.055)+phase;
         const radiusX=105+lastMid*390+lastHigh*120+((i*41)%105);
         const radiusY=75+lastLow*300+lastMid*120+((i*23)%75);
         const hitKick=hit*(45+((i*17)%85));
-        slipX=Math.cos(orbit)*radiusX + Math.sign(Math.cos(phase))*lastHigh*95 + Math.cos(phase)*hitKick;
-        slipY=Math.sin(orbit*.83)*radiusY + Math.sign(Math.sin(phase))*lastLow*70 + Math.sin(phase)*hitKick;
+        slipX=(Math.cos(orbit)*radiusX + Math.sign(Math.cos(phase))*lastHigh*95 + Math.cos(phase)*hitKick)*bodyGain;
+        slipY=(Math.sin(orbit*.83)*radiusY + Math.sign(Math.sin(phase))*lastLow*70 + Math.sin(phase)*hitKick)*bodyGain;
       }
       const driftX=sway*(3+lastMid*13)+(lane===2?float*lastHigh*8:0)+slipX;
       const driftY=float*(2+lastLow*9)+(lane===0?sway*lastLow*5:0)+slipY;
       // No planar rotation: scale/pulse/translation are the visual vocabulary.
-      let z=spatialEnabled&&isFloat?(-260+((i*97)%620)+lastLow*180):0;
+      const spatialBody=spatialEnabled||orbitEnabled||pixelEnabled||vortexEnabled||holeEnabled;
+      let z=spatialBody?(-340+((i*97)%760)+lastLow*260+lastMid*90):0;
       let stageX=driftX,stageY=driftY,stageScale=zoomOut;
       // H: the existing G field opens into a deeper 3D volume. No XY rotation.
       if(orbitEnabled){
@@ -465,7 +468,7 @@
       ph.style.setProperty("--pulse",pulse.toFixed(4));
       ph.style.setProperty("--drift-x","0px");
       ph.style.setProperty("--drift-y","0px");
-      if(isFloat||orbitEnabled||pixelEnabled||vortexEnabled||holeEnabled)post.style.transform=`translate3d(${stageX.toFixed(2)}px,${stageY.toFixed(2)}px,${z.toFixed(1)}px) scale(${stageScale.toFixed(4)})`;
+      if(floatEnabled||spatialBody)post.style.transform=`translate3d(${stageX.toFixed(2)}px,${stageY.toFixed(2)}px,${z.toFixed(1)}px) scale(${stageScale.toFixed(4)})`;
       else if(isSlip)post.style.transform=`translate3d(0,0,0) scale(${zoomOut.toFixed(4)})`;
       else post.style.transform="";
       if(vortexEnabled)ph.style.opacity=String(Math.max(.28,1-high*.38-hit*.18));
