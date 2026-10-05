@@ -22,7 +22,8 @@ p = page.appendStr('Masterfile', label='MASTER FILE')
 p.val = project.folder + '/web/public/audio/elisa_master.mp3'
 page.appendToggle('Play', label='PLAY / PAUSE')
 page.appendPulse('Restart', label='RESTART')
-page.appendFloat('Sensitivity', label='SENSITIVITY').val = 1.0
+sens = page.appendFloat('Sensitivity', label='SENSITIVITY')
+sens[0].val = 1.0
 
 # --- AUDIO SOURCES -----------------------------------------------------------
 master = a.create(audiofileinCHOP, 'MASTER_TRACK')
