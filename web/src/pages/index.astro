@@ -451,7 +451,8 @@
       scene.background.setRGB(1-sceneDark,1-sceneDark,1-sceneDark);
       const spiral=Math.max(0,(p-.72)/.28),tunnel=Math.max(0,(p-.30)/.70);
       // First movement is a clean zoom-out: the familiar 3-column feed becomes small and centred.
-      const preZoom=1-THREE.MathUtils.smoothstep(p,0,.24)*.28;
+      // G must inherit the visual width of F: begin broad, then only recede once depth develops.
+      const preZoom=1.34-THREE.MathUtils.smoothstep(p,.16,.52)*.62;
       planes.forEach((m,i)=>{
         // Start as a three-column vertical feed, then bend that SAME layout into Z.
         const row=m.userData.row,lane=m.userData.lane;
@@ -459,7 +460,7 @@
         while(feedY < -18)feedY+=38;while(feedY>20)feedY-=38;
         const travel=(5.6-feedY)/23;
         const z=-tunnel*(2+travel*cycloneCfg.depth);
-        const spread=2.05*preZoom*(1-tunnel*.22);
+        const spread=2.32*preZoom*(1-tunnel*.22);
         const baseX=lane*spread;
         // Only the last part begins the horizontal-axis vortex: angle grows from vertical travel.
         const theta=travel*Math.PI*2.1 + morphScroll*.32;
@@ -489,6 +490,8 @@
         const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
         const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
         let stageScale=audioScale*perspectiveScale*(m.userData.audioBreath||1);
+        // Same broad opening frame as the F handoff; depth progressively releases this extra scale.
+        stageScale*=THREE.MathUtils.lerp(1.30,1,THREE.MathUtils.smoothstep(p,.16,.52));
         if(pixelEnabled)stageScale*=.16;
         if(vortexEnabled)stageScale*=.10;
         if(holeEnabled)stageScale*=.055;
