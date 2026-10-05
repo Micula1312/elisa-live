@@ -67,7 +67,7 @@
     #cueHud{position:fixed;left:14px;bottom:14px;z-index:9998;background:rgba(0,0,0,.78);color:#fff;padding:7px 10px;border-radius:6px;font:11px/1.2 monospace;letter-spacing:.05em;pointer-events:none;opacity:.7}
 
   
-    #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#fff;overflow:hidden;opacity:0;transition:opacity .75s ease,background-color 1.15s ease}#cycloneScene.on{display:block}#cycloneScene.dark{background:#000}#cycloneScene canvas{display:block;width:100%;height:100%}
+    #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#fff;overflow:hidden;opacity:0;transition:opacity .75s ease,background-color 1.15s ease}#cycloneScene.on{display:block}#cycloneScene.dark{background:#000}#slashLight{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;background:linear-gradient(112deg,transparent 43%,rgba(255,255,255,.98) 48%,transparent 52%),linear-gradient(68deg,transparent 47%,rgba(255,255,255,.8) 50%,transparent 53%);mix-blend-mode:screen;transform:scaleX(.04);transition:opacity .15s,transform .32s cubic-bezier(.2,.9,.2,1)}#slashLight.on{opacity:1;transform:scaleX(1)}#cycloneScene canvas{display:block;width:100%;height:100%}
     #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:9997;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 "IBM Plex Mono","JetBrains Mono",monospace;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
@@ -144,7 +144,7 @@
     start.addEventListener('click',authenticate);
   </script>
 
-  <div id="cycloneScene"></div>
+  <div id="cycloneScene"><div id="slashLight"></div></div>
   <div id="archiveHole"></div>
   <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
   <div id="cueHud">S SCROLL · B BREATH I · D BREATH II · F FLOAT · G DEPTH · H 2D→3D · J ORBIT · K DISSOLVE · L HOLE</div>
@@ -184,7 +184,7 @@
   import dialogues from "../data/dialogues.js";
   import * as THREE from "three";
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
-  const cycloneScene=document.querySelector("#cycloneScene"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
+  const cycloneScene=document.querySelector("#cycloneScene"),slashLight=document.querySelector("#slashLight"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -397,7 +397,7 @@
   };
   // THREE.JS FEED MORPH — the vertical scroll is progressively reinterpreted as depth.
   // H is no longer a hard cut: it arms the 2D → tunnel → first-turn transition.
-  let cyclone=null,cycloneRaf=0,morphProgress=0,morphTarget=0,morphWheel=0,morphScroll=0,handoffTimer=0,sceneDark=0;
+  let cyclone=null,cycloneRaf=0,morphProgress=0,morphTarget=0,morphWheel=0,morphScroll=0,handoffTimer=0,sceneDark=0,particleMix=0,holeMix=0,slashUntil=0;
   const cycloneCfg={depth:28,radius:7.2,inertia:.92,sensitivity:.00085,audio:.72};
   const cycloneLoader=new THREE.TextureLoader();
   const cycloneTexture=(url,onLoad,onError)=>{
@@ -432,7 +432,13 @@
         if(media3dState)media3dState.textContent="3D MEDIA — "+loaded+"/"+count+(failed?" · "+failed+" failed":"");
       },err=>{failed++;console.warn("[ELISA 3D] texture failed",u,err);if(media3dState)media3dState.textContent="3D MEDIA — "+loaded+"/"+count+" · "+failed+" failed";});
     }
-    cyclone={renderer,scene,camera,group,planes};
+    // Fixed particle pool: recycled every frame, so K can run indefinitely without allocations.
+    const particleCount=2600,positions=new Float32Array(particleCount*3);
+    for(let i=0;i<particleCount;i++){const a=i*2.399963,r=2+((i*37)%100)/100*13;positions[i*3]=Math.cos(a)*r;positions[i*3+1]=Math.sin(a)*r*.65;positions[i*3+2]=-((i*53)%100)/100*32;}
+    const pg=new THREE.BufferGeometry();pg.setAttribute("position",new THREE.BufferAttribute(positions,3));
+    const pm=new THREE.PointsMaterial({color:0xffffff,size:.055,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
+    const particles=new THREE.Points(pg,pm);scene.add(particles);
+    cyclone={renderer,scene,camera,group,planes,particles,particlePositions:positions};
     addEventListener("resize",()=>{if(!cyclone)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
     const loop=()=>{
       if(!cyclone)return;
@@ -476,8 +482,8 @@
           x+=Math.sin(flow+i)*1.8;y+=Math.cos(flow*.73+i*.4)*1.2;
         }
         if(holeEnabled){
-          const pull=.055+hit*.08;
-          x*=1-pull;y*=1-pull;
+          const pull=.055+hit*.08+holeMix*.22;
+          x*=Math.max(.02,1-pull-holeMix*.72);y*=Math.max(.02,1-pull-holeMix*.72);
         }
         m.position.set(x,y,z);
         const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
@@ -488,9 +494,33 @@
         if(holeEnabled)stageScale*=.055;
         m.scale.setScalar(stageScale);
         m.quaternion.copy(camera.quaternion);
-        if(m.material.map)m.material.opacity=.98-high*.08;
+        if(m.material.map)m.material.opacity=(.98-high*.08)*(1-particleMix*.82)*(1-holeMix*.75);
       });
-      group.position.set(spaceX/120,-spaceY/120,spaceZ/120);
+      particleMix+=(Number(vortexEnabled)-particleMix)*.035;
+      holeMix+=(Number(holeEnabled)-holeMix)*.04;
+      if(cyclone.particles){
+        const pos=cyclone.particlePositions,t=performance.now()*.00022;
+        for(let q=0;q<pos.length/3;q++){
+          const j=q*3,seed=((q*47)%101)/101,ang=q*2.399963+t*(1.2+seed*2.4)+morphScroll*.045;
+          let r=2.2+seed*13.5;
+          if(holeMix>0)r*=Math.max(.03,1-holeMix*.94);
+          const current=(q*.071+morphScroll*.16)%36;
+          pos[j]=Math.cos(ang)*r*(1-holeMix*.18);
+          pos[j+1]=Math.sin(ang)*r*.58*(1-holeMix*.12);
+          pos[j+2]=-current-holeMix*(6+seed*20);
+        }
+        cyclone.particles.geometry.attributes.position.needsUpdate=true;
+        cyclone.particles.material.opacity=particleMix*(.42+high*.38);
+        cyclone.particles.material.size=.035+mid*.055+hit*.08;
+        cyclone.particles.rotation.z=t*.22;
+      }
+      // L collapse culminates in brief audio-reactive white slashes / re-light.
+      if(holeEnabled&&holeMix>.86&&hit>.10&&performance.now()>slashUntil){
+        slashUntil=performance.now()+180+high*260;slashLight?.classList.add("on");
+        setTimeout(()=>slashLight?.classList.remove("on"),Math.max(160,180+high*260));
+      }
+      if(holeEnabled&&holeMix>.92){sceneDark+=(0-sceneDark)*(.018+hit*.08);}
+            group.position.set(spaceX/120,-spaceY/120,spaceZ/120);
       camera.position.z=18/spaceZoom;
       // Same live VIDEO FX controls also process the Three.js canvas.
       const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
@@ -547,7 +577,7 @@
   };
   const leave3D=()=>{
     if(!spatialEnabled)return;
-    clearTimeout(handoffTimer);orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false;morphTarget=0;
+    clearTimeout(handoffTimer);orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false;particleMix=0;holeMix=0;slashLight?.classList.remove("on");morphTarget=0;
     cycloneScene.style.opacity="0";
     feed.style.display="block";feed.style.opacity="0";feed.style.transform="scale(.72)";
     handoffTimer=setTimeout(()=>{
