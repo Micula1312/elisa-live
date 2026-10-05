@@ -390,7 +390,10 @@
     if(except!=="l")holeEnabled=false;
     grid.classList.toggle("breaking",slipEnabled);grid.classList.toggle("spatial",spatialEnabled);grid.classList.toggle("true3d",orbitEnabled);grid.classList.toggle("orbiting",pixelEnabled);grid.classList.toggle("dissolve",vortexEnabled);
     archiveHole.classList.toggle("on",holeEnabled);
-    [...grid.querySelectorAll(".post")].forEach(post=>{post.classList.remove("detached","floating")});
+    [...grid.querySelectorAll(".post")].forEach((post,i)=>{
+      post.classList.toggle("detached",slipEnabled&&((i%3===0)||(i%7===2)));
+      post.classList.toggle("floating",floatEnabled);
+    });
   };
   // THREE.JS FEED MORPH — the vertical scroll is progressively reinterpreted as depth.
   // H is no longer a hard cut: it arms the 2D → tunnel → first-turn transition.
@@ -411,7 +414,7 @@
   const buildCyclone=()=>{
     if(cyclone)return;
     const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
-    const scene=new THREE.Scene();scene.background=new THREE.Color(0x000000);
+    const scene=new THREE.Scene();scene.background=new THREE.Color(0xffffff);
     const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,120);camera.position.set(0,0,18);
     cycloneScene.appendChild(renderer.domElement);
     const group=new THREE.Group();scene.add(group);
@@ -456,8 +459,8 @@
         const spiralY=Math.sin(theta)*r*.62;
         let x=THREE.MathUtils.lerp(baseX,spiralX,spiral);
         let y=THREE.MathUtils.lerp(feedY*preZoom,spiralY,spiral);
-        if(m.userData.handoff&&p<.46){
-          const hand=THREE.MathUtils.smoothstep(p,.30,.46);
+        if(m.userData.handoff&&p<.42){
+          const hand=THREE.MathUtils.smoothstep(p,.12,.42);
           x=THREE.MathUtils.lerp(m.userData.handoff.x,x,hand);
           y=THREE.MathUtils.lerp(m.userData.handoff.y,y,hand);
         }
@@ -514,21 +517,38 @@
     buildCyclone();captureHandoff();spatialEnabled=true;orbitEnabled=false;
     cycloneScene.classList.add("on");cycloneScene.style.opacity="1";
     feed.style.transition="opacity .65s ease";feed.style.opacity="0";
-    morphProgress=.30;morphTarget=.52; // already distant, not yet vortex
+    morphProgress=0;morphTarget=.30; // level 0 visually matches the final F composition
     syncCueMonitor();
   };
 
+  const leave3D=()=>{
+    spatialEnabled=false;orbitEnabled=false;morphTarget=.30;
+    cycloneScene.style.opacity="0";cycloneScene.classList.remove("on");
+    feed.style.transition="opacity .45s ease";feed.style.opacity="1";
+    // Return exactly to the last 2D stage: F, with all tiles released from the grid.
+    breathEnabled=true;slipEnabled=true;floatEnabled=true;
+    grid.style.transform="";
+    syncCueMonitor();
+  };
   const toggleCue=(key)=>{
-    if(key==="g"){enter3D();return}
+    if(key==="g"){spatialEnabled?leave3D():enter3D();return}
     if(key==="h"){if(!spatialEnabled)enter3D();orbitEnabled=!orbitEnabled;morphTarget=orbitEnabled?1:.52;syncCueMonitor();return}
-    const current={b:breathEnabled,d:slipEnabled,f:floatEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled}[key];
-    const next=!current;
-    if(key==="b"){breathEnabled=next;slipEnabled=false}
-    if(key==="d"){slipEnabled=next;breathEnabled=next}
-    if(key==="f")floatEnabled=next;
-    if(key==="j")pixelEnabled=next;
-    if(key==="k")vortexEnabled=next;
-    if(key==="l")holeEnabled=next;
+    if(key==="b"){
+      breathEnabled=!breathEnabled;if(!breathEnabled){slipEnabled=false;floatEnabled=false}
+    }
+    if(key==="d"){
+      const on=!slipEnabled;breathEnabled=on||breathEnabled;slipEnabled=on;if(!on)floatEnabled=false;
+    }
+    if(key==="f"){
+      const on=!floatEnabled;breathEnabled=on||breathEnabled;slipEnabled=on||slipEnabled;floatEnabled=on;
+    }
+    if(key==="j")pixelEnabled=!pixelEnabled;
+    if(key==="k")vortexEnabled=!vortexEnabled;
+    if(key==="l")holeEnabled=!holeEnabled;
+    [...grid.querySelectorAll(".post")].forEach((post,i)=>{
+      post.classList.toggle("detached",slipEnabled&&((i%3===0)||(i%7===2)));
+      post.classList.toggle("floating",floatEnabled);
+    });
     syncCueMonitor();
   };
   const moveSpace=(dx,dy,dz=0)=>{spaceX+=dx;spaceY+=dy;spaceZ+=dz;syncCueMonitor()};
@@ -594,11 +614,11 @@
       const midPulse=midBoom*(.22+((i*29)%17)/100);
       const randomWave=Math.max(0,Math.sin(motionClock*(.58+(i%6)*.11)+i*2.17));
       const bBand=i%3===0?lastLow:i%3===1?lastMid:lastHigh;
-      const bStrength=slipEnabled?.20:.075;
+      const bStrength=slipEnabled?.24:.115;
       const pulse=1+randomWave*bBand*bStrength*(.55+((i*31)%37)/100)+hit*((slipEnabled&&i%5===0)?.10:.018);
       const sway=Math.sin(motionClock*(lane===1?1.25:.82)+phase);
       const float=Math.cos(motionClock*(lane===2?1.65:.68)+phase*.73);
-      const isSlip=false;
+      const isSlip=slipEnabled&&post.classList.contains("detached");
       const isFloat=floatEnabled&&post.classList.contains("floating");
       // D cue: selected tiles "breathe out" of the grid. Each tile is assigned a different
       // frequency body so bass/mids/highs create asynchronous zoom-outs instead of one global move.
