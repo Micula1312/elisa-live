@@ -2,8 +2,9 @@
   "schemaVersion": 1,
   "id": "elisa-live",
   "title": "ELISA LIVE — master regia",
-  "status": "working-score",
+  "status": "active-development-score",
   "notes": [
+    "NEW PERFORMANCE DIRECTION: preserve the believable desktop/social-feed dramaturgy, then progressively turn vertical scrolling into the physical current of a 3D image cyclone. The cyclone target is approximately minute 12 and remains a rehearsal target, not an automated cue.",
     "Backup/master score for the new live performance. Macro cues remain manual.",
     "Dialogue cue times are relative to scene start.",
     "Imported legacy scene starts are preserved as reference; they are not yet authoritative for the new live score.",
@@ -17,8 +18,8 @@
     "D": "detach",
     "F": "float",
     "G": "depth",
-    "H": "3d",
-    "J": "orbit",
+    "H": "cyclone-3d",
+    "J": "current/orbit",
     "K": "flow",
     "L": "hole",
     "subtitles": "video-panel toggle"
@@ -200,5 +201,112 @@
       "type": "hydra",
       "dialogue": "farewell"
     }
-  ]
+  ],
+  "developmentDirection": {
+    "target": "feed → unstable interface → detached image planes → navigable XYZ field → scroll-driven vertical cyclone",
+    "principle": "The transition must feel continuous: the feed itself becomes space; do not cut from a webpage to a separate visual scene.",
+    "targetCycloneTime": "~12:00",
+    "timingPolicy": "rehearsal target only; operator triggers modes manually",
+    "interaction": {
+      "verticalScroll": "In 2D it scrolls the feed. As spatialization grows it progressively becomes current velocity/direction; in cyclone mode it circulates the planes through a looping vertical helix.",
+      "arrows": "camera X/Y",
+      "plusMinus": "camera zoom",
+      "pageUpDown": "camera Z",
+      "audio": "modulates movement intensity, scale, depth and turbulence; it does not choose macro cues"
+    },
+    "spatialRules": [
+      "Posts remain image planes; no planar XY rotation vocabulary for the feed breakup.",
+      "No static scrolling feed should remain underneath once breakup/spatial modes begin.",
+      "Planes circulate continuously: exiting below/behind must recycle into the current rather than disappear.",
+      "Depth must be legible: near planes can become large and fast; distant planes small and slower.",
+      "Scroll direction reverses the current; wheel speed adds momentum; inertia decays after input stops."
+    ]
+  },
+  "feedArc": [
+    {
+      "phase": "01-feed",
+      "approx": "after authentication → ~07:30",
+      "mode": "2D",
+      "gesture": "S / wheel",
+      "description": "Believable social feed. Vertical scroll is still literal page navigation; repetition slowly becomes perceptible."
+    },
+    {
+      "phase": "02-breath",
+      "approx": "~07:30–08:30",
+      "mode": "B BREATH",
+      "description": "Images begin breathing/pulsing with audio while preserving grid identity."
+    },
+    {
+      "phase": "03-detach",
+      "approx": "~08:30–09:30",
+      "mode": "D DETACH",
+      "description": "Planes push outward from their cells through scale/depth accents. Grid is still readable."
+    },
+    {
+      "phase": "04-float",
+      "approx": "~09:30–10:30",
+      "mode": "F FLOAT",
+      "description": "The page loses structural authority. Image planes translate independently; no untouched feed layer remains below."
+    },
+    {
+      "phase": "05-depth",
+      "approx": "~10:30–11:15",
+      "mode": "G DEPTH",
+      "description": "The whole archive acquires Z depth. The same feed becomes a navigable field rather than switching scene."
+    },
+    {
+      "phase": "06-cyclone",
+      "approx": "~11:15–12:00",
+      "mode": "H CYCLONE 3D",
+      "description": "Target transformation. Real 3D image planes form a vertical helical current. Wheel input morphs from scroll into current velocity."
+    },
+    {
+      "phase": "07-current",
+      "approx": "~12:00+",
+      "mode": "J CURRENT",
+      "description": "Operator plays the current: forward/reverse wheel, inertia, camera X/Y/Z and zoom. Audio perturbs radius, depth and turbulence."
+    },
+    {
+      "phase": "08-flow-hole",
+      "approx": "later / TBD",
+      "mode": "K FLOW → L HOLE",
+      "description": "Current tightens, fragments and can collapse toward the portal. Timing intentionally left open."
+    }
+  ],
+  "implementationPlan": {
+    "renderer": {
+      "current": "DOM/CSS 3D for B–G prototype",
+      "target": "Three.js from H onward",
+      "transition": "At H, clone/map the currently visible archive media into textured Three.js planes and fade the DOM grid without a perceptual cut."
+    },
+    "cyclone": {
+      "geometry": "vertical helix / cylindrical current with randomized radius, phase and Z/depth offsets",
+      "recycling": "loop plane positions through the helix so the archive can circulate indefinitely",
+      "scrollPhysics": [
+        "wheel delta → target current velocity",
+        "velocity smoothing/inertia",
+        "sign of velocity → current direction",
+        "velocity magnitude → helix travel speed"
+      ],
+      "tunables": [
+        "scroll sensitivity",
+        "inertia",
+        "base current speed",
+        "radius",
+        "height",
+        "depth spread",
+        "turbulence",
+        "audio-react amount",
+        "camera zoom"
+      ]
+    },
+    "panel": [
+      "Clickable mutually-exclusive B/D/F/G/H/J/K/L performance modes",
+      "Live ON/OFF state",
+      "3D camera readout",
+      "Cyclone/current sensitivity controls",
+      "Subtitle toggle",
+      "Global FX remain independently stackable"
+    ]
+  }
 }
