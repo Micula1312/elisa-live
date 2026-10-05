@@ -112,7 +112,10 @@
   <aside id="audioPanel">
     <div class="ap-head"><span class="ap-title">ELISA / AUDIO IN</span><span class="ap-state" id="audioState">OFF</span></div>
     <select id="audioDevice"><option value="">Default audio input</option></select>
-    <div class="ap-actions"><button id="audioRefresh">REFRESH</button><button id="audioArm">ARM AUDIO</button></div>
+    <div class="ap-actions"><button id="audioRefresh">REFRESH</button><button id="audioArm">ARM LIVE IN</button></div>
+    <div class="ap-actions"><button id="trackPlay">PLAY MASTER</button><button id="trackReset">↺ 0:00</button></div>
+    <audio id="masterTrack" src="/audio/elisa_master.mp3" preload="metadata"></audio>
+    <div class="meter-row"><span>TIME</span><div class="meter"><i id="mTime"></i></div><span id="vTime">0:00</span></div>
     <div class="meter-row"><span>LVL</span><div class="meter"><i id="mLevel"></i></div><span id="vLevel">0.00</span></div>
     <div class="meter-row"><span>LOW</span><div class="meter"><i id="mLow"></i></div><span id="vLow">0.00</span></div>
     <div class="meter-row"><span>MID</span><div class="meter"><i id="mMid"></i></div><span id="vMid">0.00</span></div>
@@ -124,8 +127,9 @@
 </body>
 
 <script type="module">
-  import {listAudioInputs,startAudio,setSensitivity} from "../lib/audio-engine.js";
+  import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
   const panel=document.querySelector("#audioPanel"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
+  const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),mTime=document.querySelector("#mTime"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
     try{
@@ -137,10 +141,15 @@
   }
   document.addEventListener("keydown",e=>{if(e.key.toLowerCase()==="a"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))panel.classList.toggle("open")});
   refresh.addEventListener("click",populate);
-  arm.addEventListener("click",async()=>{try{astate.textContent="REQUESTING…";await startAudio(device.value);astate.textContent="LIVE";arm.textContent="RE-ARM";await populate()}catch(e){astate.textContent="DENIED";console.error(e)}});
+  arm.addEventListener("click",async()=>{try{astate.textContent="REQUESTING…";await startAudio(device.value);astate.textContent="LIVE IN";arm.textContent="RE-ARM LIVE";await populate()}catch(e){astate.textContent=(e.name||"AUDIO ERROR");console.error("ELISA live audio input:",e)}});
+  trackPlay.addEventListener("click",async()=>{try{if(window.ELISA_AUDIO?.source==="track"&&!master.paused){master.pause();trackPlay.textContent="RESUME MASTER";astate.textContent="MASTER PAUSED";return}if(window.ELISA_AUDIO?.source!=="track")await startTrack(master);else await master.play();trackPlay.textContent="PAUSE MASTER";astate.textContent="MASTER TRACK"}catch(e){astate.textContent=e.name||"TRACK ERROR";console.error("ELISA master track:",e)}});
+  trackReset.addEventListener("click",()=>{master.currentTime=0});
+  master.addEventListener("timeupdate",()=>{const t=master.currentTime||0,d=master.duration||0;vTime.textContent=Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");mTime.style.width=(d?t/d*100:0)+"%"});
+  master.addEventListener("ended",()=>{trackPlay.textContent="PLAY MASTER";astate.textContent="MASTER END"});
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
   window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}});
   populate();
+  // Dev/rehearsal source: /public/audio/elisa_master.mp3. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
   const feed=document.querySelector("#feedScene"), grid=document.querySelector(".grid");
