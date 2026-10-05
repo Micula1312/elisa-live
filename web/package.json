@@ -13,7 +13,8 @@
     "feed": "node scripts/build-feed-manifest.mjs"
   },
   "dependencies": {
-    "astro": "^7.3.5"
+    "astro": "^7.3.5",
+    "three": "^0.180.0"
   },
   "allowScripts": {
     "esbuild": true
