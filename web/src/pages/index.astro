@@ -39,7 +39,9 @@
     .username{font-size:28px;margin-bottom:20px}.stats{display:flex;gap:28px;margin-bottom:20px}.bio{line-height:1.45;max-width:500px}
     .grid{--grid-w:min(950px,100vw);width:min(950px,100%);margin:auto;padding:1px 0 80px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:calc((min(950px, 100vw) - 6px) / 3 * 1.25);gap:3px}
 
-    .post{width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;position:relative;background:#ddd;transform-origin:center;will-change:transform}
+    .post{width:100%;height:100%;min-width:0;min-height:0;overflow:visible;position:relative;background:#ddd;transform-origin:center;will-change:transform}
+    .post .placeholder{clip-path:inset(0);z-index:1;position:relative}
+    .grid.breaking .post .placeholder{clip-path:none}
 
     .post .placeholder{--pulse:1;--drift-x:0px;--drift-y:0px;transform:translate3d(var(--drift-x),var(--drift-y),0) scale(calc(var(--breath,1) * var(--pulse)));}
     .post:nth-child(3n+1),.post[data-palette="black"]{background:#050505}.post:nth-child(3n+2),.post[data-palette="white"]{background:#f5f5f2}.post:nth-child(3n),.post[data-palette="red"]{background:#d71920}
@@ -50,9 +52,9 @@
     .post[data-palette="black"] .placeholder,.post[data-palette="red"] .placeholder{color:#fff}
     .placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:clamp(28px,5vw,72px);letter-spacing:-.06em;color:#fff;will-change:transform;transform:scale(var(--breath,1));transition:transform .12s linear}
     .placeholder.has-media{background-size:cover;background-position:center;background-repeat:no-repeat;color:transparent}.post{will-change:transform}.post.repeat::after{content:"";position:absolute;inset:0;pointer-events:none;border:0 solid transparent}
-    .post.detached{overflow:visible;z-index:8}
-    .post.detached .placeholder{box-shadow:0 16px 45px rgba(0,0,0,.18)}
-    .post.detached::before{content:"";position:absolute;inset:0;background:#fafafa;z-index:-1;opacity:.92}
+    .post.detached{z-index:8;background:transparent}
+    .post.detached .placeholder{box-shadow:0 18px 55px rgba(0,0,0,.26)}
+    .post.detached::before{content:"";position:absolute;inset:0;background:#050505;z-index:0;opacity:.88}
 
   
     #audioPanel{position:fixed;right:16px;bottom:16px;width:310px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
@@ -250,8 +252,10 @@
     if(e.key.toLowerCase()==="b") breathEnabled=!breathEnabled;
     if(e.key.toLowerCase()==="d"){
       slipEnabled=!slipEnabled;
+      grid.classList.toggle("breaking",slipEnabled);
       [...grid.querySelectorAll(".post")].forEach((post,i)=>{
-        const chosen=i%11===4||i%17===8||i%23===13;
+        // Sparse but clearly visible field: roughly one tile every 4–5 cells leaves its slot.
+        const chosen=(i%5===1)||(i%7===4);
         post.classList.toggle("detached",slipEnabled&&chosen);
       });
     }
@@ -272,18 +276,25 @@
       const lane=i%3,phase=i*1.618;
       const energy=lane===0?lastLow:lane===1?lastMid:lastHigh;
       // Each tile gets its own musical body: bass = weight/scale, mids = sway, highs = nervous edge.
-      const pulse=1+lastLow*(.025+(i%4)*.006)+mid*(lane===1?.018:.007)+hit*((i%7===0)?.055:.008);
+      // Before detachment the whole archive already punches in/out on MID.
+      // Different phase/weight per tile prevents a synchronized "equalizer" look.
+      const midBoom=Math.max(0,lastMid-(.10+(i%4)*.018));
+      const midPulse=midBoom*(.22+((i*29)%17)/100);
+      const pulse=1+lastLow*(.018+(i%4)*.005)+midPulse+hit*((i%7===0)?.075:.012);
       const sway=Math.sin(motionClock*(lane===1?1.25:.82)+phase);
       const float=Math.cos(motionClock*(lane===2?1.65:.68)+phase*.73);
       const isSlip=slipEnabled&&post.classList.contains("detached");
       // D cue: selected tiles "breathe out" of the grid. Each tile is assigned a different
       // frequency body so bass/mids/highs create asynchronous zoom-outs instead of one global move.
       const band=i%3===0?lastLow:i%3===1?lastMid:lastHigh;
-      const gate=Math.max(0,(band-(.12+(i%5)*.025))*2.1);
-      const randomBody=.72+((i*37)%31)/100;
-      const zoomOut=isSlip?Math.max(.38,1-gate*randomBody):1;
-      const slipX=isSlip?sway*(10+gate*54)+float*lastHigh*18:0;
-      const slipY=isSlip?float*(8+gate*42)+sway*lastMid*12:0;
+      const gate=Math.max(0,(band-(.08+(i%5)*.018))*2.8);
+      const randomBody=.78+((i*37)%31)/100;
+      // Once D is active the selected tiles stop merely pulsing: they separate,
+      // alternate zoom-in/zoom-out and travel well beyond their original cell.
+      const detachWave=isSlip?Math.sin(motionClock*(1.15+(i%4)*.17)+phase):0;
+      const zoomOut=isSlip?Math.max(.46,1+detachWave*(.20+gate*.34)*randomBody):1;
+      const slipX=isSlip?(sway*(34+gate*150)+float*lastHigh*64):0;
+      const slipY=isSlip?(float*(26+gate*112)+sway*lastMid*54):0;
       const driftX=sway*(3+lastMid*13)+(lane===2?float*lastHigh*8:0)+slipX;
       const driftY=float*(2+lastLow*9)+(lane===0?sway*lastLow*5:0)+slipY;
       const rot=(sway*lastMid*1.15)+(lane===2?float*lastHigh*.9:0)+(isSlip?sway*band*3.2:0);
