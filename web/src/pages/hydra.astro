@@ -14,12 +14,18 @@
   <body>
     <canvas id="hydra-canvas"></canvas>
 
-    <script>
-      import Hydra from 'hydra-synth';
+    <script is:inline>
+      // hydra-synth's browser bundle expects a Node-style global.
+      window.global = window;
+    </script>
 
+    <script>
       const canvas = document.getElementById('hydra-canvas');
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+
+      // Dynamic import happens only after window.global exists.
+      const { default: Hydra } = await import('hydra-synth');
 
       const hydra = new Hydra({
         canvas,
