@@ -196,12 +196,18 @@
   function applyFeedMedia(post,sourceIndex){
     const ph=post.querySelector(".placeholder");
     if(!ph||!FEED_IMAGES.length)return;
-    // Walk through the whole archive instead of looping the same 12 files.
     const file=FEED_IMAGES[(mediaCursor+sourceIndex)%FEED_IMAGES.length];
-    const url="/feed/"+file.split("/").map(encodeURIComponent).join("/");
+    // URL() resolves and escapes nested archive paths correctly in Vite/Astro.
+    const url=new URL("/feed/"+file,window.location.origin).href;
     const img=new Image();
-    img.onload=()=>{ph.style.backgroundImage=`url("${url}")`;ph.classList.add("has-media")};
-    img.onerror=()=>ph.classList.remove("has-media");
+    img.onload=()=>{
+      ph.style.setProperty("background-image",`url("${url}")`,"important");
+      ph.style.setProperty("background-size","cover","important");
+      ph.style.setProperty("background-position","center","important");
+      ph.classList.add("has-media");
+      ph.textContent="";
+    };
+    img.onerror=()=>console.warn("[ELISA] image failed:",url);
     img.src=url;
   }
   await loadFeedManifest();
