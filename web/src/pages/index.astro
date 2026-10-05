@@ -153,14 +153,14 @@
     <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
     <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
-    <div class="cue-monitor" id="cueMonitor">
+    <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
       <button class="cue-led" data-cue="b"><b>B</b><small>BREATH I</small></button><button class="cue-led" data-cue="d"><b>D</b><small>BREATH II</small></button>
       <button class="cue-led" data-cue="f"><b>F</b><small>FLOAT</small></button><button class="cue-led" data-cue="g"><b>G</b><small>DEPTH</small></button>
       <button class="cue-led" data-cue="h"><b>H</b><small>2D→3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>CURRENT</small></button>
       <button class="cue-led" data-cue="k"><b>K</b><small>FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>HOLE</small></button>
     </div>
     <label class="vp-row"><span>G DEPTH</span><input id="depthMorph" type="range" min="0" max="1" step=".01" value="0"><span id="depthMorphValue">0.00</span></label><div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div><div class="space-readout" id="media3dState">3D MEDIA — waiting</div></div>
-    <div class="vp-hint">V = show/hide · every cue is independent · white = ON</div>
+    <div class="vp-hint">V = show/hide · S = autoscroll (continues in 3D) · G slider = 2D→3D handoff</div>
   </aside>
   <aside id="audioPanel">
     <div class="ap-head"><span class="ap-title">ELISA / AUDIO IN</span><span class="ap-state" id="audioState">OFF</span></div>
@@ -184,7 +184,7 @@
   import dialogues from "../data/dialogues.js";
   import * as THREE from "three";
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
-  const cycloneScene=document.querySelector("#cycloneScene"),depthMorph=document.querySelector("#depthMorph"),depthMorphValue=document.querySelector("#depthMorphValue"),media3dState=document.querySelector("#media3dState");
+  const cycloneScene=document.querySelector("#cycloneScene"),depthMorph=document.querySelector("#depthMorph"),depthMorphValue=document.querySelector("#depthMorphValue"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
@@ -350,9 +350,10 @@
     autoScrollRaf=requestAnimationFrame(autoScrollLoop);
   }
   function setAutoScroll(on){
-    autoScroll=on;lastFrame=0;
+    autoScroll=on;lastFrame=0;autoScrollBtn?.classList.toggle("on",on);
     if(on&&!autoScrollRaf)autoScrollRaf=requestAnimationFrame(autoScrollLoop);
   }
+  autoScrollBtn?.addEventListener("click",()=>setAutoScroll(!autoScroll));
   const freezeFeedScroll=()=>setAutoScroll(false);
 
   window.addEventListener("elisa-feed-start",()=>{
@@ -436,7 +437,7 @@
       morphProgress+=(morphTarget-morphProgress)*.055;
       morphWheel*=cycloneCfg.inertia;morphScroll+=morphWheel;
       const p=Math.max(0,Math.min(1,morphProgress));
-      const spiral=Math.max(0,(p-.62)/.38),tunnel=Math.max(0,(p-.24)/.76);
+      const spiral=Math.max(0,(p-.72)/.28),tunnel=Math.max(0,(p-.30)/.70);
       // First movement is a clean zoom-out: the familiar 3-column feed becomes small and centred.
       const preZoom=1-THREE.MathUtils.smoothstep(p,0,.24)*.28;
       planes.forEach((m,i)=>{
@@ -470,11 +471,12 @@
   const setCyclone=(on)=>{
     if(on){
       buildCyclone();cycloneScene.classList.add("on");
-      // Crossfade instead of scene cut: first frame is still an ordered 3-column feed.
-      feed.style.transition="opacity .7s ease";feed.style.opacity=".08";
-      morphTarget=Math.max(morphTarget,Number(depthMorph?.value||0));
+      // H never swaps scenes. If G was not finished, finish the SAME continuous morph.
+      if(Number(depthMorph?.value||0)<1)applyDepthMorph(1);
+      cycloneScene.style.opacity="1";feed.style.opacity=".04";morphTarget=1;
     }else{
-      morphTarget=0;cycloneScene.classList.remove("on");feed.style.opacity="1";
+      // Returning from H lands on the current G slider state instead of snapping to DOM.
+      applyDepthMorph(Number(depthMorph?.value||0));
     }
   };
   addEventListener("wheel",e=>{
@@ -486,15 +488,22 @@
     morphTarget=Math.max(0,Math.min(1,morphTarget+d*cycloneCfg.sensitivity));
   },{passive:false});
 
-  depthMorph?.addEventListener("input",()=>{
-    const v=Number(depthMorph.value);depthMorphValue.textContent=v.toFixed(2);
-    // G is now a rehearsal/manual transition control: 0 = flat feed, 1 = threshold of H.
+  const applyDepthMorph=(v)=>{
+    v=Math.max(0,Math.min(1,Number(v)||0));depthMorph.value=String(v);depthMorphValue.textContent=v.toFixed(2);
     spatialEnabled=v>0;
-    if(v>0){buildCyclone();cycloneScene.classList.add("on");feed.style.transition="opacity .5s ease";feed.style.opacity=String(Math.max(.08,1-v*1.08));}
-    else if(!orbitEnabled){cycloneScene.classList.remove("on");feed.style.opacity="1";}
-    morphTarget=v*.58;
+    if(v>0){
+      buildCyclone();cycloneScene.classList.add("on");
+      // G is the actual handoff: DOM remains dominant first, then Three.js gradually replaces it.
+      const mix=THREE.MathUtils.smoothstep(v,.08,.88);
+      feed.style.transition="none";feed.style.opacity=String(1-mix*.96);
+      cycloneScene.style.opacity=String(mix);
+      morphTarget=v;
+    }else if(!orbitEnabled){
+      morphTarget=0;cycloneScene.style.opacity="0";cycloneScene.classList.remove("on");feed.style.opacity="1";
+    }
     syncCueMonitor();
-  });
+  };
+  depthMorph?.addEventListener("input",()=>applyDepthMorph(depthMorph.value));
 
   const toggleCue=(key)=>{
     const current={b:breathEnabled,d:slipEnabled,f:floatEnabled,g:spatialEnabled,h:orbitEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled}[key];
