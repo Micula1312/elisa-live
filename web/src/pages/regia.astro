@@ -65,9 +65,9 @@ footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;dis
 <button data-hydra="resonance" class="todo">RESONANCE · TODO</button>
 <button data-hydra="farewell" class="todo">FAREWELL · TODO</button>
 </div>
-<div class="genesis-objects"><button data-hydra-object="orb">+ ORB</button><button data-hydra-object="totem">+ TOTEM</button><button data-hydra-object="swarm">+ SWARM</button></div>
+<div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST ×6</button><button data-hydra-object="swarm">+ SPORES</button></div>
 <div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button></div>
-<div class="video-note">SAME /HYDRA URL · scene slots stay intentionally empty until we redesign them.</div>
+<div class="video-note">GENESIS: ↑↓ move · ←→ turn · TREE/FOREST progressively saturate the landscape.</div>
 </section>
 <footer><span>DISPLAY REGIA — KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE · 32:27</span></footer>
 </div>
@@ -116,6 +116,7 @@ q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).to
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
 document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra})});
 document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{send({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
+q("#forestBurst").onclick=()=>send({type:"hydra-forest-burst",count:6});
 q("#hydraBlackout").onclick=()=>send({type:"hydra-blackout"});
 q("#hydraClean").onclick=()=>send({type:"hydra-clean"});
 q("#hydraBack").onclick=()=>send({type:"hydra-back"});
