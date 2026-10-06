@@ -208,10 +208,20 @@
   window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}});
   populate();
   const videoFx={acid:false,glitch:false,pixel:false};
+  const applyVideoFx=()=>{
+    const a=window.ELISA_AUDIO||{},low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
+    const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
+    const energy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
+    feed.style.setProperty("--fx-acid",(fxAmount*Math.max(.22,energy)).toFixed(3));
+    feed.style.setProperty("--fx-glitch",(fxAmount*Math.max(.18,high*.65+hit*.8)*fxReact).toFixed(3));
+    feed.style.setProperty("--fx-pixel",(fxAmount*Math.max(.2,mid*.35+high*.65)*fxReact).toFixed(3));
+    feed.style.setProperty("--fx-contrast",(1+(videoFx.glitch?fxAmount*Math.max(.18,energy)*.8:0)).toFixed(3));
+    feed.style.setProperty("--fx-hue",(videoFx.acid?(fxAmount*(28+mid*170+high*90)*Math.max(.35,fxReact)).toFixed(1):0)+"deg");
+  };
   const syncVideoFx=()=>{
     for(const [fx,on] of Object.entries(videoFx)){feedScene?.classList.toggle("fx-"+fx,on);cycloneScene?.classList.toggle("fx-"+fx,on);videoPanel.querySelector('[data-fx="'+fx+'"]')?.classList.toggle("on",on)}
     const active=Object.entries(videoFx).filter(([,v])=>v).map(([k])=>k.toUpperCase());
-    videoState.textContent=active.join("+")||"CLEAN";
+    videoState.textContent=active.join("+")||"CLEAN";applyVideoFx();
   };
   videoPanel.querySelectorAll("[data-fx]").forEach(btn=>btn.addEventListener("click",()=>{videoFx[btn.dataset.fx]=!videoFx[btn.dataset.fx];syncVideoFx()}));
   videoReset.addEventListener("click",()=>{Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()});
@@ -658,8 +668,8 @@
     }
     if(m.type==="fx"&&m.fx in videoFx){videoFx[m.fx]=!!m.on;syncVideoFx()}
     if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
-    if(m.type==="fx-amount"){videoAmount.value=String(m.value);vAmount.textContent=Number(m.value).toFixed(2)}
-    if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1)}
+    if(m.type==="fx-amount"){videoAmount.value=String(m.value);vAmount.textContent=Number(m.value).toFixed(2);applyVideoFx()}
+    if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1);applyVideoFx()}
   };
   const regiaChannel=new BroadcastChannel("elisa-regia");
   regiaChannel.onmessage=e=>handleRegiaMessage(e.data);
