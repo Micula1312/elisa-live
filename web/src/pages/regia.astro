@@ -17,7 +17,7 @@ button{background:#181818;color:#fff;border:1px solid #666;padding:10px 13px;cur
 .sens{display:grid;grid-template-columns:95px 1fr 42px;gap:9px;align-items:center;margin-top:16px;font-size:11px}
 .clock{font-size:clamp(38px,5vw,74px);letter-spacing:-.07em;line-height:1;margin:18px 0}.clock small{font-size:.32em;color:#777;letter-spacing:-.03em}
 .timeline{position:relative;margin:18px 0 8px;padding-top:24px}.seek{width:100%;position:relative;z-index:2}.markers{position:absolute;left:8px;right:8px;top:0;height:36px;pointer-events:none}.marker{position:absolute;bottom:8px;width:1px;height:22px;background:#777}.marker.major{height:31px;background:#eee}.marker.major{width:2px}.marker.next{background:#fff;height:30px}.nextcue{font-size:11px;color:#aaa;margin-top:10px;min-height:15px}.trackactions{display:flex;gap:8px;margin-top:12px}.trackactions button:first-child{flex:1}
-.vol{display:grid;grid-template-columns:60px 1fr 45px;gap:8px;align-items:center;margin-top:14px;font-size:11px}.video{border-top:1px solid #444;padding:20px}.video-grid{display:grid;grid-template-columns:.72fr 1.28fr;gap:18px}.fx,.cues{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.fx button.on,.cues button.on{background:#eee;color:#000}.vrow{display:grid;grid-template-columns:70px 1fr 45px;gap:8px;align-items:center;margin-top:12px;font-size:11px}.vrow input{width:100%}.video-note{font-size:10px;color:#777;margin-top:10px}
+.vol{display:grid;grid-template-columns:60px 1fr 45px;gap:8px;align-items:center;margin-top:14px;font-size:11px}.video{border-top:1px solid #444;padding:20px}.video-grid{display:grid;grid-template-columns:.72fr 1.28fr;gap:18px}.fx,.cues{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.fx #subtitles{grid-column:span 2}.fx #subtitles.on{background:#eee;color:#000}.fx button.on,.cues button.on{background:#eee;color:#000}.vrow{display:grid;grid-template-columns:70px 1fr 45px;gap:8px;align-items:center;margin-top:12px;font-size:11px}.vrow input{width:100%}.video-note{font-size:10px;color:#777;margin-top:10px}
 footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;display:flex;justify-content:space-between}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
 </style>
@@ -50,7 +50,7 @@ footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;dis
 <section class="video">
 <h2>WEB / VIDEO REGIA</h2>
 <div class="video-grid">
-<div><div class="state">INTERFACE FX</div><div class="fx"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="fxClean">CLEAN</button></div>
+<div><div class="state">INTERFACE FX</div><div class="fx"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="fxClean">CLEAN</button><button id="subtitles">SUBTITLES OFF</button></div>
 <label class="vrow"><span>AMOUNT</span><input id="fxAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="fxAmountVal">.55</span></label>
 <label class="vrow"><span>REACT</span><input id="fxReact" type="range" min="0" max="2" step=".05" value="1"><span id="fxReactVal">1.0</span></label></div>
 <div><div class="state">FEED / SPACE CUES</div><div class="cues"><button data-cue="s">S · SCROLL</button><button data-cue="b">B · BREATH I</button><button data-cue="d">D · BREATH II</button><button data-cue="f">F · FLOAT</button><button data-cue="g">G · 3D</button><button data-cue="h">H · ORBIT</button><button data-cue="j">J · DISTANCE</button><button data-cue="k">K · FLOW</button><button data-cue="l">L · IMPLODE</button></div>
@@ -97,6 +97,7 @@ const control=new BroadcastChannel("elisa-regia");
 const send=message=>{control.postMessage(message);localStorage.setItem("elisa-regia-command",JSON.stringify({id:Date.now()+Math.random(),message}))};
 document.querySelectorAll("[data-fx]").forEach(btn=>btn.onclick=()=>{btn.classList.toggle("on");send({type:"fx",fx:btn.dataset.fx,on:btn.classList.contains("on")})});
 q("#fxClean").onclick=()=>{document.querySelectorAll("[data-fx]").forEach(b=>b.classList.remove("on"));send({type:"fx-clean"})};
+q("#subtitles").onclick=e=>{const on=e.currentTarget.classList.toggle("on");e.currentTarget.textContent="SUBTITLES "+(on?"ON":"OFF");send({type:"subtitles",on})};
 q("#fxAmount").oninput=e=>{q("#fxAmountVal").textContent=Number(e.target.value).toFixed(2);send({type:"fx-amount",value:Number(e.target.value)})};
 q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).toFixed(1);send({type:"fx-react",value:Number(e.target.value)})};
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
