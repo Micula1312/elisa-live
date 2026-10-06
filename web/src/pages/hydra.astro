@@ -46,6 +46,7 @@
 
     const {default:Hydra}=await import('hydra-synth');
     const THREE=await import('three');
+    const ACID=0x39ff14, MAGENTA=0xff2bd6;
     const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
     const audio=hydra.synth.a;
     if(audio){audio.setBins(4);audio.setSmooth(.82);audio.setCutoff(1);audio.setScale(6);audio.show()}
@@ -71,20 +72,20 @@
     {
       const geo=new THREE.PlaneGeometry(38,90,90,150);geo.rotateX(-Math.PI/2);
       landscape.base=Float32Array.from(geo.attributes.position.array);
-      landscape.mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.88}));
+      landscape.mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:ACID,wireframe:true,transparent:true,opacity:.88}));
       landscape.mesh.position.z=-28;landscape.scene.add(landscape.mesh);
     }
     function addGenesisObject(id){
       const n=landscape.objects[id].length,seed=n+1;
       let obj;
       if(id==='orb'){
-        obj=new THREE.Mesh(new THREE.IcosahedronGeometry(1.55+Math.min(n,.9)*.22,2),new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.9}));
+        obj=new THREE.Mesh(new THREE.IcosahedronGeometry(1.55+Math.min(n,.9)*.22,2),new THREE.MeshBasicMaterial({color:ACID,wireframe:true,transparent:true,opacity:.9}));
         obj.position.set(-7+(n%5)*3.3,2.8+(n%3)*1.25,-17-(n%6)*5);
       }else if(id==='totem'){
-        obj=new THREE.Mesh(new THREE.CylinderGeometry(.45,.95,6.5,5+(n%4),6,true),new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.84}));
+        obj=new THREE.Mesh(new THREE.CylinderGeometry(.45,.95,6.5,5+(n%4),6,true),new THREE.MeshBasicMaterial({color:ACID,wireframe:true,transparent:true,opacity:.84}));
         obj.position.set(7-(n%5)*3.1,.5,-20-(n%6)*5.5);
       }else if(['phone','diamond','cola','pistol'].includes(id)){
-        const group=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.92});
+        const group=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:ACID,wireframe:true,transparent:true,opacity:.92});
         if(id==='phone'){
           group.add(new THREE.Mesh(new THREE.BoxGeometry(2.2,4.2,.35),mat));
           const screen=new THREE.Mesh(new THREE.PlaneGeometry(1.75,3.35),mat);screen.position.z=.19;group.add(screen);
@@ -101,7 +102,7 @@
         }
         obj=group;obj.position.set((Math.random()-.5)*30,1.5+Math.random()*8,-7-Math.random()*55);
       }else if(id==='tree'){
-        const group=new THREE.Group(),trunkMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.88});
+        const group=new THREE.Group(),trunkMat=new THREE.LineBasicMaterial({color:ACID,transparent:true,opacity:.88});
         const h=4.5+Math.random()*5,branches=5+Math.floor(Math.random()*5);
         const trunkGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,h,0)]);
         group.add(new THREE.Line(trunkGeo,trunkMat));
@@ -117,7 +118,7 @@
         const count=260,geo=new THREE.BufferGeometry(),p=new Float32Array(count*3);
         for(let i=0;i<count;i++){const k=i*3;p[k]=(Math.random()-.5)*10;p[k+1]=(Math.random()-.5)*6;p[k+2]=(Math.random()-.5)*12}
         geo.setAttribute('position',new THREE.BufferAttribute(p,3));
-        obj=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:.07,transparent:true,opacity:.78}));
+        obj=new THREE.Points(geo,new THREE.PointsMaterial({color:ACID,size:.07,transparent:true,opacity:.78}));
         obj.position.set((n%5-2)*4,3+(n%3),-18-(n%5)*7);
       }else return;
       obj.userData={kind:id,seed,baseX:obj.position.x,baseY:obj.position.y,baseZ:obj.position.z};
@@ -215,20 +216,27 @@
 render(o0)`;
 
     const genesisLandscape=`src(s0)
-  .contrast(() => 1.15 + low() * .55)
-  .brightness(() => -.12 + high() * .10)
+  .contrast(() => 1.22 + low() * .62)
+  .brightness(() => -.16 + high() * .14)
+  .color(0.22,1.0,0.08)
   .modulate(
-    noise(() => 1.15 + mid() * 1.8, .035),
-    () => .012 + mid() * .055
+    noise(() => 1.05 + mid() * 2.2, .035),
+    () => .010 + mid() * .06
   )
   .layer(
     src(s0)
-      .scale(() => 1.002 + low() * .012)
-      .luma(() => .42 - high() * .10)
-      .color(.28,.45,1)
-      .brightness(() => -.18 + high() * .18)
+      .scale(() => 1.002 + low() * .014)
+      .luma(() => .38 - high() * .10)
+      .color(0.22,1.0,0.08)
+      .brightness(() => -.12 + high() * .22)
   )
-  .blend(src(o0).scale(1.001), () => .035 + low() * .035)
+  .layer(
+    src(s0)
+      .luma(() => .76 - high() * .12)
+      .color(1.0,.10,.72)
+      .brightness(() => -.42 + high() * .28)
+  )
+  .blend(src(o0).scale(() => 1.001 + low() * .002), () => .025 + low() * .035)
   .out(o0)
 
 render(o0)`;
