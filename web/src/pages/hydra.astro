@@ -23,6 +23,7 @@
 </head>
 <body>
   <canvas id="hydra-canvas"></canvas>
+  <canvas id="landscape-source" style="display:none"></canvas>
   <section id="editor-shell">
     <div id="bar"><span>ELISA / HYDRA LIVE</span><span>CTRL+ENTER RUN · CTRL+Z BACK · CTRL+E HIDE</span></div>
     <textarea id="code" spellcheck="false"></textarea>
@@ -34,6 +35,7 @@
   <script is:inline>window.global=window;</script>
   <script>
     const canvas=document.getElementById('hydra-canvas');
+    const landscapeCanvas=document.getElementById('landscape-source');
     const editor=document.getElementById('editor-shell');
     const code=document.getElementById('code');
     const status=document.getElementById('status');
@@ -43,12 +45,61 @@
     canvas.width=innerWidth; canvas.height=innerHeight;
 
     const {default:Hydra}=await import('hydra-synth');
+    const THREE=await import('three');
     const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
     const audio=hydra.synth.a;
     if(audio){audio.setBins(4);audio.setSmooth(.82);audio.setCutoff(1);audio.setScale(6);audio.show()}
     window.low=()=>audio?.fft?.[0]??0;
     window.mid=()=>((audio?.fft?.[1]??0)+(audio?.fft?.[2]??0))*.5;
     window.high=()=>audio?.fft?.[3]??0;
+
+    // THREE.JS landscape source -> Hydra s0. It keeps rendering in the background;
+    // GENESIS decides when to expose/process it.
+    const landscape={
+      renderer:new THREE.WebGLRenderer({canvas:landscapeCanvas,antialias:true,alpha:false}),
+      scene:new THREE.Scene(),
+      camera:new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,220),
+      mesh:null,
+      base:null,
+      active:false
+    };
+    landscape.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+    landscape.renderer.setSize(innerWidth,innerHeight,false);
+    landscape.renderer.setClearColor(0x000000,1);
+    landscape.camera.position.set(0,4.6,10);
+    landscape.camera.lookAt(0,-1,-18);
+    {
+      const geo=new THREE.PlaneGeometry(38,90,90,150);
+      geo.rotateX(-Math.PI/2);
+      landscape.base=Float32Array.from(geo.attributes.position.array);
+      const mat=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.88});
+      landscape.mesh=new THREE.Mesh(geo,mat);
+      landscape.mesh.position.z=-28;
+      landscape.scene.add(landscape.mesh);
+    }
+    s0.init({src:landscapeCanvas});
+    let landscapeT=0;
+    function renderLandscape(){
+      requestAnimationFrame(renderLandscape);
+      landscapeT+=.006;
+      const pos=landscape.mesh.geometry.attributes.position;
+      const base=landscape.base;
+      const lo=low(),mi=mid(),hi=high();
+      for(let i=0;i<pos.count;i++){
+        const k=i*3,x=base[k],z=base[k+2];
+        const ridge=Math.sin(x*.28+landscapeT*.45)*1.05+Math.sin(z*.12-landscapeT*.7)*.72;
+        const detail=Math.sin(x*.92+z*.19+landscapeT*1.7)*(.12+hi*.55);
+        const swell=Math.sin(z*.055+landscapeT*.35)*(.55+lo*2.8);
+        pos.setY(i,-1.45+ridge*.52+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*.9);
+      }
+      pos.needsUpdate=true;
+      landscape.mesh.position.z=-28+(landscapeT*1.35%3.2);
+      landscape.camera.position.x=Math.sin(landscapeT*.13)*.65;
+      landscape.camera.position.y=4.6+lo*.8;
+      landscape.camera.lookAt(Math.sin(landscapeT*.08)*1.2,-1,-18);
+      landscape.renderer.render(landscape.scene,landscape.camera);
+    }
+    renderLandscape();
 
     const starter=`voronoi(350, .15)
   .modulateScale(
@@ -76,11 +127,30 @@
 
 render(o0)`;
 
-    // Scene deck structure. Only CUSTOM 01 is intentionally authored for now.
+    const genesisLandscape=`src(s0)
+  .contrast(() => 1.15 + low() * .55)
+  .brightness(() => -.12 + high() * .10)
+  .modulate(
+    noise(() => 1.15 + mid() * 1.8, .035),
+    () => .012 + mid() * .055
+  )
+  .layer(
+    src(s0)
+      .scale(() => 1.002 + low() * .012)
+      .luma(() => .42 - high() * .10)
+      .color(.28,.45,1)
+      .brightness(() => -.18 + high() * .18)
+  )
+  .blend(src(o0).scale(1.001), () => .035 + low() * .035)
+  .out(o0)
+
+render(o0)`;
+
+    // Scene deck structure. CUSTOM 01 stays untouched; GENESIS is the first new authored scene.
     // The other slots are placeholders to be rewritten together later.
     const scenes={
       custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
-      genesis:{label:'GENESIS · TODO',code:null},
+      genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
       hypnosis:{label:'HYPNOSIS · TODO',code:null},
       resonance:{label:'RESONANCE · TODO',code:null},
       farewell:{label:'FAREWELL · TODO',code:null}
@@ -167,7 +237,11 @@ render(o0)`;
       if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();back()}
       if(e.ctrlKey&&e.key.toLowerCase()==='l'&&document.activeElement===code){e.preventDefault();code.value=''}
     });
-    addEventListener('resize',()=>hydra.synth.setResolution(innerWidth,innerHeight));
+    addEventListener('resize',()=>{
+      hydra.synth.setResolution(innerWidth,innerHeight);
+      landscape.camera.aspect=innerWidth/innerHeight;landscape.camera.updateProjectionMatrix();
+      landscape.renderer.setSize(innerWidth,innerHeight,false);
+    });
   </script>
 </body>
 </html>
