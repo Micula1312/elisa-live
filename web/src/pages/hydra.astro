@@ -28,6 +28,8 @@
 <body>
   <canvas id="hydra-canvas"></canvas>
   <canvas id="landscape-source" style="display:none"></canvas>
+  <canvas id="type-source" style="display:none"></canvas>
+  <video id="webcam-source" autoplay muted playsinline style="display:none"></video>
   <section id="editor-shell">
     <div id="bar"><span>ELISA / HYDRA LIVE</span><span>CTRL+ENTER RUN · CTRL+Z BACK · CTRL+E HIDE</span></div>
     <textarea id="code" spellcheck="false"></textarea>
@@ -41,6 +43,8 @@
   <script>
     const canvas=document.getElementById('hydra-canvas');
     const landscapeCanvas=document.getElementById('landscape-source');
+    const typeCanvas=document.getElementById('type-source'),typeCtx=typeCanvas.getContext('2d');
+    const webcamVideo=document.getElementById('webcam-source');
     const editor=document.getElementById('editor-shell');
     const code=document.getElementById('code');
     const status=document.getElementById('status');
@@ -64,6 +68,7 @@
     const {default:Hydra}=await import('hydra-synth');
     const THREE=await import('three');
     const ACID=0x39ff14, MAGENTA=0xff2bd6;
+    let hypnosisWord='I AM',webcamReady=false;
     const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
     const audio=hydra.synth.a;
     if(audio){audio.setBins(4);audio.setSmooth(.82);audio.setCutoff(1);audio.setScale(6);audio.show()}
@@ -148,6 +153,26 @@
       status.textContent='ADD '+id.toUpperCase()+' · '+landscape.objects[id].length;
     }
     s0.init({src:landscapeCanvas});
+    typeCanvas.width=1280;typeCanvas.height=720;s2.init({src:typeCanvas});
+    function drawHypnosisType(){
+      requestAnimationFrame(drawHypnosisType);
+      typeCtx.clearRect(0,0,typeCanvas.width,typeCanvas.height);
+      typeCtx.fillStyle='#000';typeCtx.fillRect(0,0,typeCanvas.width,typeCanvas.height);
+      const lo=low(),mi=mid();
+      typeCtx.save();typeCtx.translate(typeCanvas.width/2,typeCanvas.height/2);
+      typeCtx.scale(1+lo*.22,1+mi*.08);
+      typeCtx.textAlign='center';typeCtx.textBaseline='middle';
+      typeCtx.font='900 210px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
+      typeCtx.fillText(hypnosisWord,0,0);typeCtx.restore();
+    }
+    drawHypnosisType();
+    async function ensureWebcam(){
+      if(webcamReady)return true;
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
+        webcamVideo.srcObject=stream;await webcamVideo.play();s1.init({src:webcamVideo});webcamReady=true;status.textContent='WEBCAM · ONLINE';return true;
+      }catch(err){status.textContent='WEBCAM ERROR · '+err.message;status.classList.add('error');return false}
+    }
     let landscapeT=0;
     function renderLandscape(){
       requestAnimationFrame(renderLandscape);
@@ -253,6 +278,41 @@ render(o0)`;
 
     window.genesisFlash=()=>landscape.flash;
 
+    const hypnosisWebcam=`src(s1)
+  .scale(() => 1.01 + low() * .035)
+  .contrast(() => 1.28 + mid() * .7)
+  .saturate(0)
+  .color(.22,1,.08)
+  .modulate(
+    osc(() => 5 + high() * 18,.02,0).rotate(Math.PI/2),
+    () => .004 + mid() * .045
+  )
+  .diff(
+    src(s1)
+      .scrollX(() => Math.sin(time*1.7) * high() * .055)
+      .scrollY(() => Math.cos(time*1.2) * mid() * .035)
+      .scale(() => 1.002 + low() * .018)
+      .saturate(0)
+      .color(1,.10,.72)
+      .luma(() => .42 - high()*.16)
+  )
+  .layer(
+    src(s2)
+      .luma(.35)
+      .color(1,.10,.72)
+      .mult(src(s1).saturate(0).contrast(1.5))
+      .scale(() => 1 + low()*.08)
+  )
+  .blend(
+    src(o0)
+      .scale(() => 1.004 + low()*.012)
+      .scrollX(() => Math.sin(time*.7)*mid()*.008),
+    () => .08 + high()*.16
+  )
+  .out(o0)
+
+render(o0)`;
+
     const genesisLandscape=`src(s0)
   .contrast(() => 1.22 + low() * .62)
   .brightness(() => -.16 + high() * .14)
@@ -289,7 +349,7 @@ render(o0)`;
     const scenes={
       custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
       genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
-      hypnosis:{label:'HYPNOSIS · TODO',code:null},
+      hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
       resonance:{label:'RESONANCE · TODO',code:null},
       farewell:{label:'FAREWELL · TODO',code:null}
     };
@@ -315,10 +375,12 @@ render(o0)`;
     }
     run();
 
-    function loadScene(id){
+    async function loadScene(id){
       const scene=scenes[id];
       if(!scene)return;
       currentScene=id;
+      if(id==='hypnosis'&&!(await ensureWebcam()))return;
+      capitalCounter.style.display=id==='genesis'?'block':'none';
       sceneTag.textContent='HYDRA · '+scene.label;
       if(!scene.code){
         status.textContent=scene.label+' · EMPTY SLOT';
@@ -329,6 +391,7 @@ render(o0)`;
       code.value=scene.code;
       run();
     }
+    function setHypnosisWord(word){hypnosisWord=String(word||'I AM').toUpperCase().slice(0,18);status.textContent='TYPE · '+hypnosisWord}
     function addGenesisFromRegia(id){addGenesisObject(id)}
     function addForestBurst(count=6){for(let i=0;i<count;i++)addGenesisObject('tree')}
     function moveGenesisCamera(key){
@@ -368,6 +431,7 @@ render(o0)`;
     const handleRegia=m=>{
       m=m||{};
       if(m.type==='hydra-scene')loadScene(m.scene);
+      if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
       if(m.type==='hydra-clean')cleanHydra();
       if(m.type==='hydra-object-add')addGenesisFromRegia(m.object);
       if(m.type==='hydra-forest-burst')addForestBurst(m.count||6);
