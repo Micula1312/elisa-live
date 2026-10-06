@@ -16,7 +16,7 @@ button{background:#181818;color:#fff;border:1px solid #666;padding:10px 13px;cur
 .meterrow{display:grid;grid-template-columns:48px 1fr 44px;gap:9px;align-items:center;margin:9px 0;font-size:11px}.meter{height:10px;border:1px solid #555;background:#050505}.meter i{display:block;height:100%;width:0;background:#eee}.hit i{transition:width .04s}
 .sens{display:grid;grid-template-columns:95px 1fr 42px;gap:9px;align-items:center;margin-top:16px;font-size:11px}
 .clock{font-size:clamp(38px,5vw,74px);letter-spacing:-.07em;line-height:1;margin:18px 0}.clock small{font-size:.32em;color:#777;letter-spacing:-.03em}
-.seek{width:100%}.trackactions{display:flex;gap:8px;margin-top:12px}.trackactions button:first-child{flex:1}
+.timeline{position:relative;margin:24px 0 8px;padding-top:42px}.seek{width:100%;position:relative;z-index:2}.markers{position:absolute;left:8px;right:8px;top:0;height:52px;pointer-events:none}.marker{position:absolute;bottom:8px;width:1px;height:22px;background:#777}.marker.major{height:31px;background:#eee}.marker span{position:absolute;bottom:26px;left:4px;white-space:nowrap;font-size:9px;color:#888}.marker.major span{color:#eee}.marker.next span{color:#fff;text-decoration:underline}.nextcue{font-size:11px;color:#aaa;margin-top:10px;min-height:15px}.trackactions{display:flex;gap:8px;margin-top:12px}.trackactions button:first-child{flex:1}
 .vol{display:grid;grid-template-columns:60px 1fr 45px;gap:8px;align-items:center;margin-top:14px;font-size:11px}
 footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;display:flex;justify-content:space-between}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
@@ -42,7 +42,7 @@ footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;dis
 <h2>MASTER TRACK / PERFORMANCE CLOCK</h2>
 <div class="clock"><span id="now">00:00</span> <small>/ <span id="total">32:27</span></small></div>
 <audio id="master" src="/audio/elisa_master.mp3" preload="metadata"></audio>
-<input class="seek" id="seek" type="range" min="0" max="1000" step="1" value="0">
+<div class="timeline"><div class="markers" id="markers"></div><input class="seek" id="seek" type="range" min="0" max="1000" step="1" value="0"></div><div class="nextcue" id="nextCue">NEXT — 01:00 FACE ID</div>
 <div class="trackactions"><button id="play">▶ PLAY MASTER</button><button id="zero">↺ 00:00</button></div>
 <label class="vol"><span>VOLUME</span><input id="volume" type="range" min="0" max="1" step=".01" value="1"><span id="volVal">100%</span></label>
 </section>
@@ -53,6 +53,11 @@ footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;dis
 import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
 const q=s=>document.querySelector(s),device=q("#audioDevice"),state=q("#audioState"),soul=q("#soul"),master=q("#master"),seek=q("#seek");
 const fmt=t=>{t=Math.max(0,Number(t)||0);return String(Math.floor(t/60)).padStart(2,"0")+":"+String(Math.floor(t%60)).padStart(2,"0")};
+const SHOW_DURATION=1947;
+const cues=[[0,"TEXT INTRO",1],[60,"FACE ID",1],[90,"LOADER",0],[120,"HYDRA I",1],[260,"FOTO",0],[313,"VIDEO VERT.",0],[380,"FOTO",0],[500,"3D TOUCH",1],[680,"HYDRA II",1],[800,"ROTAZIONI",0],[900,"FORESTA + NUMERI",1],[1080,"FORESTA + IMMAGINI",0],[1240,"ARCHIVIO 3D",1],[1460,"HYDRA III",1],[1550,"TRANSIZIONE",0],[1610,"NUCLEO ROSSO",1],[1680,"ALBERO",0],[1770,"BLIVET",1],[1840,"HYDRA IV",1]];
+const markers=q("#markers"),nextCue=q("#nextCue");
+cues.forEach(([t,label,major])=>{const m=document.createElement("i");m.className="marker"+(major?" major":"");m.style.left=(t/SHOW_DURATION*100)+"%";m.dataset.time=t;const s=document.createElement("span");s.textContent=fmt(t)+" "+label;m.appendChild(s);markers.appendChild(m)});
+function syncCue(t){const upcoming=cues.find(([ct])=>ct>t+.5);[...markers.children].forEach(m=>m.classList.toggle("next",upcoming&&Number(m.dataset.time)===upcoming[0]));nextCue.textContent=upcoming?"NEXT — "+fmt(upcoming[0])+" "+upcoming[1]:"END OF SHOW"}
 async function populate(){
  try{
   const saved=localStorage.getItem("elisa-audio-device")||"",inputs=await listAudioInputs();
@@ -72,14 +77,14 @@ q("#play").onclick=async()=>{try{
 }catch(e){state.textContent=e.name||"TRACK ERROR"}};
 q("#zero").onclick=()=>master.currentTime=0;
 master.addEventListener("loadedmetadata",()=>{if(Number.isFinite(master.duration))q("#total").textContent=fmt(master.duration)});
-master.addEventListener("timeupdate",()=>{q("#now").textContent=fmt(master.currentTime);if(!seek.matches(":active"))seek.value=master.duration?Math.round(master.currentTime/master.duration*1000):0});
+master.addEventListener("timeupdate",()=>{q("#now").textContent=fmt(master.currentTime);syncCue(master.currentTime);if(!seek.matches(":active"))seek.value=master.duration?Math.round(master.currentTime/master.duration*1000):0});
 master.addEventListener("ended",()=>q("#play").textContent="▶ PLAY MASTER");
 seek.oninput=()=>{if(master.duration)master.currentTime=Number(seek.value)/1000*master.duration};
 q("#volume").oninput=e=>{master.volume=Number(e.target.value);q("#volVal").textContent=Math.round(master.volume*100)+"%"};
 q("#sensitivity").oninput=e=>{setSensitivity(e.target.value);q("#sensVal").textContent=Number(e.target.value).toFixed(1)};
 const bars={level:["#mLevel","#vLevel"],low:["#mLow","#vLow"],mid:["#mMid","#vMid"],high:["#mHigh","#vHigh"],transient:["#mHit","#vHit"]};
 window.addEventListener("elisa-audio",e=>{Object.entries(bars).forEach(([k,[b,v]])=>{const n=e.detail[k]||0;q(b).style.width=(n*100)+"%";q(v).textContent=n.toFixed(2)})});
-populate();
+syncCue(0);populate();
 </script>
 </body>
 </html>
