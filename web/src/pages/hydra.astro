@@ -60,7 +60,7 @@
       scene:new THREE.Scene(),
       camera:new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,220),
       mesh:null,base:null,active:false,
-      objects:{orb:[],totem:[],swarm:[],tree:[]},
+      objects:{orb:[],totem:[],swarm:[],tree:[],phone:[],diamond:[],cola:[],pistol:[]},
       nav:{x:0,z:0,yaw:0}
     };
     landscape.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
@@ -83,6 +83,23 @@
       }else if(id==='totem'){
         obj=new THREE.Mesh(new THREE.CylinderGeometry(.45,.95,6.5,5+(n%4),6,true),new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.84}));
         obj.position.set(7-(n%5)*3.1,.5,-20-(n%6)*5.5);
+      }else if(['phone','diamond','cola','pistol'].includes(id)){
+        const group=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.92});
+        if(id==='phone'){
+          group.add(new THREE.Mesh(new THREE.BoxGeometry(2.2,4.2,.35),mat));
+          const screen=new THREE.Mesh(new THREE.PlaneGeometry(1.75,3.35),mat);screen.position.z=.19;group.add(screen);
+        }else if(id==='diamond'){
+          const top=new THREE.Mesh(new THREE.CylinderGeometry(1.8,1.05,1.1,8),mat);top.position.y=.55;group.add(top);
+          const tip=new THREE.Mesh(new THREE.ConeGeometry(1.05,2.2,8),mat);tip.position.y=-1.1;tip.rotation.x=Math.PI;group.add(tip);
+        }else if(id==='cola'){
+          const body=new THREE.Mesh(new THREE.CylinderGeometry(.72,.82,3.8,14,5),mat);group.add(body);
+          const neck=new THREE.Mesh(new THREE.CylinderGeometry(.38,.62,.9,12),mat);neck.position.y=2.25;group.add(neck);
+          const cap=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.18,12),mat);cap.position.y=2.78;group.add(cap);
+        }else{
+          const slide=new THREE.Mesh(new THREE.BoxGeometry(3.6,.65,.75),mat);slide.position.x=.5;group.add(slide);
+          const grip=new THREE.Mesh(new THREE.BoxGeometry(.8,2,.7),mat);grip.position.set(.15,-1.15,0);grip.rotation.z=-.18;group.add(grip);
+        }
+        obj=group;obj.position.set((Math.random()-.5)*30,1.5+Math.random()*8,-7-Math.random()*55);
       }else if(id==='tree'){
         const group=new THREE.Group(),trunkMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.88});
         const h=4.5+Math.random()*5,branches=5+Math.floor(Math.random()*5);
@@ -144,6 +161,15 @@
         obj.scale.x=obj.scale.z=1+hi*.12;
         obj.position.y=u.baseY+lo*(.8+s*.06);
       });
+      ['phone','diamond','cola','pistol'].forEach(kind=>landscape.objects[kind].forEach((obj,i)=>{
+        const u=obj.userData,s=u.seed,beat=lo*.9+mi*.45;
+        obj.rotation.x+=.004+hi*(.025+s*.001);obj.rotation.y+=.006+mi*(.035+s*.0015);obj.rotation.z+=.002+hi*.018;
+        const bounce=Math.abs(Math.sin(landscapeT*(1.8+s*.11)+s))*(.45+beat*2.8);
+        obj.position.y=u.baseY+bounce+lo*(1.1+(i%3)*.3);
+        obj.position.x=u.baseX+Math.sin(landscapeT*(.7+s*.06)+s)*(1+mi*2.2);
+        obj.position.z=u.baseZ+Math.cos(landscapeT*(.45+s*.04)+s)*(.6+hi*1.8);
+        const pop=1+lo*.28+hi*.12;obj.scale.setScalar(pop);
+      }));
       landscape.objects.tree.forEach((obj,i)=>{
         const u=obj.userData,s=u.seed;
         obj.rotation.y=Math.sin(landscapeT*.18+s)*(.06+mi*.08);
