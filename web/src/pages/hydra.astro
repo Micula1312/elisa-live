@@ -60,7 +60,8 @@
       scene:new THREE.Scene(),
       camera:new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,220),
       mesh:null,base:null,active:false,
-      objects:{orb:[],totem:[],swarm:[]}
+      objects:{orb:[],totem:[],swarm:[],tree:[]},
+      nav:{x:0,z:0,yaw:0}
     };
     landscape.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     landscape.renderer.setSize(innerWidth,innerHeight,false);
@@ -82,6 +83,19 @@
       }else if(id==='totem'){
         obj=new THREE.Mesh(new THREE.CylinderGeometry(.45,.95,6.5,5+(n%4),6,true),new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.84}));
         obj.position.set(7-(n%5)*3.1,.5,-20-(n%6)*5.5);
+      }else if(id==='tree'){
+        const group=new THREE.Group(),trunkMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.88});
+        const h=4.5+Math.random()*5,branches=5+Math.floor(Math.random()*5);
+        const trunkGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,h,0)]);
+        group.add(new THREE.Line(trunkGeo,trunkMat));
+        for(let b=0;b<branches;b++){
+          const y=h*(.38+b/(branches+2)*.55),a=Math.random()*Math.PI*2,len=1.3+Math.random()*2.8;
+          const tip=new THREE.Vector3(Math.cos(a)*len,y+.5+Math.random()*1.8,Math.sin(a)*len);
+          group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,y,0),tip]),trunkMat));
+          const twig=tip.clone().add(new THREE.Vector3(Math.cos(a+.8)*len*.45,.6+Math.random(),Math.sin(a+.8)*len*.45));
+          group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([tip,twig]),trunkMat));
+        }
+        obj=group;obj.position.set((Math.random()-.5)*34, -1.2, -8-Math.random()*70);
       }else if(id==='swarm'){
         const count=260,geo=new THREE.BufferGeometry(),p=new Float32Array(count*3);
         for(let i=0;i<count;i++){const k=i*3;p[k]=(Math.random()-.5)*10;p[k+1]=(Math.random()-.5)*6;p[k+2]=(Math.random()-.5)*12}
@@ -110,9 +124,10 @@
       }
       pos.needsUpdate=true;
       landscape.mesh.position.z=-28+(landscapeT*1.35%3.2);
-      landscape.camera.position.x=Math.sin(landscapeT*.13)*.65;
+      landscape.camera.position.x=landscape.nav.x+Math.sin(landscapeT*.13)*.35;
+      landscape.camera.position.z=10+landscape.nav.z;
       landscape.camera.position.y=4.6+lo*.8;
-      landscape.camera.lookAt(Math.sin(landscapeT*.08)*1.2,-1,-18);
+      landscape.camera.lookAt(landscape.camera.position.x-Math.sin(landscape.nav.yaw)*24,-1,landscape.camera.position.z-Math.cos(landscape.nav.yaw)*24);
       landscape.objects.orb.forEach((obj,i)=>{
         const u=obj.userData,s=u.seed;
         obj.rotation.x+=.002+hi*(.012+s*.0015);obj.rotation.y+=.003+mi*(.018+s*.001);
@@ -128,6 +143,13 @@
         obj.scale.y=1+lo*(.35+(i%4)*.1);
         obj.scale.x=obj.scale.z=1+hi*.12;
         obj.position.y=u.baseY+lo*(.8+s*.06);
+      });
+      landscape.objects.tree.forEach((obj,i)=>{
+        const u=obj.userData,s=u.seed;
+        obj.rotation.y=Math.sin(landscapeT*.18+s)*(.06+mi*.08);
+        obj.rotation.z=Math.sin(landscapeT*.35+s)*(.012+hi*.045);
+        const grow=1+lo*(.16+(i%4)*.035);obj.scale.set(grow,1+lo*.3,grow);
+        obj.position.y=u.baseY+Math.sin(landscapeT*.3+s)*hi*.08;
       });
       landscape.objects.swarm.forEach((obj,i)=>{
         const u=obj.userData,s=u.seed,sp=obj.geometry.attributes.position;
@@ -231,6 +253,14 @@ render(o0)`;
       run();
     }
     function addGenesisFromRegia(id){addGenesisObject(id)}
+    function addForestBurst(count=6){for(let i=0;i<count;i++)addGenesisObject('tree')}
+    function moveGenesisCamera(key){
+      const nav=landscape.nav,step=1.5,turn=.09;
+      if(key==='ArrowLeft')nav.yaw-=turn;if(key==='ArrowRight')nav.yaw+=turn;
+      if(key==='ArrowUp'){nav.x-=Math.sin(nav.yaw)*step;nav.z-=Math.cos(nav.yaw)*step}
+      if(key==='ArrowDown'){nav.x+=Math.sin(nav.yaw)*step;nav.z+=Math.cos(nav.yaw)*step}
+      landscape.camera.position.x=nav.x;landscape.camera.position.z=10+nav.z;
+    }
     function cleanHydra(){
       try{solid(0,0,0,1).out(o0);render(o0);status.textContent='CLEAN';sceneTag.textContent='HYDRA · CLEAN'}catch(err){status.textContent='ERROR · '+err.message}
     }
@@ -263,6 +293,7 @@ render(o0)`;
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-clean')cleanHydra();
       if(m.type==='hydra-object-add')addGenesisFromRegia(m.object);
+      if(m.type==='hydra-forest-burst')addForestBurst(m.count||6);
       if(m.type==='hydra-blackout')blackoutHydra();
       if(m.type==='hydra-back')back();
       if(m.type==='hydra-editor')toggleEditor()
@@ -273,6 +304,7 @@ render(o0)`;
 
     editorToggle.addEventListener('click',toggleEditor);
     window.addEventListener('keydown',(e)=>{
+      if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)&&document.activeElement!==code){e.preventDefault();moveGenesisCamera(e.key)}
       if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();toggleEditor()}
       if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();run()}
       if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();back()}
