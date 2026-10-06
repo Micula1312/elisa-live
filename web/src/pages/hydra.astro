@@ -124,6 +124,12 @@ render(o0)`;
     function cleanHydra(){
       try{solid(0,0,0,1).out(o0);render(o0);status.textContent='CLEAN';sceneTag.textContent='HYDRA · CLEAN'}catch(err){status.textContent='ERROR · '+err.message}
     }
+    function blackoutHydra(){
+      try{
+        solid(0,0,0,1).out(o0);solid(0,0,0,1).out(o1);solid(0,0,0,1).out(o2);solid(0,0,0,1).out(o3);
+        render(o0);status.textContent='BLACK OUT';sceneTag.textContent='HYDRA · BLACK OUT';
+      }catch(err){status.textContent='ERROR · '+err.message}
+    }
     function back(){
       if(!history.length){
         status.textContent='BACK · NO PREVIOUS PATCH';
@@ -146,6 +152,7 @@ render(o0)`;
       m=m||{};
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-clean')cleanHydra();
+      if(m.type==='hydra-blackout')blackoutHydra();
       if(m.type==='hydra-back')back();
       if(m.type==='hydra-editor')toggleEditor()
     };
