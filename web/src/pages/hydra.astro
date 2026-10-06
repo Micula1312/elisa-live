@@ -71,7 +71,7 @@
     let hypnosisWord='I AM',webcamReady=false,hypnosisDrop=0;
     const faceMotion={x:.5,y:.5,size:.28,v:0,px:.5,py:.5,ps:.28,last:0};
     let faceDetector=null,trackingMode='motion',handLandmarker=null,handTrackingLoading=false,lastHandTrack=0,heartGesture=false,heartHold=0;
-    const hearts=[];let handDebug='HANDS · WAITING';
+    const hearts=[];let handDebug='HANDS · WAITING',handTrackError='';
     const motionCanvas=document.createElement('canvas'),motionCtx=motionCanvas.getContext('2d',{willReadFrequently:true});
     motionCanvas.width=160;motionCanvas.height=90;let motionPrev=null;
     const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
@@ -166,8 +166,8 @@
         const {FilesetResolver,HandLandmarker}=await import('@mediapipe/tasks-vision');
         const vision=await FilesetResolver.forVisionTasks('/mediapipe/wasm');
         handLandmarker=await HandLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'/mediapipe/hand_landmarker.task'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.55,minTrackingConfidence:.5,minHandPresenceConfidence:.5});
-        status.textContent='WEBCAM + HANDS · ONLINE';
-      }catch(err){status.textContent='HAND TRACK ERROR · '+err.message;status.classList.add('error')}
+        status.textContent='WEBCAM + HANDS · ONLINE';handDebug='HANDS · MODEL ONLINE';
+      }catch(err){handTrackError=err?.message||String(err);handDebug='HAND INIT ERROR · '+handTrackError;status.textContent=handDebug;status.classList.add('error')}
       handTrackingLoading=false;
     }
     function spawnHeartBurst(x,y,count=14){
@@ -178,6 +178,7 @@
       if(!handLandmarker||!webcamReady||currentScene!=='hypnosis'||webcamVideo.readyState<2)return;
       const now=performance.now();if(now-lastHandTrack<55)return;lastHandTrack=now;
       try{
+        handDebug='HANDS · SCANNING';status.textContent=handDebug;
         const r=handLandmarker.detectForVideo(webcamVideo,now),hands=r.landmarks||[];
         if(hands.length<2){heartGesture=false;heartHold=0;handDebug='HANDS · '+hands.length;status.textContent=handDebug;return}
         const a=hands[0],b=hands[1],dist=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
@@ -198,7 +199,7 @@
         if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,18);heartGesture=true;heartHold=now}
         else if(heartNow&&now-heartHold>700){spawnHeartBurst(cx,cy,3);heartHold=now}
         else if(!heartNow){heartGesture=false;heartHold=0}
-      }catch{}
+      }catch(err){handTrackError=err?.message||String(err);handDebug='HAND RUN ERROR · '+handTrackError;status.textContent=handDebug;status.classList.add('error')}
     }
     async function trackFace(){
       if(!webcamReady||currentScene!=='hypnosis')return;
