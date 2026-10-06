@@ -2,89 +2,95 @@
 ---
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>ELISA — HYDRA</title>
-    <style>
-      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-      #hydra-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
-    </style>
-  </head>
-  <body>
-    <canvas id="hydra-canvas"></canvas>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>ELISA — HYDRA LIVE</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
+    #hydra-canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+    #editor-shell{position:fixed;left:3vw;top:5vh;width:min(720px,70vw);height:82vh;z-index:20;
+      background:rgba(0,0,0,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.28);
+      box-shadow:0 0 40px rgba(0,0,0,.45);display:none}
+    #editor-shell.open{display:flex;flex-direction:column}
+    #bar{font:12px/1.2 monospace;color:#fff;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.2);
+      display:flex;justify-content:space-between;gap:18px;user-select:none}
+    #code{flex:1;resize:none;border:0;outline:0;padding:16px;background:transparent;color:#fff;
+      caret-color:#fff;font:15px/1.45 Consolas,monospace;white-space:pre;tab-size:2}
+    #status{font:11px/1.2 monospace;padding:8px 12px;color:#aaa;border-top:1px solid rgba(255,255,255,.15)}
+    #status.error{color:#ff8b8b}
+  </style>
+</head>
+<body>
+  <canvas id="hydra-canvas"></canvas>
+  <section id="editor-shell">
+    <div id="bar"><span>ELISA / HYDRA LIVE</span><span>CTRL+ENTER RUN · CTRL+E HIDE</span></div>
+    <textarea id="code" spellcheck="false"></textarea>
+    <div id="status">READY</div>
+  </section>
 
-    <script is:inline>
-      window.global = window;
-    </script>
+  <script is:inline>window.global=window;</script>
+  <script>
+    const canvas=document.getElementById('hydra-canvas');
+    const editor=document.getElementById('editor-shell');
+    const code=document.getElementById('code');
+    const status=document.getElementById('status');
+    canvas.width=innerWidth; canvas.height=innerHeight;
 
-    <script>
-      const canvas = document.getElementById('hydra-canvas');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    const {default:Hydra}=await import('hydra-synth');
+    const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
+    const audio=hydra.synth.a;
+    if(audio){audio.setBins(4);audio.setSmooth(.82);audio.setCutoff(1);audio.setScale(6);audio.show()}
+    window.low=()=>audio?.fft?.[0]??0;
+    window.mid=()=>((audio?.fft?.[1]??0)+(audio?.fft?.[2]??0))*.5;
+    window.high=()=>audio?.fft?.[3]??0;
 
-      const { default: Hydra } = await import('hydra-synth');
+    const starter=`voronoi(350, .15)
+  .modulateScale(
+    osc(8, .08, 0).rotate(() => Math.sin(time)),
+    () => .42 + low() * .75
+  )
+  .thresh(() => .82 - low() * .16)
+  .modulateRotate(
+    osc(() => 6.5 + mid() * 5),
+    () => .30 + mid() * .75
+  )
+  .thresh(() => .72 - mid() * .10)
+  .diff(src(o0).scale(() => 1.76 + low() * .16))
+  .modulateScale(
+    osc(() => 2 + high() * 8).modulateRotate(o0, .74),
+    () => .08 + high() * .30
+  )
+  .diff(
+    src(o0)
+      .rotate([-.012, .01, -.002, 0])
+      .scrollY(0, [-1/199800, 0].fast(.7))
+  )
+  .brightness(() => -.06 - high() * .12)
+  .out(o0)
 
-      const hydra = new Hydra({
-        canvas,
-        detectAudio: true,
-        enableStreamCapture: false,
-        makeGlobal: false,
-        autoLoop: true,
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+render(o0)`;
 
-      const { synth } = hydra;
-      const audio = hydra.synth.a;
+    code.value=starter;
 
-      // Hydra's native analyser: four FFT bands.
-      // Keep smoothing high so IMPLODE can flow into Hydra instead of snapping.
-      if (audio) {
-        audio.setBins(4);
-        audio.setSmooth(0.82);
-        audio.setCutoff(1);
-        audio.setScale(6);
-        audio.show();
+    function run(){
+      try{
+        (0,eval)(code.value);
+        status.textContent='RUNNING · '+new Date().toLocaleTimeString();
+        status.classList.remove('error');
+      }catch(err){
+        status.textContent='ERROR · '+err.message;
+        status.classList.add('error');
       }
+    }
+    run();
 
-      const low = () => audio?.fft?.[0] ?? 0;
-      const mid = () => ((audio?.fft?.[1] ?? 0) + (audio?.fft?.[2] ?? 0)) * 0.5;
-      const high = () => audio?.fft?.[3] ?? 0;
-
-      synth
-        .voronoi(350, 0.15)
-        // LOW: the image gains weight and expands.
-        .modulateScale(
-          synth.osc(8, 0.08, 0).rotate(() => Math.sin(synth.time)),
-          () => 0.42 + low() * 0.75
-        )
-        .thresh(() => 0.82 - low() * 0.16)
-        // MID: movement / torsion.
-        .modulateRotate(
-          synth.osc(() => 6.5 + mid() * 5),
-          () => 0.30 + mid() * 0.75
-        )
-        .thresh(() => 0.72 - mid() * 0.10)
-        .diff(synth.src(synth.o0).scale(() => 1.76 + low() * 0.16))
-        // HIGH: fine instability, without destroying the original patch.
-        .modulateScale(
-          synth.osc(() => 2 + high() * 8).modulateRotate(synth.o0, 0.74),
-          () => 0.08 + high() * 0.30
-        )
-        .diff(
-          synth.src(synth.o0)
-            .rotate([-0.012, 0.01, -0.002, 0])
-            .scrollY(0, [-1 / 199800, 0].fast(0.7))
-        )
-        .brightness(() => -0.06 - high() * 0.12)
-        .out(synth.o0);
-
-      synth.render(synth.o0);
-
-      window.addEventListener('resize', () => {
-        synth.setResolution(window.innerWidth, window.innerHeight);
-      });
-    </script>
-  </body>
+    document.addEventListener('keydown',(e)=>{
+      if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();editor.classList.toggle('open');if(editor.classList.contains('open'))code.focus()}
+      if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();run()}
+      if(e.ctrlKey&&e.key.toLowerCase()==='l'&&document.activeElement===code){e.preventDefault();code.value=''}
+    });
+    addEventListener('resize',()=>hydra.synth.setResolution(innerWidth,innerHeight));
+  </script>
+</body>
 </html>
