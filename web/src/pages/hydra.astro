@@ -174,8 +174,9 @@
       handTrackingLoading=false;
     }
     function spawnHeartBurst(x,y,count=14){
-      for(let i=0;i<count;i++)hearts.push({x:x+(Math.random()-.5)*35,y:y+(Math.random()-.5)*25,vx:(Math.random()-.5)*3.8,vy:-2-Math.random()*4.5,life:1,size:34+Math.random()*54,spin:(Math.random()-.5)*.08,rot:0,emoji:['💗','💕','💖','💞'][Math.floor(Math.random()*4)]});
-      status.textContent='🫶 HEART BURST';
+      // Heart gesture releases water: dense from frame one, then audio tears it apart.
+      for(let i=0;i<count;i++)hearts.push({x:x+(Math.random()-.5)*18,y:y+(Math.random()-.5)*14,vx:(Math.random()-.5)*2.2,vy:-1.2-Math.random()*3.2,life:1,size:24+Math.random()*30,spin:(Math.random()-.5)*.055,rot:0,emoji:'💧'});
+      status.textContent='🫶 WATER BURST';
     }
     async function trackHands(){
       if(!handLandmarker||!webcamReady||currentScene!=='hypnosis'||webcamVideo.readyState<2)return;
@@ -202,11 +203,14 @@
         // Fire when both hands converge and at least one fingertip pair approaches.
         const tipNear=Math.min(thumbD,indexD)<Math.max(.42,handScale*4.0);
         const heartNow=handsTogether&&tipNear;
-        const cx=(2-a[4].x-b[4].x-a[8].x-b[8].x)/4*typeCanvas.width,cy=(a[4].y+b[4].y+a[8].y+b[8].y)/4*typeCanvas.height;
+        // MediaPipe is in webcam coordinates; video is mirrored visually, so mirror X once.
+        const rawX=(a[4].x+b[4].x+a[8].x+b[8].x)/4;
+        const rawY=(a[4].y+b[4].y+a[8].y+b[8].y)/4;
+        const cx=(1-rawX)*heartCanvas.width,cy=rawY*heartCanvas.height;
         handDebug='HANDS 2 · T '+thumbD.toFixed(2)+' · I '+indexD.toFixed(2)+' · Σ '+(thumbD+indexD).toFixed(2)+(heartNow?' · 🫶':'');
         status.textContent=handDebug;
-        if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,10);heartGesture=true;heartHold=now}
-        else if(heartNow&&now-heartHold>950){spawnHeartBurst(cx,cy,1);heartHold=now}
+        if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,14);heartGesture=true;heartHold=now}
+        else if(heartNow&&now-heartHold>950){spawnHeartBurst(cx,cy,2);heartHold=now}
         else if(!heartNow){heartGesture=false;heartHold=0}
       }catch(err){handTrackError=err?.message||String(err);handDebug='HAND RUN ERROR · '+handTrackError;status.textContent=handDebug;status.classList.add('error')}
     }
@@ -281,7 +285,14 @@
       heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height);
       heartCtx.fillStyle='#000';heartCtx.fillRect(0,0,heartCanvas.width,heartCanvas.height);
       for(let i=hearts.length-1;i>=0;i--){
-        const h=hearts[i];h.x+=h.vx*(1+mi*.8);h.y+=h.vy*(1+lo*.65);h.vy+=.025;h.vx+=Math.sin(performance.now()*.004+i)*hi*.035;h.life-=.012;h.rot+=h.spin;
+        const h=hearts[i];
+        // Dense immediately; LOW expands, MID pushes apart, HIGH makes droplets spray/jitter.
+        const audioSpread=.35+lo*1.9+mi*1.25;
+        h.x+=h.vx*audioSpread+Math.sin(performance.now()*.006+i*1.7)*hi*2.2;
+        h.y+=h.vy*(.45+lo*1.35)-hi*.65;
+        h.vy+=.018;
+        h.vx+=Math.sin(performance.now()*.003+i)*hi*.025;
+        h.life-=.010+hi*.004;h.rot+=h.spin*(1+mi*1.4);
         if(h.life<=0||h.y<-100){hearts.splice(i,1);continue}
         heartCtx.save();heartCtx.translate(h.x,h.y);heartCtx.rotate(h.rot);heartCtx.globalAlpha=Math.max(0,h.life);heartCtx.font=(h.size*(1+lo*.35))+'px "Segoe UI Emoji","Apple Color Emoji",sans-serif';heartCtx.textAlign='center';heartCtx.textBaseline='middle';heartCtx.fillText(h.emoji,0,0);heartCtx.restore();
       }
