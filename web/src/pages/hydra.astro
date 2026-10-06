@@ -192,9 +192,15 @@
         // A natural two-hand heart varies a lot: either the two thumb tips or the two
         // index tips may not literally touch. Require two hands close + one fingertip pair,
         // and show the live distances so we can tune this to the performer's actual gesture.
-        const heartNow=handsTogether&&((thumbClose&&indexClose)||(thumbD<Math.max(.24,handScale*2.2)&&indexD<Math.max(.30,handScale*2.8)));
+        // Live-safe heart: MediaPipe already confirmed two hands. For performance,
+        // trigger when the hands are together and the combined thumb/index gap is compact,
+        // rather than requiring a perfect textbook fingertip pose.
+        const relaxedThumb=thumbD<Math.max(.34,handScale*3.2);
+        const relaxedIndex=indexD<Math.max(.38,handScale*3.6);
+        const compactTips=(thumbD+indexD)<Math.max(.58,handScale*5.4);
+        const heartNow=handsTogether&&compactTips&&relaxedThumb&&relaxedIndex;
         const cx=(2-a[4].x-b[4].x-a[8].x-b[8].x)/4*typeCanvas.width,cy=(a[4].y+b[4].y+a[8].y+b[8].y)/4*typeCanvas.height;
-        handDebug='HANDS 2 · T '+thumbD.toFixed(2)+' · I '+indexD.toFixed(2)+(heartNow?' · 🫶':'');
+        handDebug='HANDS 2 · T '+thumbD.toFixed(2)+' · I '+indexD.toFixed(2)+' · Σ '+(thumbD+indexD).toFixed(2)+(heartNow?' · 🫶':'');
         status.textContent=handDebug;
         if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,18);heartGesture=true;heartHold=now}
         else if(heartNow&&now-heartHold>700){spawnHeartBurst(cx,cy,3);heartHold=now}
