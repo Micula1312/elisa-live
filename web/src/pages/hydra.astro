@@ -158,7 +158,7 @@
       status.textContent='ADD '+id.toUpperCase()+' · '+landscape.objects[id].length;
     }
     s0.init({src:landscapeCanvas});
-    typeCanvas.width=1280;typeCanvas.height=720;s2.init({src:typeCanvas});
+    typeCanvas.width=960;typeCanvas.height=540;s2.init({src:typeCanvas});
     async function ensureHandTracking(){
       if(handLandmarker||handTrackingLoading)return;
       handTrackingLoading=true;
@@ -176,7 +176,7 @@
     }
     async function trackHands(){
       if(!handLandmarker||!webcamReady||currentScene!=='hypnosis'||webcamVideo.readyState<2)return;
-      const now=performance.now();if(now-lastHandTrack<55)return;lastHandTrack=now;
+      const now=performance.now();if(now-lastHandTrack<110)return;lastHandTrack=now;
       try{
         handDebug='HANDS · SCANNING';status.textContent=handDebug;
         const r=handLandmarker.detectForVideo(webcamVideo,now),hands=r.landmarks||[];
@@ -195,15 +195,15 @@
         // Live-safe heart: MediaPipe already confirmed two hands. For performance,
         // trigger when the hands are together and the combined thumb/index gap is compact,
         // rather than requiring a perfect textbook fingertip pose.
-        const relaxedThumb=thumbD<Math.max(.34,handScale*3.2);
-        const relaxedIndex=indexD<Math.max(.38,handScale*3.6);
-        const compactTips=(thumbD+indexD)<Math.max(.58,handScale*5.4);
-        const heartNow=handsTogether&&compactTips&&relaxedThumb&&relaxedIndex;
+        // Performance trigger: the expensive part is already knowing that there are two hands.
+        // Fire when both hands converge and at least one fingertip pair approaches.
+        const tipNear=Math.min(thumbD,indexD)<Math.max(.42,handScale*4.0);
+        const heartNow=handsTogether&&tipNear;
         const cx=(2-a[4].x-b[4].x-a[8].x-b[8].x)/4*typeCanvas.width,cy=(a[4].y+b[4].y+a[8].y+b[8].y)/4*typeCanvas.height;
         handDebug='HANDS 2 · T '+thumbD.toFixed(2)+' · I '+indexD.toFixed(2)+' · Σ '+(thumbD+indexD).toFixed(2)+(heartNow?' · 🫶':'');
         status.textContent=handDebug;
-        if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,18);heartGesture=true;heartHold=now}
-        else if(heartNow&&now-heartHold>700){spawnHeartBurst(cx,cy,3);heartHold=now}
+        if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,10);heartGesture=true;heartHold=now}
+        else if(heartNow&&now-heartHold>950){spawnHeartBurst(cx,cy,1);heartHold=now}
         else if(!heartNow){heartGesture=false;heartHold=0}
       }catch(err){handTrackError=err?.message||String(err);handDebug='HAND RUN ERROR · '+handTrackError;status.textContent=handDebug;status.classList.add('error')}
     }
@@ -251,9 +251,9 @@
       typeCtx.textAlign='center';typeCtx.textBaseline='middle';
       typeCtx.font='300 19px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
       const melt=(f.v*1.8+hi*.65+mi*.22),t=performance.now()*.001;
-      const rows=17,cols=7,stepX=82,stepY=25;
-      for(let row=-8;row<=8;row++){
-        for(let col=-3;col<=3;col++){
+      const rows=13,cols=5,stepX=82,stepY=25;
+      for(let row=-6;row<=6;row++){
+        for(let col=-2;col<=2;col++){
           const phase=row*1.37+col*.83;
           const baseFloatX=Math.sin(t*.72+phase)*12+Math.cos(t*.31+row)*5;
           const baseFloatY=Math.cos(t*.58+phase)*7+Math.sin(t*.27+col)*4;
@@ -269,7 +269,7 @@
           typeCtx.restore();
         }
       }
-      for(let i=1;i<=5;i++){
+      for(let i=1;i<=3;i++){
         const yy=145+i*14*(1+melt*2.4),xx=Math.sin(performance.now()*.002+i)*melt*26;
         typeCtx.globalAlpha=Math.max(.04,.22-i*.032)*Math.min(1,melt*1.8);
         typeCtx.fillText(hypnosisWord,xx,yy);
@@ -407,10 +407,9 @@ render(o0)`;
     osc(() => 5 + high() * 18 + hypnosisDrop()*42,.02,0).rotate(Math.PI/2),
     () => .004 + mid() * .045 + hypnosisDrop()*.16
   )
-  .modulatePixelate(
-    noise(() => 2 + hypnosisDrop()*18,.12),
-    () => 180 - hypnosisDrop()*166,
-    () => 120 - hypnosisDrop()*110
+  .pixelate(
+    () => hypnosisDrop()>.05 ? 18 : 1280,
+    () => hypnosisDrop()>.05 ? 12 : 720
   )
   .diff(
     src(s1)
