@@ -17,7 +17,7 @@
       display:flex;justify-content:space-between;gap:18px;user-select:none}
     #code{flex:1;resize:none;border:0;outline:0;padding:16px;background:transparent;color:#fff;
       caret-color:#fff;font:15px/1.45 Consolas,monospace;white-space:pre;tab-size:2}
-    #status{font:11px/1.2 monospace;padding:8px 12px;color:#aaa;border-top:1px solid rgba(255,255,255,.15)}
+    #status{font:11px/1.2 Helvetica,Arial,sans-serif;padding:8px 12px;color:#aaa;border-top:1px solid rgba(255,255,255,.15)}#scene-tag{position:fixed;right:18px;bottom:16px;z-index:30;color:#aaa;font:11px Helvetica,Arial,sans-serif;letter-spacing:.12em;opacity:.75}
     #status.error{color:#ff8b8b}
   </style>
 </head>
@@ -28,6 +28,7 @@
     <textarea id="code" spellcheck="false"></textarea>
     <div id="status">READY</div>
   </section>
+  <div id="scene-tag">HYDRA · CUSTOM 01</div>
 
   <script is:inline>window.global=window;</script>
   <script>
@@ -35,6 +36,7 @@
     const editor=document.getElementById('editor-shell');
     const code=document.getElementById('code');
     const status=document.getElementById('status');
+    const sceneTag=document.getElementById('scene-tag');
     canvas.width=innerWidth; canvas.height=innerHeight;
 
     const {default:Hydra}=await import('hydra-synth');
@@ -71,9 +73,19 @@
 
 render(o0)`;
 
-    code.value=starter;
+    // Scene deck structure. Only CUSTOM 01 is intentionally authored for now.
+    // The other slots are placeholders to be rewritten together later.
+    const scenes={
+      custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
+      genesis:{label:'GENESIS · TODO',code:null},
+      hypnosis:{label:'HYPNOSIS · TODO',code:null},
+      resonance:{label:'RESONANCE · TODO',code:null},
+      farewell:{label:'FAREWELL · TODO',code:null}
+    };
+    let currentScene='custom01';
+    code.value=scenes[currentScene].code;
     const history=[];
-    let lastRun=starter;
+    let lastRun=code.value;
 
     function run(){
       if(code.value!==lastRun){
@@ -92,6 +104,23 @@ render(o0)`;
     }
     run();
 
+    function loadScene(id){
+      const scene=scenes[id];
+      if(!scene)return;
+      currentScene=id;
+      sceneTag.textContent='HYDRA · '+scene.label;
+      if(!scene.code){
+        status.textContent=scene.label+' · EMPTY SLOT';
+        status.classList.remove('error');
+        return;
+      }
+      if(scene.code!==lastRun){history.push(lastRun);if(history.length>50)history.shift()}
+      code.value=scene.code;
+      run();
+    }
+    function cleanHydra(){
+      try{solid(0,0,0,1).out(o0);render(o0);status.textContent='CLEAN';sceneTag.textContent='HYDRA · CLEAN'}catch(err){status.textContent='ERROR · '+err.message}
+    }
     function back(){
       if(!history.length){
         status.textContent='BACK · NO PREVIOUS PATCH';
@@ -109,6 +138,17 @@ render(o0)`;
         status.classList.add('error');
       }
     }
+
+    const handleRegia=m=>{
+      m=m||{};
+      if(m.type==='hydra-scene')loadScene(m.scene);
+      if(m.type==='hydra-clean')cleanHydra();
+      if(m.type==='hydra-back')back();
+      if(m.type==='hydra-editor'){editor.classList.toggle('open');if(editor.classList.contains('open'))code.focus()}
+    };
+    const regiaChannel=new BroadcastChannel('elisa-regia');
+    regiaChannel.onmessage=e=>handleRegia(e.data);
+    addEventListener('storage',e=>{if(e.key==='elisa-regia-command'&&e.newValue){try{handleRegia(JSON.parse(e.newValue).message)}catch{}}});
 
     document.addEventListener('keydown',(e)=>{
       if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();editor.classList.toggle('open');if(editor.classList.contains('open'))code.focus()}
