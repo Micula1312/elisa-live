@@ -69,7 +69,7 @@
 
   
     #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#fff;overflow:hidden;opacity:0;transition:opacity .75s ease,background-color 1.15s ease}#cycloneScene.on{display:block}#cycloneScene.dark{background:#000}#slashLight{position:absolute;inset:-12%;z-index:3;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,255,255,.98) 0 1%,rgba(210,225,255,.72) 2%,rgba(150,180,255,.20) 7%,transparent 19%),linear-gradient(12deg,transparent 46%,rgba(220,232,255,.06) 48%,rgba(255,255,255,.72) 49.7%,rgba(220,232,255,.08) 51.2%,transparent 54%),linear-gradient(102deg,transparent 48.6%,rgba(255,255,255,.32) 49.7%,rgba(220,232,255,.05) 51%,transparent 52%);filter:blur(2px);mix-blend-mode:screen;transform:scale(.18) rotate(-5deg);transition:opacity .28s ease,transform .8s cubic-bezier(.15,.8,.2,1)}#slashLight.on{opacity:.92;transform:scale(1.12) rotate(2deg)}#cycloneScene canvas{display:block;width:100%;height:100%}
-    #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:9997;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 "IBM Plex Mono","JetBrains Mono",monospace;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
+    #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:10020;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 Helvetica,Arial,sans-serif;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #videoPanel.open{display:block}.vp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.vp-grid button,.vp-reset{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:8px;cursor:pointer}.vp-grid button.on{background:#fff;color:#111}.vp-row{display:grid;grid-template-columns:58px 1fr 36px;align-items:center;gap:7px;margin:8px 0}.vp-row input{width:100%}.vp-hint{opacity:.55;margin-top:9px;font-size:10px}.cue-monitor{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}.cue-led{border:1px solid #353a43;border-radius:6px;padding:6px 4px;text-align:center;opacity:.45;cursor:pointer;background:#11151a;color:#fff;font-family:inherit}.cue-led:hover{opacity:.8}.cue-led.on{background:#fff;color:#111;opacity:1}.cue-led b{display:block;font-size:12px}.cue-led small{font-size:8px;letter-spacing:.04em}.space-nav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.space-nav button{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:7px;cursor:pointer}.space-readout{grid-column:1/-1;font-size:9px;opacity:.62;text-align:center}
@@ -269,6 +269,8 @@
   master.addEventListener("timeupdate",renderSubtitle);
   master.addEventListener("seeked",renderSubtitle);
   master.addEventListener("play",renderSubtitle);
+  // timeupdate can be sparse while the show is running; keep subtitle cue timing responsive.
+  setInterval(()=>{if(subtitlesEnabled&&!master.paused)renderSubtitle()},120);
   // Dev/rehearsal source: /public/audio/elisa_master.mp3. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
@@ -675,7 +677,7 @@
     if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
     if(m.type==="fx-amount"){videoAmount.value=String(m.value);vAmount.textContent=Number(m.value).toFixed(2);applyVideoFx()}
     if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1);applyVideoFx()}
-    if(m.type==="subtitles"){subtitlesEnabled=!!m.on;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);if(subtitlesEnabled)previewSubtitle();else setSubtitle(null,"")}
+    if(m.type==="subtitles"){subtitlesEnabled=!!m.on;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);if(subtitlesEnabled){subtitlePreviewUntil=0;renderSubtitle();if(!master.currentTime)previewSubtitle()}else setSubtitle(null,"")}
   };
   const regiaChannel=new BroadcastChannel("elisa-regia");
   regiaChannel.onmessage=e=>handleRegiaMessage(e.data);
