@@ -62,7 +62,7 @@
       camera:new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,220),
       mesh:null,base:null,active:false,
       objects:{orb:[],totem:[],swarm:[],tree:[],phone:[],diamond:[],cola:[],pistol:[]},
-      nav:{x:0,z:0,yaw:0}
+      nav:{x:0,z:0,yaw:0},flash:0
     };
     landscape.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     landscape.renderer.setSize(innerWidth,innerHeight,false);
@@ -121,7 +121,11 @@
         obj=new THREE.Points(geo,new THREE.PointsMaterial({color:ACID,size:.07,transparent:true,opacity:.78}));
         obj.position.set((n%5-2)*4,3+(n%3),-18-(n%5)*7);
       }else return;
-      obj.userData={kind:id,seed,baseX:obj.position.x,baseY:obj.position.y,baseZ:obj.position.z};
+      obj.userData={kind:id,seed,baseX:obj.position.x,baseY:obj.position.y,baseZ:obj.position.z,spawn:performance.now()};
+      if(['phone','diamond','cola','pistol'].includes(id)){
+        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(MAGENTA)});
+        landscape.flash=1;
+      }
       landscape.objects[id].push(obj);landscape.scene.add(obj);
       status.textContent='ADD '+id.toUpperCase()+' · '+landscape.objects[id].length;
     }
@@ -133,6 +137,7 @@
       const pos=landscape.mesh.geometry.attributes.position;
       const base=landscape.base;
       const lo=low(),mi=mid(),hi=high();
+      landscape.flash*=.88;
       for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
         const ridge=Math.sin(x*.28+landscapeT*.45)*1.05+Math.sin(z*.12-landscapeT*.7)*.72;
@@ -163,13 +168,15 @@
         obj.position.y=u.baseY+lo*(.8+s*.06);
       });
       ['phone','diamond','cola','pistol'].forEach(kind=>landscape.objects[kind].forEach((obj,i)=>{
-        const u=obj.userData,s=u.seed,beat=lo*.9+mi*.45;
+        const u=obj.userData,s=u.seed,beat=lo*.9+mi*.45,age=(performance.now()-u.spawn)/1000;
         obj.rotation.x+=.004+hi*(.025+s*.001);obj.rotation.y+=.006+mi*(.035+s*.0015);obj.rotation.z+=.002+hi*.018;
         const bounce=Math.abs(Math.sin(landscapeT*(1.8+s*.11)+s))*(.45+beat*2.8);
         obj.position.y=u.baseY+bounce+lo*(1.1+(i%3)*.3);
         obj.position.x=u.baseX+Math.sin(landscapeT*(.7+s*.06)+s)*(1+mi*2.2);
         obj.position.z=u.baseZ+Math.cos(landscapeT*(.45+s*.04)+s)*(.6+hi*1.8);
-        const pop=1+lo*.28+hi*.12;obj.scale.setScalar(pop);
+        const pop=1+lo*.65+mi*.22+hi*.18+Math.max(0,.7-age)*.45;obj.scale.setScalar(pop);
+        const magentaMix=Math.max(0,1-age/1.35);
+        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(magentaMix>.08?MAGENTA:ACID)});
       }));
       landscape.objects.tree.forEach((obj,i)=>{
         const u=obj.userData,s=u.seed;
@@ -215,6 +222,8 @@
 
 render(o0)`;
 
+    window.genesisFlash=()=>landscape.flash;
+
     const genesisLandscape=`src(s0)
   .contrast(() => 1.22 + low() * .62)
   .brightness(() => -.16 + high() * .14)
@@ -237,6 +246,11 @@ render(o0)`;
       .brightness(() => -.42 + high() * .28)
   )
   .blend(src(o0).scale(() => 1.001 + low() * .002), () => .025 + low() * .035)
+  .layer(
+    solid(1,.10,.72,1)
+      .brightness(() => -.42 + genesisFlash() * .55)
+      .luma(() => .78 - genesisFlash() * .7)
+  )
   .out(o0)
 
 render(o0)`;
