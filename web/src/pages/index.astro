@@ -650,6 +650,18 @@
     });
     syncCueMonitor();
   };
+  const regiaChannel=new BroadcastChannel("elisa-regia");
+  regiaChannel.onmessage=e=>{
+    const m=e.data||{};
+    if(m.type==="cue"){
+      if(m.key==="s"){setAutoScroll(true);return}
+      if(["b","d","f","g","h","j","k","l"].includes(m.key))toggleCue(m.key);
+    }
+    if(m.type==="fx"&&m.fx in videoFx){videoFx[m.fx]=!!m.on;syncVideoFx()}
+    if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
+    if(m.type==="fx-amount"){videoAmount.value=String(m.value);vAmount.textContent=Number(m.value).toFixed(2)}
+    if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1)}
+  };
   const moveSpace=(dx,dy,dz=0)=>{spaceX+=dx;spaceY+=dy;spaceZ+=dz;syncCueMonitor()};
   const zoomSpace=(delta)=>{spaceZoom=Math.max(.35,Math.min(3,spaceZoom+delta));syncCueMonitor()};
   videoPanel.querySelectorAll(".cue-led").forEach(btn=>btn.addEventListener("click",()=>toggleCue(btn.dataset.cue)));
