@@ -316,7 +316,7 @@
     const palette=["black","white","red"][i%3],ph=post.querySelector(".placeholder");
     post.dataset.palette=palette;if(ph)ph.dataset.palette=palette;applyFeedMedia(post,i);
   });
-  let autoScroll=false, autoScrollRaf=0, lastFrame=0,focusedPost=null,focusedPlane=null;
+  let autoScroll=false, autoScrollRaf=0, lastFrame=0,focusedPost=null,focusedPlane=null,focusTimer=0;
   const FOCUS_HOLD=2600;
   const AUTO_SCROLL_SPEED=34; // px per second; S is the only control
 
@@ -353,11 +353,13 @@
     if(spatialEnabled)return;
     const post=e.target.closest(".post");if(!post)return;
     e.preventDefault();e.stopPropagation();
-    focusedPost?.classList.remove("focused");focusedPost=post;post.classList.add("focused");
+    clearTimeout(focusTimer);
+    if(focusedPost&&focusedPost!==post){focusedPost.classList.remove("focused");focusedPost.style.transform=""}
+    focusedPost=post;post.classList.add("focused");
     const r=post.getBoundingClientRect(),dx=innerWidth/2-(r.left+r.width/2),dy=innerHeight/2-(r.top+r.height/2);
     const targetW=Math.min(innerWidth*.78,1100),scale=Math.max(1.35,Math.min(3.8,targetW/Math.max(1,r.width)));
     post.style.transform="translate("+dx.toFixed(1)+"px,"+dy.toFixed(1)+"px) scale("+scale.toFixed(3)+")";
-    setTimeout(()=>{if(focusedPost===post){post.classList.remove("focused");post.style.transform="";focusedPost=null}},FOCUS_HOLD);
+    focusTimer=setTimeout(()=>{if(focusedPost===post){post.classList.remove("focused");post.style.removeProperty("transform");focusedPost=null}},FOCUS_HOLD);
   });
 
   function autoScrollLoop(now){
@@ -497,7 +499,8 @@
       const spiral=Math.max(0,(p-.72)/.28),tunnel=Math.max(0,(p-.30)/.70);
       // First movement is a clean zoom-out: the familiar 3-column feed becomes small and centred.
       // G must inherit the visual width of F: begin broad, then only recede once depth develops.
-      const preZoom=1.34-THREE.MathUtils.smoothstep(p,.16,.52)*.62;
+      // p=0 is a true F clone. Width only recedes after the user actually scrolls into depth.
+      const preZoom=1-THREE.MathUtils.smoothstep(p,.04,.58)*.48;
       planes.forEach((m,i)=>{
         // Start as a three-column vertical feed, then bend that SAME layout into Z.
         const row=m.userData.row,lane=m.userData.lane;
@@ -545,7 +548,8 @@
         let stageScale=audioScale*perspectiveScale*(m.userData.audioBreath||1);
         // At morph 0 use the exact DOM cell width captured at handoff; then release into 3D scale.
         const handScale=m.userData.handoff?.scale||1.30;
-        stageScale*=THREE.MathUtils.lerp(handScale,1,THREE.MathUtils.smoothstep(p,.16,.52));
+        // Exact F width at p=0; shrinking begins only with depth scroll.
+        stageScale*=THREE.MathUtils.lerp(handScale,1,THREE.MathUtils.smoothstep(p,.04,.58));
         if(pixelEnabled)stageScale*=.16;
         if(vortexEnabled)stageScale*=.10;
         if(holeEnabled)stageScale*=.055;
@@ -637,7 +641,7 @@
     // Threshold: F first recedes as a whole; Three.js appears only when sizes nearly match.
     feed.style.transition="opacity .9s ease";
     feed.style.transformOrigin="50% 45%";feed.style.transform="";
-    morphProgress=0;morphTarget=.30;sceneDark=0;
+    morphProgress=0;morphTarget=0;sceneDark=0;
     cycloneScene.classList.add("on");cycloneScene.style.opacity="0";
     // Overlay the matching 3D planes on top of F first; only then dissolve the DOM away.
     requestAnimationFrame(()=>{cycloneScene.style.opacity="1"});
