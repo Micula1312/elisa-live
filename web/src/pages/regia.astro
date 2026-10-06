@@ -115,7 +115,7 @@ q("#fxAmount").oninput=e=>{q("#fxAmountVal").textContent=Number(e.target.value).
 q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).toFixed(1);send({type:"fx-react",value:Number(e.target.value)})};
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
 document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra})});
-document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{const on=btn.classList.toggle("on");btn.textContent=(on?"− ":"+ ")+btn.dataset.hydraObject.toUpperCase();send({type:"hydra-object",object:btn.dataset.hydraObject,on})});
+document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{send({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
 q("#hydraBlackout").onclick=()=>send({type:"hydra-blackout"});
 q("#hydraClean").onclick=()=>send({type:"hydra-clean"});
 q("#hydraBack").onclick=()=>send({type:"hydra-back"});
