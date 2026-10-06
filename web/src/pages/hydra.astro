@@ -121,7 +121,8 @@
         obj=new THREE.Points(geo,new THREE.PointsMaterial({color:ACID,size:.07,transparent:true,opacity:.78}));
         obj.position.set((n%5-2)*4,3+(n%3),-18-(n%5)*7);
       }else return;
-      obj.userData={kind:id,seed,baseX:obj.position.x,baseY:obj.position.y,baseZ:obj.position.z,spawn:performance.now()};
+      obj.userData={kind:id,seed,baseX:obj.position.x,baseY:obj.position.y,baseZ:obj.position.z,spawn:performance.now(),growth:id==='tree'?0:1};
+      if(id==='tree')obj.scale.set(.015,.015,.015);
       if(['phone','diamond','cola','pistol'].includes(id)){
         obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(MAGENTA)});
         landscape.flash=1;
@@ -179,11 +180,22 @@
         obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(magentaMix>.08?MAGENTA:ACID)});
       }));
       landscape.objects.tree.forEach((obj,i)=>{
-        const u=obj.userData,s=u.seed;
+        const u=obj.userData,s=u.seed,age=(performance.now()-u.spawn)/1000;
+        // Each planted tree grows over several seconds; LOW/MID act like fertilizer,
+        // so louder music visibly accelerates and exaggerates the growth.
+        const growthDrive=.0022+lo*.012+mi*.0045;
+        u.growth=Math.min(1,u.growth+growthDrive);
+        const ease=1-Math.pow(1-u.growth,3);
+        const pulse=1+lo*(.20+(i%4)*.035)+mi*.055;
+        const width=Math.max(.015,ease*(.72+lo*.16));
+        const height=Math.max(.015,ease*pulse);
+        obj.scale.set(width,height,width);
         obj.rotation.y=Math.sin(landscapeT*.18+s)*(.06+mi*.08);
         obj.rotation.z=Math.sin(landscapeT*.35+s)*(.012+hi*.045);
-        const grow=1+lo*(.16+(i%4)*.035);obj.scale.set(grow,1+lo*.3,grow);
         obj.position.y=u.baseY+Math.sin(landscapeT*.3+s)*hi*.08;
+        // Fresh trees briefly bloom magenta, then settle into acid green.
+        const newborn=Math.max(0,1-age/1.1);
+        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(newborn>.06?MAGENTA:ACID)});
       });
       landscape.objects.swarm.forEach((obj,i)=>{
         const u=obj.userData,s=u.seed,sp=obj.geometry.attributes.position;
