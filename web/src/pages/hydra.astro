@@ -69,6 +69,8 @@
     const THREE=await import('three');
     const ACID=0x39ff14, MAGENTA=0xff2bd6;
     let hypnosisWord='I AM',webcamReady=false;
+    const faceMotion={x:.5,y:.5,size:.28,v:0,px:.5,py:.5,ps:.28,last:0};
+    let faceDetector=null;
     const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
     const audio=hydra.synth.a;
     if(audio){audio.setBins(4);audio.setSmooth(.82);audio.setCutoff(1);audio.setScale(6);audio.show()}
@@ -154,23 +156,49 @@
     }
     s0.init({src:landscapeCanvas});
     typeCanvas.width=1280;typeCanvas.height=720;s2.init({src:typeCanvas});
+    async function trackFace(){
+      if(!webcamReady||currentScene!=='hypnosis')return;
+      if(!faceDetector&&'FaceDetector' in window){try{faceDetector=new FaceDetector({fastMode:true,maxDetectedFaces:1})}catch{}}
+      if(!faceDetector)return;
+      const now=performance.now();if(now-faceMotion.last<70)return;faceMotion.last=now;
+      try{
+        const faces=await faceDetector.detect(webcamVideo);if(!faces.length)return;
+        const b=faces[0].boundingBox,vw=webcamVideo.videoWidth||1280,vh=webcamVideo.videoHeight||720;
+        const tx=1-(b.x+b.width/2)/vw,ty=(b.y+b.height/2)/vh,ts=b.width/vw;
+        faceMotion.x+=(tx-faceMotion.x)*.32;faceMotion.y+=(ty-faceMotion.y)*.32;faceMotion.size+=(ts-faceMotion.size)*.28;
+        const dx=faceMotion.x-faceMotion.px,dy=faceMotion.y-faceMotion.py,ds=faceMotion.size-faceMotion.ps;
+        faceMotion.v=Math.min(1,Math.hypot(dx,dy)*8+Math.abs(ds)*10);
+        faceMotion.px=faceMotion.x;faceMotion.py=faceMotion.y;faceMotion.ps=faceMotion.size;
+      }catch{}
+    }
     function drawHypnosisType(){
       requestAnimationFrame(drawHypnosisType);
       typeCtx.clearRect(0,0,typeCanvas.width,typeCanvas.height);
       typeCtx.fillStyle='#000';typeCtx.fillRect(0,0,typeCanvas.width,typeCanvas.height);
-      const lo=low(),mi=mid();
-      typeCtx.save();typeCtx.translate(typeCanvas.width/2,typeCanvas.height/2);
-      typeCtx.scale(1+lo*.22,1+mi*.08);
+      trackFace();
+      const lo=low(),mi=mid(),hi=high(),f=faceMotion;
+      const cx=f.x*typeCanvas.width,cy=f.y*typeCanvas.height;
+      const proximity=Math.max(.65,Math.min(2.4,f.size/.28));
+      typeCtx.save();typeCtx.translate(cx,cy);
+      typeCtx.scale(proximity*(1+lo*.28),proximity*(1+mi*.12));
       typeCtx.textAlign='center';typeCtx.textBaseline='middle';
-      typeCtx.font='900 210px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
-      typeCtx.fillText(hypnosisWord,0,0);typeCtx.restore();
+      typeCtx.font='900 190px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
+      typeCtx.fillText(hypnosisWord,0,0);
+      const melt=(f.v*1.8+hi*.65+mi*.22);
+      for(let i=1;i<=7;i++){
+        const yy=i*18*(1+melt*2.2),xx=Math.sin(performance.now()*.002+i)*melt*42;
+        typeCtx.globalAlpha=Math.max(.05,.42-i*.045)*Math.min(1,melt*1.8);
+        typeCtx.fillText(hypnosisWord,xx,yy);
+      }
+      typeCtx.restore();
     }
     drawHypnosisType();
     async function ensureWebcam(){
       if(webcamReady)return true;
       try{
         const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
-        webcamVideo.srcObject=stream;await webcamVideo.play();s1.init({src:webcamVideo});webcamReady=true;status.textContent='WEBCAM · ONLINE';return true;
+        webcamVideo.srcObject=stream;await webcamVideo.play();s1.init({src:webcamVideo});webcamReady=true;
+        status.textContent=('FaceDetector' in window)?'WEBCAM + FACE MASK · ONLINE':'WEBCAM · FACE TRACKING UNSUPPORTED';return true;
       }catch(err){status.textContent='WEBCAM ERROR · '+err.message;status.classList.add('error');return false}
     }
     let landscapeT=0;
@@ -277,9 +305,12 @@
 render(o0)`;
 
     window.genesisFlash=()=>landscape.flash;
+    window.faceX=()=>faceMotion.x-.5;window.faceY=()=>faceMotion.y-.5;window.faceSize=()=>faceMotion.size;window.faceVelocity=()=>faceMotion.v;
 
     const hypnosisWebcam=`src(s1)
-  .scale(() => 1.01 + low() * .035)
+  .scale(() => 1.01 + low() * .035 + faceSize()*.06)
+  .scrollX(() => faceX()*.08)
+  .scrollY(() => -faceY()*.06)
   .contrast(() => 1.28 + mid() * .7)
   .saturate(0)
   .color(.22,1,.08)
@@ -301,13 +332,15 @@ render(o0)`;
       .luma(.35)
       .color(1,.10,.72)
       .mult(src(s1).saturate(0).contrast(1.5))
-      .scale(() => 1 + low()*.08)
+      .scale(() => 1 + low()*.08 + faceSize()*.16)
+      .scrollX(() => faceX()*.14)
+      .scrollY(() => -faceY()*.12)
   )
   .blend(
     src(o0)
       .scale(() => 1.004 + low()*.012)
       .scrollX(() => Math.sin(time*.7)*mid()*.008),
-    () => .08 + high()*.16
+    () => .08 + high()*.16 + faceVelocity()*.34
   )
   .out(o0)
 
