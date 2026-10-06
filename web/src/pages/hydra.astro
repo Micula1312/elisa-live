@@ -61,7 +61,9 @@
       camera:new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,220),
       mesh:null,
       base:null,
-      active:false
+      active:false,
+      objects:{orb:null,totem:null,swarm:null},
+      objectState:{orb:false,totem:false,swarm:false}
     };
     landscape.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     landscape.renderer.setSize(innerWidth,innerHeight,false);
@@ -76,6 +78,22 @@
       landscape.mesh=new THREE.Mesh(geo,mat);
       landscape.mesh.position.z=-28;
       landscape.scene.add(landscape.mesh);
+
+      const orbMat=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.92});
+      landscape.objects.orb=new THREE.Mesh(new THREE.IcosahedronGeometry(2.15,2),orbMat);
+      landscape.objects.orb.position.set(-5,4,-22);
+      landscape.objects.orb.visible=false;landscape.scene.add(landscape.objects.orb);
+
+      const totemMat=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.86});
+      landscape.objects.totem=new THREE.Mesh(new THREE.CylinderGeometry(.7,1.8,10,6,8,true),totemMat);
+      landscape.objects.totem.position.set(6,2,-28);
+      landscape.objects.totem.visible=false;landscape.scene.add(landscape.objects.totem);
+
+      const swarmGeo=new THREE.BufferGeometry(),swarmCount=650,swarmPos=new Float32Array(swarmCount*3);
+      for(let i=0;i<swarmCount;i++){const k=i*3;swarmPos[k]=(Math.random()-.5)*28;swarmPos[k+1]=Math.random()*10-1;swarmPos[k+2]=-8-Math.random()*48}
+      swarmGeo.setAttribute('position',new THREE.BufferAttribute(swarmPos,3));
+      landscape.objects.swarm=new THREE.Points(swarmGeo,new THREE.PointsMaterial({color:0xffffff,size:.075,transparent:true,opacity:.8}));
+      landscape.objects.swarm.visible=false;landscape.scene.add(landscape.objects.swarm);
     }
     s0.init({src:landscapeCanvas});
     let landscapeT=0;
@@ -97,6 +115,13 @@
       landscape.camera.position.x=Math.sin(landscapeT*.13)*.65;
       landscape.camera.position.y=4.6+lo*.8;
       landscape.camera.lookAt(Math.sin(landscapeT*.08)*1.2,-1,-18);
+      const orb=landscape.objects.orb,totem=landscape.objects.totem,swarm=landscape.objects.swarm;
+      orb.rotation.x+=.002+hi*.018;orb.rotation.y+=.004+mi*.025;
+      const orbS=1+lo*.8;orb.scale.setScalar(orbS);orb.position.y=4+Math.sin(landscapeT*.8)*.45+lo*1.2;
+      totem.rotation.y+=.002+mi*.012;totem.scale.y=1+lo*.65;totem.position.y=2+lo*1.4;
+      const sp=swarm.geometry.attributes.position;
+      for(let i=0;i<sp.count;i++){const k=i*3;sp.array[k+1]+=Math.sin(landscapeT*2+i*.17)*(.0008+hi*.008);sp.array[k]+=Math.sin(landscapeT+i*.11)*mi*.0025}
+      sp.needsUpdate=true;swarm.rotation.y=Math.sin(landscapeT*.12)*.12;
       landscape.renderer.render(landscape.scene,landscape.camera);
     }
     renderLandscape();
@@ -191,6 +216,12 @@ render(o0)`;
       code.value=scene.code;
       run();
     }
+    function toggleGenesisObject(id,on){
+      const obj=landscape.objects[id];if(!obj)return;
+      landscape.objectState[id]=typeof on==='boolean'?on:!landscape.objectState[id];
+      obj.visible=landscape.objectState[id];
+      status.textContent=(landscape.objectState[id]?'ADD ':'REMOVE ')+id.toUpperCase();
+    }
     function cleanHydra(){
       try{solid(0,0,0,1).out(o0);render(o0);status.textContent='CLEAN';sceneTag.textContent='HYDRA · CLEAN'}catch(err){status.textContent='ERROR · '+err.message}
     }
@@ -222,6 +253,7 @@ render(o0)`;
       m=m||{};
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-clean')cleanHydra();
+      if(m.type==='hydra-object')toggleGenesisObject(m.object,m.on);
       if(m.type==='hydra-blackout')blackoutHydra();
       if(m.type==='hydra-back')back();
       if(m.type==='hydra-editor')toggleEditor()
