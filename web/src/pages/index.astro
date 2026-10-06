@@ -580,9 +580,11 @@
       const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
       const fxEnergy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
       const filters=[];
-      if(videoFx.acid)filters.push("hue-rotate("+((20+mid*170+high*90)*fxAmount*fxReact).toFixed(1)+"deg)","saturate("+(1+fxAmount*(.8+fxEnergy)).toFixed(2)+")");
-      if(videoFx.glitch)filters.push("contrast("+(1+fxAmount*fxEnergy*.9).toFixed(2)+")","brightness("+(1+hit*fxAmount*.18).toFixed(2)+")");
-      if(videoFx.pixel)filters.push("contrast("+(1+fxAmount*(mid*.25+high*.55)).toFixed(2)+")","saturate("+(1-fxAmount*.38).toFixed(2)+")");
+      // FX need a visible base even with quiet/no browser audio; audio modulates from there.
+      const acidBase=Math.max(.28,fxEnergy),glitchBase=Math.max(.24,fxEnergy),pixelBase=Math.max(.30,mid*.25+high*.55);
+      if(videoFx.acid)filters.push("hue-rotate("+((35+acidBase*190)*fxAmount*Math.max(.45,fxReact)).toFixed(1)+"deg)","saturate("+(1+fxAmount*(1.35+acidBase*1.8)).toFixed(2)+")","contrast("+(1+fxAmount*.18).toFixed(2)+")");
+      if(videoFx.glitch)filters.push("contrast("+(1+fxAmount*(.35+glitchBase*1.15)).toFixed(2)+")","brightness("+(1+fxAmount*(.06+hit*.22)).toFixed(2)+")","saturate("+(1+fxAmount*.32).toFixed(2)+")");
+      if(videoFx.pixel)filters.push("contrast("+(1+fxAmount*(.32+pixelBase*.75)).toFixed(2)+")","saturate("+(Math.max(.18,1-fxAmount*.72)).toFixed(2)+")","brightness("+(1-fxAmount*.08).toFixed(2)+")");
       renderer.domElement.style.filter=filters.join(" ")||"none";
       renderer.domElement.style.transform=videoFx.glitch&&hit>.08?"translate("+((high-.5)*fxAmount*7).toFixed(1)+"px,"+((mid-.5)*fxAmount*5).toFixed(1)+"px)":"none";
       renderer.render(scene,camera);cycloneRaf=requestAnimationFrame(loop);
