@@ -70,7 +70,9 @@
     const ACID=0x39ff14, MAGENTA=0xff2bd6;
     let hypnosisWord='I AM',webcamReady=false;
     const faceMotion={x:.5,y:.5,size:.28,v:0,px:.5,py:.5,ps:.28,last:0};
-    let faceDetector=null;
+    let faceDetector=null,trackingMode='motion';
+    const motionCanvas=document.createElement('canvas'),motionCtx=motionCanvas.getContext('2d',{willReadFrequently:true});
+    motionCanvas.width=160;motionCanvas.height=90;let motionPrev=null;
     const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
     const audio=hydra.synth.a;
     if(audio){audio.setBins(4);audio.setSmooth(.82);audio.setCutoff(1);audio.setScale(6);audio.show()}
@@ -158,18 +160,34 @@
     typeCanvas.width=1280;typeCanvas.height=720;s2.init({src:typeCanvas});
     async function trackFace(){
       if(!webcamReady||currentScene!=='hypnosis')return;
-      if(!faceDetector&&'FaceDetector' in window){try{faceDetector=new FaceDetector({fastMode:true,maxDetectedFaces:1})}catch{}}
-      if(!faceDetector)return;
-      const now=performance.now();if(now-faceMotion.last<70)return;faceMotion.last=now;
-      try{
-        const faces=await faceDetector.detect(webcamVideo);if(!faces.length)return;
-        const b=faces[0].boundingBox,vw=webcamVideo.videoWidth||1280,vh=webcamVideo.videoHeight||720;
-        const tx=1-(b.x+b.width/2)/vw,ty=(b.y+b.height/2)/vh,ts=b.width/vw;
-        faceMotion.x+=(tx-faceMotion.x)*.32;faceMotion.y+=(ty-faceMotion.y)*.32;faceMotion.size+=(ts-faceMotion.size)*.28;
+      const now=performance.now();if(now-faceMotion.last<55)return;faceMotion.last=now;
+      if(!faceDetector&&'FaceDetector' in window){try{faceDetector=new FaceDetector({fastMode:true,maxDetectedFaces:1});trackingMode='face'}catch{}}
+      let tx=null,ty=null,ts=null,velocityBoost=0;
+      if(faceDetector){
+        try{
+          const faces=await faceDetector.detect(webcamVideo);
+          if(faces.length){const b=faces[0].boundingBox,vw=webcamVideo.videoWidth||1280,vh=webcamVideo.videoHeight||720;tx=1-(b.x+b.width/2)/vw;ty=(b.y+b.height/2)/vh;ts=b.width/vw}
+        }catch{faceDetector=null;trackingMode='motion'}
+      }
+      if(tx===null){
+        try{
+          motionCtx.save();motionCtx.scale(-1,1);motionCtx.drawImage(webcamVideo,-160,0,160,90);motionCtx.restore();
+          const data=motionCtx.getImageData(0,0,160,90).data,gray=new Uint8Array(160*90);
+          let sx=0,sy=0,weight=0,active=0,minX=160,maxX=0,minY=90,maxY=0;
+          for(let i=0;i<gray.length;i++){
+            const k=i*4,g=(data[k]*3+data[k+1]*6+data[k+2])*.1;gray[i]=g;
+            if(motionPrev){const d=Math.abs(g-motionPrev[i]);if(d>18){const x=i%160,y=(i/160)|0,w=d-18;sx+=x*w;sy+=y*w;weight+=w;active++;if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y}}
+          }
+          motionPrev=gray;
+          if(weight>900&&active>18){tx=sx/weight/160;ty=sy/weight/90;const spread=Math.max((maxX-minX)/160,(maxY-minY)/90);ts=Math.max(.16,Math.min(.62,spread*.75));velocityBoost=Math.min(1,active/900);trackingMode='motion'}
+        }catch{}
+      }
+      if(tx!==null){
+        faceMotion.x+=(tx-faceMotion.x)*.38;faceMotion.y+=(ty-faceMotion.y)*.38;if(ts!==null)faceMotion.size+=(ts-faceMotion.size)*.18;
         const dx=faceMotion.x-faceMotion.px,dy=faceMotion.y-faceMotion.py,ds=faceMotion.size-faceMotion.ps;
-        faceMotion.v=Math.min(1,Math.hypot(dx,dy)*8+Math.abs(ds)*10);
+        faceMotion.v=Math.min(1,Math.hypot(dx,dy)*10+Math.abs(ds)*8+velocityBoost*.45);
         faceMotion.px=faceMotion.x;faceMotion.py=faceMotion.y;faceMotion.ps=faceMotion.size;
-      }catch{}
+      }else faceMotion.v*=.88;
     }
     function drawHypnosisType(){
       requestAnimationFrame(drawHypnosisType);
@@ -198,7 +216,7 @@
       try{
         const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
         webcamVideo.srcObject=stream;await webcamVideo.play();s1.init({src:webcamVideo});webcamReady=true;
-        status.textContent=('FaceDetector' in window)?'WEBCAM + FACE MASK · ONLINE':'WEBCAM · FACE TRACKING UNSUPPORTED';return true;
+        trackingMode=('FaceDetector' in window)?'face':'motion';status.textContent='WEBCAM + '+trackingMode.toUpperCase()+' TRACK · ONLINE';return true;
       }catch(err){status.textContent='WEBCAM ERROR · '+err.message;status.classList.add('error');return false}
     }
     let landscapeT=0;
