@@ -1,0 +1,85 @@
+---
+---
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>AICHA / ELISA REGIA</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#090909;color:#f3f3f3;font-family:Consolas,monospace}
+body{padding:22px}.shell{max-width:1180px;margin:auto;border:1px solid #484848;background:#111;box-shadow:0 18px 70px #000}
+header{padding:18px 20px;border-bottom:1px solid #444;display:flex;justify-content:space-between;align-items:center}.title{font-size:22px}.soul{font-size:11px;letter-spacing:.15em}
+.grid{display:grid;grid-template-columns:1.05fr .95fr;gap:1px;background:#444}.panel{background:#111;padding:20px;min-height:260px}
+h2{font-size:11px;letter-spacing:.16em;font-weight:400;margin:0 0 16px;color:#aaa}.state{font-size:13px;margin-bottom:12px}
+select,button,input{font:inherit}.device{display:flex;gap:8px}.device select{flex:1;background:#080808;color:#fff;border:1px solid #555;padding:10px}
+button{background:#181818;color:#fff;border:1px solid #666;padding:10px 13px;cursor:pointer}button:hover{background:#eee;color:#000}.actions{display:flex;gap:8px;margin:12px 0}
+.meterrow{display:grid;grid-template-columns:48px 1fr 44px;gap:9px;align-items:center;margin:9px 0;font-size:11px}.meter{height:10px;border:1px solid #555;background:#050505}.meter i{display:block;height:100%;width:0;background:#eee}.hit i{transition:width .04s}
+.sens{display:grid;grid-template-columns:95px 1fr 42px;gap:9px;align-items:center;margin-top:16px;font-size:11px}
+.clock{font-size:clamp(38px,5vw,74px);letter-spacing:-.07em;line-height:1;margin:18px 0}.clock small{font-size:.32em;color:#777;letter-spacing:-.03em}
+.seek{width:100%}.trackactions{display:flex;gap:8px;margin-top:12px}.trackactions button:first-child{flex:1}
+.vol{display:grid;grid-template-columns:60px 1fr 45px;gap:8px;align-items:center;margin-top:14px;font-size:11px}
+footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;display:flex;justify-content:space-between}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header><div class="title">AICHA / ELISA REGIA</div><div class="soul">MEDIA SOUL: <span id="soul">STANDBY</span></div></header>
+<div class="grid">
+<section class="panel">
+<h2>AUDIO MASTER / LIVE INPUT</h2>
+<div class="state">SOURCE — <b id="audioState">OFF</b></div>
+<div class="device"><select id="audioDevice"><option value="">Default audio input</option></select><button id="refresh">REFRESH</button></div>
+<div class="actions"><button id="arm">ARM LIVE</button><button id="trackSource">USE TRACK</button></div>
+<div class="meterrow"><span>LEVEL</span><div class="meter"><i id="mLevel"></i></div><span id="vLevel">0.00</span></div>
+<div class="meterrow"><span>LOW</span><div class="meter"><i id="mLow"></i></div><span id="vLow">0.00</span></div>
+<div class="meterrow"><span>MID</span><div class="meter"><i id="mMid"></i></div><span id="vMid">0.00</span></div>
+<div class="meterrow"><span>HIGH</span><div class="meter"><i id="mHigh"></i></div><span id="vHigh">0.00</span></div>
+<div class="meterrow hit"><span>HIT</span><div class="meter"><i id="mHit"></i></div><span id="vHit">0.00</span></div>
+<label class="sens"><span>SENSITIVITY</span><input id="sensitivity" type="range" min=".2" max="5" step=".1" value="1.6"><span id="sensVal">1.6</span></label>
+</section>
+<section class="panel">
+<h2>MASTER TRACK / PERFORMANCE CLOCK</h2>
+<div class="clock"><span id="now">00:00</span> <small>/ <span id="total">32:27</span></small></div>
+<audio id="master" src="/audio/elisa_master.mp3" preload="metadata"></audio>
+<input class="seek" id="seek" type="range" min="0" max="1000" step="1" value="0">
+<div class="trackactions"><button id="play">▶ PLAY MASTER</button><button id="zero">↺ 00:00</button></div>
+<label class="vol"><span>VOLUME</span><input id="volume" type="range" min="0" max="1" step=".01" value="1"><span id="volVal">100%</span></label>
+</section>
+</div>
+<footer><span>DISPLAY REGIA — KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE · 32:27</span></footer>
+</div>
+<script type="module">
+import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
+const q=s=>document.querySelector(s),device=q("#audioDevice"),state=q("#audioState"),soul=q("#soul"),master=q("#master"),seek=q("#seek");
+const fmt=t=>{t=Math.max(0,Number(t)||0);return String(Math.floor(t/60)).padStart(2,"0")+":"+String(Math.floor(t%60)).padStart(2,"0")};
+async function populate(){
+ try{
+  const saved=localStorage.getItem("elisa-audio-device")||"",inputs=await listAudioInputs();
+  device.innerHTML='<option value="">Default audio input</option>';
+  inputs.forEach((d,i)=>{const o=document.createElement("option");o.value=d.deviceId;o.textContent=d.label||("Audio input "+(i+1));device.appendChild(o)});
+  if([...device.options].some(o=>o.value===saved))device.value=saved;
+ }catch(e){state.textContent="DEVICE ERROR"}
+}
+device.addEventListener("change",()=>localStorage.setItem("elisa-audio-device",device.value));
+q("#refresh").onclick=populate;
+q("#arm").onclick=async()=>{try{state.textContent="REQUESTING…";await startAudio(device.value);localStorage.setItem("elisa-audio-device",device.value);state.textContent="LIVE INPUT";soul.textContent="ONLINE";await populate()}catch(e){state.textContent=e.name||"AUDIO ERROR"}};
+q("#trackSource").onclick=async()=>{try{await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE";q("#play").textContent="❚❚ PAUSE MASTER"}catch(e){state.textContent=e.name||"TRACK ERROR"}};
+q("#play").onclick=async()=>{try{
+ if(window.ELISA_AUDIO?.source!=="track"){await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE"}
+ else if(master.paused)await master.play();else master.pause();
+ q("#play").textContent=master.paused?"▶ PLAY MASTER":"❚❚ PAUSE MASTER";
+}catch(e){state.textContent=e.name||"TRACK ERROR"}};
+q("#zero").onclick=()=>master.currentTime=0;
+master.addEventListener("loadedmetadata",()=>{if(Number.isFinite(master.duration))q("#total").textContent=fmt(master.duration)});
+master.addEventListener("timeupdate",()=>{q("#now").textContent=fmt(master.currentTime);if(!seek.matches(":active"))seek.value=master.duration?Math.round(master.currentTime/master.duration*1000):0});
+master.addEventListener("ended",()=>q("#play").textContent="▶ PLAY MASTER");
+seek.oninput=()=>{if(master.duration)master.currentTime=Number(seek.value)/1000*master.duration};
+q("#volume").oninput=e=>{master.volume=Number(e.target.value);q("#volVal").textContent=Math.round(master.volume*100)+"%"};
+q("#sensitivity").oninput=e=>{setSensitivity(e.target.value);q("#sensVal").textContent=Number(e.target.value).toFixed(1)};
+const bars={level:["#mLevel","#vLevel"],low:["#mLow","#vLow"],mid:["#mMid","#vMid"],high:["#mHigh","#vHigh"],transient:["#mHit","#vHit"]};
+window.addEventListener("elisa-audio",e=>{Object.entries(bars).forEach(([k,[b,v]])=>{const n=e.detail[k]||0;q(b).style.width=(n*100)+"%";q(v).textContent=n.toFixed(2)})});
+populate();
+</script>
+</body>
+</html>
