@@ -17,7 +17,7 @@
       display:flex;justify-content:space-between;gap:18px;user-select:none}
     #code{flex:1;resize:none;border:0;outline:0;padding:16px;background:transparent;color:#fff;
       caret-color:#fff;font:15px/1.45 Consolas,monospace;white-space:pre;tab-size:2}
-    #status{font:11px/1.2 Helvetica,Arial,sans-serif;padding:8px 12px;color:#aaa;border-top:1px solid rgba(255,255,255,.15)}#scene-tag{position:fixed;right:18px;bottom:16px;z-index:30;color:#aaa;font:11px Helvetica,Arial,sans-serif;letter-spacing:.12em;opacity:.75}
+    #status{font:11px/1.2 Helvetica,Arial,sans-serif;padding:8px 12px;color:#aaa;border-top:1px solid rgba(255,255,255,.15)}#scene-tag{position:fixed;right:18px;bottom:16px;z-index:30;color:#aaa;font:11px Helvetica,Arial,sans-serif;letter-spacing:.12em;opacity:.75}#editor-toggle{position:fixed;left:16px;bottom:16px;z-index:40;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.75);color:#fff;padding:9px 12px;font:11px Helvetica,Arial,sans-serif;cursor:pointer}
     #status.error{color:#ff8b8b}
   </style>
 </head>
@@ -29,6 +29,7 @@
     <div id="status">READY</div>
   </section>
   <div id="scene-tag">HYDRA · CUSTOM 01</div>
+  <button id="editor-toggle" type="button">EDITOR · CTRL+E</button>
 
   <script is:inline>window.global=window;</script>
   <script>
@@ -37,6 +38,8 @@
     const code=document.getElementById('code');
     const status=document.getElementById('status');
     const sceneTag=document.getElementById('scene-tag');
+    const editorToggle=document.getElementById('editor-toggle');
+    const toggleEditor=()=>{editor.classList.toggle('open');editorToggle.textContent=editor.classList.contains('open')?'CLOSE EDITOR · CTRL+E':'EDITOR · CTRL+E';if(editor.classList.contains('open'))code.focus()};
     canvas.width=innerWidth; canvas.height=innerHeight;
 
     const {default:Hydra}=await import('hydra-synth');
@@ -144,14 +147,15 @@ render(o0)`;
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-clean')cleanHydra();
       if(m.type==='hydra-back')back();
-      if(m.type==='hydra-editor'){editor.classList.toggle('open');if(editor.classList.contains('open'))code.focus()}
+      if(m.type==='hydra-editor')toggleEditor()
     };
     const regiaChannel=new BroadcastChannel('elisa-regia');
     regiaChannel.onmessage=e=>handleRegia(e.data);
     addEventListener('storage',e=>{if(e.key==='elisa-regia-command'&&e.newValue){try{handleRegia(JSON.parse(e.newValue).message)}catch{}}});
 
-    document.addEventListener('keydown',(e)=>{
-      if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();editor.classList.toggle('open');if(editor.classList.contains('open'))code.focus()}
+    editorToggle.addEventListener('click',toggleEditor);
+    window.addEventListener('keydown',(e)=>{
+      if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();toggleEditor()}
       if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();run()}
       if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();back()}
       if(e.ctrlKey&&e.key.toLowerCase()==='l'&&document.activeElement===code){e.preventDefault();code.value=''}
