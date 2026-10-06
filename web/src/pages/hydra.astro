@@ -71,7 +71,7 @@
     let hypnosisWord='I AM',webcamReady=false,hypnosisDrop=0;
     const faceMotion={x:.5,y:.5,size:.28,v:0,px:.5,py:.5,ps:.28,last:0};
     let faceDetector=null,trackingMode='motion',handLandmarker=null,handTrackingLoading=false,lastHandTrack=0,heartGesture=false,heartHold=0;
-    const hearts=[];
+    const hearts=[];let handDebug='HANDS · WAITING';
     const motionCanvas=document.createElement('canvas'),motionCtx=motionCanvas.getContext('2d',{willReadFrequently:true});
     motionCanvas.width=160;motionCanvas.height=90;let motionPrev=null;
     const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
@@ -179,7 +179,7 @@
       const now=performance.now();if(now-lastHandTrack<55)return;lastHandTrack=now;
       try{
         const r=handLandmarker.detectForVideo(webcamVideo,now),hands=r.landmarks||[];
-        if(hands.length<2){heartGesture=false;heartHold=0;return}
+        if(hands.length<2){heartGesture=false;heartHold=0;handDebug='HANDS · '+hands.length;status.textContent=handDebug;return}
         const a=hands[0],b=hands[1],dist=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
         const palmA=Math.max(.04,dist(a[0],a[9])),palmB=Math.max(.04,dist(b[0],b[9])),handScale=(palmA+palmB)*.5;
         const thumbD=dist(a[4],b[4]),indexD=dist(a[8],b[8]),centerD=dist(a[9],b[9]);
@@ -188,8 +188,13 @@
         const thumbClose=thumbD<Math.max(.18,handScale*1.65);
         const indexClose=indexD<Math.max(.18,handScale*1.65);
         const handsTogether=centerD<Math.max(.62,handScale*5.2);
-        const heartNow=thumbClose&&indexClose&&handsTogether;
+        // A natural two-hand heart varies a lot: either the two thumb tips or the two
+        // index tips may not literally touch. Require two hands close + one fingertip pair,
+        // and show the live distances so we can tune this to the performer's actual gesture.
+        const heartNow=handsTogether&&((thumbClose&&indexClose)||(thumbD<Math.max(.24,handScale*2.2)&&indexD<Math.max(.30,handScale*2.8)));
         const cx=(2-a[4].x-b[4].x-a[8].x-b[8].x)/4*typeCanvas.width,cy=(a[4].y+b[4].y+a[8].y+b[8].y)/4*typeCanvas.height;
+        handDebug='HANDS 2 · T '+thumbD.toFixed(2)+' · I '+indexD.toFixed(2)+(heartNow?' · 🫶':'');
+        status.textContent=handDebug;
         if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,18);heartGesture=true;heartHold=now}
         else if(heartNow&&now-heartHold>700){spawnHeartBurst(cx,cy,3);heartHold=now}
         else if(!heartNow){heartGesture=false;heartHold=0}
