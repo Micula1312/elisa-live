@@ -542,8 +542,9 @@
         const audioScale=1+mid*.09+low*.035+hit*(i%9===0?.18:0);
         const perspectiveScale=THREE.MathUtils.lerp(1,.72+travel*.32,tunnel);
         let stageScale=audioScale*perspectiveScale*(m.userData.audioBreath||1);
-        // Same broad opening frame as the F handoff; depth progressively releases this extra scale.
-        stageScale*=THREE.MathUtils.lerp(1.30,1,THREE.MathUtils.smoothstep(p,.16,.52));
+        // At morph 0 use the exact DOM cell width captured at handoff; then release into 3D scale.
+        const handScale=m.userData.handoff?.scale||1.30;
+        stageScale*=THREE.MathUtils.lerp(handScale,1,THREE.MathUtils.smoothstep(p,.16,.52));
         if(pixelEnabled)stageScale*=.16;
         if(vortexEnabled)stageScale*=.10;
         if(holeEnabled)stageScale*=.055;
@@ -616,7 +617,16 @@
         cycloneTexture(raw,tex=>{plane.material.map=tex;plane.material.opacity=1;plane.material.needsUpdate=true;plane.userData.url=raw});
       }
       const r=post.getBoundingClientRect();
-      plane.userData.handoff={x:(r.left+r.width/2-innerWidth/2)/(innerWidth/9.2),y:-(r.top+r.height/2-innerHeight/2)/(innerHeight/10.4)};
+      // Convert DOM pixels to the exact Three.js world size at z=0.
+      // This makes H/G at morph=0 inherit the real 3-column feed width instead of a compressed approximation.
+      const cam=cyclone.camera;
+      const visibleWorldH=2*Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5)*cam.position.z;
+      const worldPerPx=visibleWorldH/innerHeight;
+      plane.userData.handoff={
+        x:(r.left+r.width/2-innerWidth/2)*worldPerPx,
+        y:-(r.top+r.height/2-innerHeight/2)*worldPerPx,
+        scale:(r.width*worldPerPx)/1.72
+      };
     });
   };
   const enter3D=()=>{
