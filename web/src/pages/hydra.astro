@@ -24,7 +24,7 @@
 <body>
   <canvas id="hydra-canvas"></canvas>
   <section id="editor-shell">
-    <div id="bar"><span>ELISA / HYDRA LIVE</span><span>CTRL+ENTER RUN · CTRL+E HIDE</span></div>
+    <div id="bar"><span>ELISA / HYDRA LIVE</span><span>CTRL+ENTER RUN · CTRL+Z BACK · CTRL+E HIDE</span></div>
     <textarea id="code" spellcheck="false"></textarea>
     <div id="status">READY</div>
   </section>
@@ -72,10 +72,17 @@
 render(o0)`;
 
     code.value=starter;
+    const history=[];
+    let lastRun=starter;
 
     function run(){
+      if(code.value!==lastRun){
+        history.push(lastRun);
+        if(history.length>50) history.shift();
+      }
       try{
         (0,eval)(code.value);
+        lastRun=code.value;
         status.textContent='RUNNING · '+new Date().toLocaleTimeString();
         status.classList.remove('error');
       }catch(err){
@@ -85,9 +92,28 @@ render(o0)`;
     }
     run();
 
+    function back(){
+      if(!history.length){
+        status.textContent='BACK · NO PREVIOUS PATCH';
+        return;
+      }
+      const previous=history.pop();
+      code.value=previous;
+      try{
+        (0,eval)(previous);
+        lastRun=previous;
+        status.textContent='BACK · '+new Date().toLocaleTimeString();
+        status.classList.remove('error');
+      }catch(err){
+        status.textContent='ERROR · '+err.message;
+        status.classList.add('error');
+      }
+    }
+
     document.addEventListener('keydown',(e)=>{
       if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();editor.classList.toggle('open');if(editor.classList.contains('open'))code.focus()}
       if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();run()}
+      if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();back()}
       if(e.ctrlKey&&e.key.toLowerCase()==='l'&&document.activeElement===code){e.preventDefault();code.value=''}
     });
     addEventListener('resize',()=>hydra.synth.setResolution(innerWidth,innerHeight));
