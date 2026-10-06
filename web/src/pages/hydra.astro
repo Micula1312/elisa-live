@@ -232,12 +232,21 @@
       typeCtx.save();typeCtx.translate(cx,cy);
       typeCtx.scale(proximity*(1+lo*.28),proximity*(1+mi*.12));
       typeCtx.textAlign='center';typeCtx.textBaseline='middle';
-      typeCtx.font='900 190px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
-      typeCtx.fillText(hypnosisWord,0,0);
+      typeCtx.font='300 54px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
       const melt=(f.v*1.8+hi*.65+mi*.22);
-      for(let i=1;i<=7;i++){
-        const yy=i*18*(1+melt*2.2),xx=Math.sin(performance.now()*.002+i)*melt*42;
-        typeCtx.globalAlpha=Math.max(.05,.42-i*.045)*Math.min(1,melt*1.8);
+      const rows=9,cols=3,stepX=235,stepY=58;
+      for(let row=-4;row<=4;row++){
+        for(let col=-1;col<=1;col++){
+          const phase=row*1.7+col*.9;
+          const driftX=Math.sin(performance.now()*.002+phase)*melt*(18+Math.abs(row)*5);
+          const driftY=Math.abs(row)*melt*8;
+          typeCtx.globalAlpha=Math.max(.22,.92-Math.abs(row)*.10-Math.abs(col)*.08);
+          typeCtx.fillText(hypnosisWord,col*stepX+driftX,row*stepY+driftY);
+        }
+      }
+      for(let i=1;i<=5;i++){
+        const yy=145+i*14*(1+melt*2.4),xx=Math.sin(performance.now()*.002+i)*melt*26;
+        typeCtx.globalAlpha=Math.max(.04,.22-i*.032)*Math.min(1,melt*1.8);
         typeCtx.fillText(hypnosisWord,xx,yy);
       }
       typeCtx.restore();
