@@ -68,7 +68,7 @@
     const {default:Hydra}=await import('hydra-synth');
     const THREE=await import('three');
     const ACID=0x39ff14, MAGENTA=0xff2bd6;
-    let hypnosisWord='I AM',webcamReady=false;
+    let hypnosisWord='I AM',webcamReady=false,hypnosisDrop=0;
     const faceMotion={x:.5,y:.5,size:.28,v:0,px:.5,py:.5,ps:.28,last:0};
     let faceDetector=null,trackingMode='motion',handLandmarker=null,handTrackingLoading=false,lastHandTrack=0,heartGesture=false,heartHold=0;
     const hearts=[];
@@ -377,7 +377,7 @@
 render(o0)`;
 
     window.genesisFlash=()=>landscape.flash;
-    window.faceX=()=>faceMotion.x-.5;window.faceY=()=>faceMotion.y-.5;window.faceSize=()=>faceMotion.size;window.faceVelocity=()=>faceMotion.v;
+    window.faceX=()=>faceMotion.x-.5;window.faceY=()=>faceMotion.y-.5;window.faceSize=()=>faceMotion.size;window.faceVelocity=()=>faceMotion.v;window.hypnosisDrop=()=>hypnosisDrop;
 
     const hypnosisWebcam=`src(s1)
   .scale(() => 1.01 + low() * .035 + faceSize()*.06)
@@ -387,8 +387,13 @@ render(o0)`;
   .saturate(0)
   .color(.22,1,.08)
   .modulate(
-    osc(() => 5 + high() * 18,.02,0).rotate(Math.PI/2),
-    () => .004 + mid() * .045
+    osc(() => 5 + high() * 18 + hypnosisDrop()*42,.02,0).rotate(Math.PI/2),
+    () => .004 + mid() * .045 + hypnosisDrop()*.16
+  )
+  .modulatePixelate(
+    noise(() => 2 + hypnosisDrop()*18,.12),
+    () => 180 - hypnosisDrop()*166,
+    () => 120 - hypnosisDrop()*110
   )
   .diff(
     src(s1)
@@ -550,12 +555,14 @@ render(o0)`;
 
     editorToggle.addEventListener('click',toggleEditor);
     window.addEventListener('keydown',(e)=>{
+      if(e.code==='Space'&&document.activeElement!==code&&currentScene==='hypnosis'){e.preventDefault();hypnosisDrop=1;status.textContent='DROP · DISINTEGRATE'}
       if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)&&document.activeElement!==code){e.preventDefault();moveGenesisCamera(e.key)}
       if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();toggleEditor()}
       if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();run()}
       if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();back()}
       if(e.ctrlKey&&e.key.toLowerCase()==='l'&&document.activeElement===code){e.preventDefault();code.value=''}
     });
+    window.addEventListener('keyup',(e)=>{if(e.code==='Space'&&currentScene==='hypnosis')hypnosisDrop=0});
     addEventListener('resize',()=>{
       hydra.synth.setResolution(innerWidth,innerHeight);
       landscape.camera.aspect=innerWidth/innerHeight;landscape.camera.updateProjectionMatrix();
