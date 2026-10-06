@@ -28,7 +28,8 @@
 <body>
   <canvas id="hydra-canvas"></canvas>
   <canvas id="landscape-source" style="display:none"></canvas>
-  <canvas id="type-source" style="display:none"></canvas>\n  <canvas id="heart-source" style="display:none"></canvas>
+  <canvas id="type-source" style="display:none"></canvas>
+  <canvas id="heart-source" style="display:none"></canvas>
   <video id="webcam-source" autoplay muted playsinline style="display:none"></video>
   <section id="editor-shell">
     <div id="bar"><span>ELISA / HYDRA LIVE</span><span>CTRL+ENTER RUN · CTRL+Z BACK · CTRL+E HIDE</span></div>
@@ -43,7 +44,8 @@
   <script>
     const canvas=document.getElementById('hydra-canvas');
     const landscapeCanvas=document.getElementById('landscape-source');
-    const typeCanvas=document.getElementById('type-source'),typeCtx=typeCanvas.getContext('2d');\n    const heartCanvas=document.getElementById('heart-source'),heartCtx=heartCanvas.getContext('2d');
+    const typeCanvas=document.getElementById('type-source'),typeCtx=typeCanvas.getContext('2d');
+    const heartCanvas=document.getElementById('heart-source'),heartCtx=heartCanvas.getContext('2d');
     const webcamVideo=document.getElementById('webcam-source');
     const editor=document.getElementById('editor-shell');
     const code=document.getElementById('code');
@@ -158,7 +160,8 @@
       status.textContent='ADD '+id.toUpperCase()+' · '+landscape.objects[id].length;
     }
     s0.init({src:landscapeCanvas});
-    typeCanvas.width=960;typeCanvas.height=540;s2.init({src:typeCanvas});\n    heartCanvas.width=960;heartCanvas.height=540;s3.init({src:heartCanvas});
+    typeCanvas.width=960;typeCanvas.height=540;s2.init({src:typeCanvas});
+    heartCanvas.width=960;heartCanvas.height=540;s3.init({src:heartCanvas});
     async function ensureHandTracking(){
       if(handLandmarker||handTrackingLoading)return;
       handTrackingLoading=true;
