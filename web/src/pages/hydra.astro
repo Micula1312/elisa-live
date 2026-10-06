@@ -181,9 +181,14 @@
         const r=handLandmarker.detectForVideo(webcamVideo,now),hands=r.landmarks||[];
         if(hands.length<2){heartGesture=false;heartHold=0;return}
         const a=hands[0],b=hands[1],dist=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
-        const thumbClose=dist(a[4],b[4])<.13,indexClose=dist(a[8],b[8])<.13;
-        const palmsApart=dist(a[9],b[9])>.12&&dist(a[9],b[9])<.55;
-        const heartNow=thumbClose&&indexClose&&palmsApart;
+        const palmA=Math.max(.04,dist(a[0],a[9])),palmB=Math.max(.04,dist(b[0],b[9])),handScale=(palmA+palmB)*.5;
+        const thumbD=dist(a[4],b[4]),indexD=dist(a[8],b[8]),centerD=dist(a[9],b[9]);
+        // Deliberately generous for live performance: accept fingertips that nearly touch,
+        // normalized to the actual hand size/distance from camera.
+        const thumbClose=thumbD<Math.max(.18,handScale*1.65);
+        const indexClose=indexD<Math.max(.18,handScale*1.65);
+        const handsTogether=centerD<Math.max(.62,handScale*5.2);
+        const heartNow=thumbClose&&indexClose&&handsTogether;
         const cx=(2-a[4].x-b[4].x-a[8].x-b[8].x)/4*typeCanvas.width,cy=(a[4].y+b[4].y+a[8].y+b[8].y)/4*typeCanvas.height;
         if(heartNow&&!heartGesture){spawnHeartBurst(cx,cy,18);heartGesture=true;heartHold=now}
         else if(heartNow&&now-heartHold>700){spawnHeartBurst(cx,cy,3);heartHold=now}
