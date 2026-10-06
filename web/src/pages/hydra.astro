@@ -232,16 +232,24 @@
       typeCtx.save();typeCtx.translate(cx,cy);
       typeCtx.scale(proximity*(1+lo*.28),proximity*(1+mi*.12));
       typeCtx.textAlign='center';typeCtx.textBaseline='middle';
-      typeCtx.font='300 30px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
-      const melt=(f.v*1.8+hi*.65+mi*.22);
-      const rows=13,cols=5,stepX=125,stepY=34;
-      for(let row=-6;row<=6;row++){
-        for(let col=-2;col<=2;col++){
-          const phase=row*1.7+col*.9;
-          const driftX=Math.sin(performance.now()*.002+phase)*melt*(10+Math.abs(row)*3);
-          const driftY=Math.abs(row)*melt*5;
-          typeCtx.globalAlpha=Math.max(.18,.82-Math.abs(row)*.065-Math.abs(col)*.055);
-          typeCtx.fillText(hypnosisWord,col*stepX+driftX,row*stepY+driftY);
+      typeCtx.font='300 19px Helvetica,Arial,sans-serif';typeCtx.fillStyle='#fff';
+      const melt=(f.v*1.8+hi*.65+mi*.22),t=performance.now()*.001;
+      const rows=17,cols=7,stepX=82,stepY=25;
+      for(let row=-8;row<=8;row++){
+        for(let col=-3;col<=3;col++){
+          const phase=row*1.37+col*.83;
+          const baseFloatX=Math.sin(t*.72+phase)*12+Math.cos(t*.31+row)*5;
+          const baseFloatY=Math.cos(t*.58+phase)*7+Math.sin(t*.27+col)*4;
+          const driftX=baseFloatX+Math.sin(t*2+phase)*melt*(7+Math.abs(row)*2);
+          const driftY=baseFloatY+Math.abs(row)*melt*3.5;
+          const width=.58+((Math.sin(phase*2.1)+1)*.5)*.92;
+          const breathe=1+Math.sin(t*.45+phase)*.07;
+          typeCtx.save();
+          typeCtx.translate(col*stepX+driftX,row*stepY+driftY);
+          typeCtx.scale(width*breathe,1);
+          typeCtx.globalAlpha=Math.max(.14,.72-Math.abs(row)*.042-Math.abs(col)*.045);
+          typeCtx.fillText(hypnosisWord,0,0);
+          typeCtx.restore();
         }
       }
       for(let i=1;i<=5;i++){
