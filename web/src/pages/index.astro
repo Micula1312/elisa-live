@@ -641,37 +641,39 @@
       handoffTimer=setTimeout(()=>{spatialEnabled=false;cycloneScene.classList.remove("on");cycloneScene.style.opacity="";feed.style.opacity="1";feed.style.transition="";syncCueMonitor()},500);
     }));
   };
+  const setFeedCue=(key)=>{
+    if(["b","d","f"].includes(key)&&spatialEnabled)leave3D();
+    if(key==="b"){breathEnabled=true;slipEnabled=false;floatEnabled=false}
+    if(key==="d"){breathEnabled=true;slipEnabled=true;floatEnabled=false}
+    if(key==="f"){breathEnabled=true;slipEnabled=true;floatEnabled=true}
+    if(key==="g"){if(!spatialEnabled)enter3D();return}
+    if(key==="h"){if(!spatialEnabled)enter3D();orbitEnabled=true;morphTarget=1;syncCueMonitor();return}
+    if(key==="j"){if(!spatialEnabled)enter3D();pixelEnabled=true;syncCueMonitor();return}
+    if(key==="k"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=true;syncCueMonitor();return}
+    if(key==="l"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=true;holeEnabled=true;syncCueMonitor();return}
+    [...grid.querySelectorAll(".post")].forEach((post,i)=>{post.classList.toggle("detached",slipEnabled&&((i%3===0)||(i%7===2)));post.classList.toggle("floating",floatEnabled)});
+    syncCueMonitor();
+  };
   const toggleCue=(key)=>{
+    if(["b","d","f"].includes(key)){setFeedCue(key);return}
     if(key==="g"){spatialEnabled?leave3D():enter3D();return}
     if(key==="h"){if(!spatialEnabled)enter3D();orbitEnabled=!orbitEnabled;morphTarget=orbitEnabled?1:.52;syncCueMonitor();return}
-    if(key==="b"){
-      breathEnabled=!breathEnabled;if(!breathEnabled){slipEnabled=false;floatEnabled=false}
-    }
-    if(key==="d"){
-      const on=!slipEnabled;breathEnabled=on||breathEnabled;slipEnabled=on;if(!on)floatEnabled=false;
-    }
-    if(key==="f"){
-      const on=!floatEnabled;breathEnabled=on||breathEnabled;slipEnabled=on||slipEnabled;floatEnabled=on;
-    }
     if(key==="j"){if(!spatialEnabled)enter3D();pixelEnabled=!pixelEnabled}
     if(key==="k"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=!vortexEnabled}
     if(key==="l"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=true;holeEnabled=!holeEnabled}
-    [...grid.querySelectorAll(".post")].forEach((post,i)=>{
-      post.classList.toggle("detached",slipEnabled&&((i%3===0)||(i%7===2)));
-      post.classList.toggle("floating",floatEnabled);
-    });
     syncCueMonitor();
   };
   const handleRegiaMessage=m=>{
     m=m||{};
     if(m.type==="cue"){
       if(m.key==="s"){setAutoScroll(true);return}
-      if(["b","d","f","g","h","j","k","l"].includes(m.key))toggleCue(m.key);
+      if(["b","d","f","g","h","j","k","l"].includes(m.key))setFeedCue(m.key);
     }
     if(m.type==="fx"&&m.fx in videoFx){videoFx[m.fx]=!!m.on;syncVideoFx()}
     if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
     if(m.type==="fx-amount"){videoAmount.value=String(m.value);vAmount.textContent=Number(m.value).toFixed(2);applyVideoFx()}
     if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1);applyVideoFx()}
+    if(m.type==="subtitles"){subtitlesEnabled=!!m.on;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);if(subtitlesEnabled)previewSubtitle();else setSubtitle(null,"")}
   };
   const regiaChannel=new BroadcastChannel("elisa-regia");
   regiaChannel.onmessage=e=>handleRegiaMessage(e.data);
