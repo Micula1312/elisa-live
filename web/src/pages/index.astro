@@ -632,12 +632,14 @@
   const leave3D=()=>{
     if(!spatialEnabled)return;
     clearTimeout(handoffTimer);orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false;particleMix=0;holeMix=0;slashLight?.classList.remove("on");morphTarget=0;
-    feed.style.display="block";feed.style.opacity="1";feed.style.transform="";
-    cycloneScene.style.opacity="0";
-    handoffTimer=setTimeout(()=>{
-      spatialEnabled=false;cycloneScene.classList.remove("on");feed.style.opacity="1";feed.style.transform="";
-      breathEnabled=true;slipEnabled=true;floatEnabled=true;syncCueMonitor();
-    },500);
+    // Restore the live DOM feed BEFORE removing the 3D canvas: never expose the white scene underneath.
+    feed.style.display="block";feed.style.visibility="visible";feed.style.pointerEvents="auto";feed.style.transition="none";feed.style.opacity="1";feed.style.transform="";
+    breathEnabled=true;slipEnabled=true;floatEnabled=true;
+    [...grid.querySelectorAll(".post")].forEach((post,i)=>{post.classList.toggle("detached",(i%3===0)||(i%7===2));post.classList.add("floating")});
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      cycloneScene.style.opacity="0";
+      handoffTimer=setTimeout(()=>{spatialEnabled=false;cycloneScene.classList.remove("on");cycloneScene.style.opacity="";feed.style.opacity="1";feed.style.transition="";syncCueMonitor()},500);
+    }));
   };
   const toggleCue=(key)=>{
     if(key==="g"){spatialEnabled?leave3D():enter3D();return}
