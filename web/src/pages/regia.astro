@@ -199,7 +199,7 @@ footer {
 /* HYDRA CONTROL HIERARCHY */
 .hydra-deck{background:#090b09!important;border-top:2px solid var(--acid)!important}
 .hydra-scene-label{font-size:7px;letter-spacing:.16em;color:#777;margin:7px 0 4px}
-.hydra-buttons{display:grid!important;grid-template-columns:repeat(6,minmax(92px,1fr))!important;gap:5px!important;margin-bottom:9px}
+.hydra-buttons{display:grid!important;grid-template-columns:repeat(5,minmax(92px,1fr))!important;gap:5px!important;margin-bottom:9px}
 .hydra-buttons button{min-height:52px!important;padding:7px 8px!important;font-size:8px!important;border:1px solid #667066!important;background:#101410!important;color:#aaa!important;text-align:left}
 .hydra-buttons button strong{font-size:12px;letter-spacing:.08em;color:#f4f4f4}
 .hydra-buttons button:hover{border-color:var(--acid)!important;background:#10200d!important}
@@ -262,7 +262,6 @@ footer {
 <button data-hydra="hypnosis">03<br><strong>HYPNOSIS</strong></button>
 <button data-hydra="resonance" class="todo">04<br><strong>RESONANCE</strong></button>
 <button data-hydra="farewell">05<br><strong>FINAL TREE</strong></button>
-<button data-hydra="credits">06<br><strong>CREDITS</strong></button>
 </div>
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">GENESIS / OBJECTS</div>
@@ -284,7 +283,7 @@ Micol Gelsi
 
 BLIVET
 
-see you out there</textarea><button id="farewellCreditsSend">UPDATE CREDITS</button></div>
+see you out there</textarea><div><button id="farewellCreditsSend">UPDATE</button><button id="farewellCreditsPlay">▶ PLAY OVERLAY</button><button id="farewellCreditsStop">STOP</button></div></div>
 </div>
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">REGIA / SETUP JSON</div>
@@ -370,7 +369,7 @@ q("#voiceSubsStop").onclick=()=>{send({type:"voice-subtitles-stop"});q("#voiceSu
 q("#fxAmount").oninput=e=>{q("#fxAmountVal").textContent=Number(e.target.value).toFixed(2);send({type:"fx-amount",value:Number(e.target.value)})};
 q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).toFixed(1);send({type:"fx-react",value:Number(e.target.value)})};
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
-document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra});if(btn.dataset.hydra==="credits")setTimeout(()=>send({type:"hydra-farewell-credits",text:q("#farewellCreditsText").value}),60)});
+document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra})});
 document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{send({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
 q("#forestBurst").onclick=()=>send({type:"hydra-forest-burst",count:6});
 document.querySelectorAll("[data-hypnosis-word]").forEach(btn=>btn.onclick=()=>{q("#hypnosisText").value=btn.dataset.hypnosisWord;send({type:"hydra-hypnosis-word",word:btn.dataset.hypnosisWord})});
@@ -378,6 +377,8 @@ const sendHypnosisText=()=>{const word=q("#hypnosisText").value.trim();if(word)s
 q("#hypnosisSend").onclick=sendHypnosisText;
 q("#hypnosisText").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendHypnosisText()}});
 q("#farewellCreditsSend").onclick=()=>send({type:"hydra-farewell-credits",text:q("#farewellCreditsText").value});
+q("#farewellCreditsPlay").onclick=()=>send({type:"hydra-credits-play",text:q("#farewellCreditsText").value});
+q("#farewellCreditsStop").onclick=()=>send({type:"hydra-credits-stop"});
 const setupStatus=q("#setupStatus"),setupFile=q("#setupFile");
 const captureSetup=()=>({
   version:1,name:q("#setupName").value.trim()||"ELISA LIVE",savedAt:new Date().toISOString(),
