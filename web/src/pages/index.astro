@@ -201,6 +201,15 @@
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
   const cycloneScene=document.querySelector("#cycloneScene"),slashLight=document.querySelector("#slashLight"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
+  // Mirror /regia's live audio analysis into this performance window.
+  // The UCA202 is opened once by regia; WEB consumes the shared LOW/MID/HIGH/HIT frames.
+  const sharedAudioBus=new BroadcastChannel("elisa-audio");
+  sharedAudioBus.onmessage=e=>{
+    const m=e.data||{};if(m.type!=="audio-frame")return;
+    const detail={level:m.level||0,low:m.low||0,mid:m.mid||0,high:m.high||0,transient:m.transient||0,lowRaw:m.lowRaw||0,midRaw:m.midRaw||0,highRaw:m.highRaw||0,running:!!m.running,deviceId:m.deviceId||"",sensitivity:m.sensitivity||1,source:m.source||"none",sampleRate:m.sampleRate||0,updatedAt:m.updatedAt||performance.now()};
+    Object.assign(window.ELISA_AUDIO,detail);
+    window.dispatchEvent(new CustomEvent("elisa-audio",{detail}));
+  };
   const aichaDesktop=document.querySelector("#aichaDesktopPlayer"),aichaPlay=document.querySelector("#aichaPlay"),aichaZero=document.querySelector("#aichaZero"),aichaTime=document.querySelector("#aichaTime"),aichaSignal=document.querySelector("#aichaSignal"),aichaSource=document.querySelector("#aichaSource"),aichaFakeFile=document.querySelector("#aichaFakeFile");
   document.querySelector("#aichaMin").onclick=()=>aichaDesktop.classList.toggle("min");
   let aichaLiveOn=false,aichaLiveStartedAt=0,aichaLiveTimer=0;
@@ -723,7 +732,7 @@
     m=m||{};
     if(m.type==="cue"){
       if(m.key==="s"){setAutoScroll(true);return}
-      if(["b","d","f","g","h","j","k","l"].includes(m.key))setFeedCue(m.key);
+      if(["b","d","f","g","h","j","k","l"].includes(m.key))toggleCue(m.key);
     }
     if(m.type==="fx"&&m.fx in videoFx){videoFx[m.fx]=!!m.on;syncVideoFx()}
     if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
