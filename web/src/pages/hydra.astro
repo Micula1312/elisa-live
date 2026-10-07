@@ -108,7 +108,7 @@
       if(isCC&&MIDI_MACROS[d1]){window.ELISA_CTRL[MIDI_MACROS[d1]]=value/127;if(d1===20||d1===21)applyMasterFade()}
       // AKAI pad 13 on MIDI channel 10: momentary DROP gate (note-on / note-off).
       if(channel===10&&d1===13&&(kind===0x90||kind===0x80)) setDrop(kind===0x90&&value>0);
-      if(channel===10&&kind===0x90&&value>0&&d1!==13){
+      if(currentScene==='genesis'&&channel===10&&kind===0x90&&value>0&&d1!==13){
         const explicit={1:'single',2:'burst',3:'hero',4:'rain'}[d1];
         const modes=['single','burst','hero','rain'];
         const mode=explicit||modes[((d1%4)+4)%4];
@@ -574,12 +574,6 @@ voronoi(
   // Keep the forest cue mostly monochrome until the second half of CC17.
   .saturate(() => 1 + Math.pow(feedback(),1.7)*2.15)
   .brightness(() => -.06 - high()*.12 + deform()*.035)
-  .layer(
-    src(s3)
-      .luma(.04)
-      .scale(() => 1 + low()*.025)
-      .modulate(noise(() => 1.4 + mid()*2.2,.025), () => high()*.025 + audioChaos()*.035)
-  )
   .out(o0)
 
 render(o0)`;
