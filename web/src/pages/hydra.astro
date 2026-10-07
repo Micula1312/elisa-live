@@ -19,6 +19,8 @@
       caret-color:#fff;font:15px/1.45 Consolas,monospace;white-space:pre;tab-size:2}
     #status{font:11px/1.2 Helvetica,Arial,sans-serif;padding:8px 12px;color:#aaa;border-top:1px solid rgba(255,255,255,.15)}#scene-tag{position:fixed;right:18px;bottom:16px;z-index:30;color:#aaa;font:11px Helvetica,Arial,sans-serif;letter-spacing:.12em;opacity:.75}#editor-toggle{position:fixed;left:16px;bottom:16px;z-index:40;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.75);color:#fff;padding:9px 12px;font:11px Helvetica,Arial,sans-serif;cursor:pointer}
     #status.error{color:#ff8b8b}
+    #midi-monitor{position:fixed;left:16px;top:16px;z-index:45;min-width:260px;padding:10px 12px;border:1px solid rgba(57,255,20,.45);background:rgba(0,0,0,.78);color:#39ff14;font:11px/1.45 Helvetica,Arial,sans-serif;letter-spacing:.06em;pointer-events:none}
+    #midi-monitor b{color:#fff;font-weight:400} #midi-monitor.off{border-color:#555;color:#777}
     #capital-counter{position:fixed;right:18px;bottom:38px;z-index:35;text-align:right;font-family:Helvetica,Arial,sans-serif;pointer-events:none;mix-blend-mode:screen}
     #capital-counter .money{color:#39ff14;font-size:clamp(20px,2.4vw,38px);font-weight:700;letter-spacing:-.05em;text-shadow:0 0 12px rgba(57,255,20,.65)}
     #capital-counter .tears{color:#ff2bd6;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,43,214,.6)}
@@ -39,6 +41,7 @@
   <div id="capital-counter"><div class="money" id="money-count">$000000</div><div class="tears" id="tear-count">💧 000</div></div>
   <div id="scene-tag">HYDRA · CUSTOM 01</div>
   <button id="editor-toggle" type="button">EDITOR · CTRL+E</button>
+  <div id="midi-monitor" class="off">MIDI · CONNECTING…<br><b>move a knob / pad</b></div>
 
   <script is:inline>window.global=window;</script>
   <script>
@@ -52,6 +55,7 @@
     const status=document.getElementById('status');
     const sceneTag=document.getElementById('scene-tag');
     const editorToggle=document.getElementById('editor-toggle');
+    const midiMonitor=document.getElementById('midi-monitor');
     const capitalCounter=document.getElementById('capital-counter'),moneyCount=document.getElementById('money-count'),tearCount=document.getElementById('tear-count');
     let capital=0,tears=0;
     function incrementCapital(id){
@@ -65,6 +69,29 @@
       capitalCounter.classList.add('pop');
     }
     const toggleEditor=()=>{editor.classList.toggle('open');editorToggle.textContent=editor.classList.contains('open')?'CLOSE EDITOR · CTRL+E':'EDITOR · CTRL+E';if(editor.classList.contains('open'))code.focus()};
+
+    // MIDI probe: browser reads the same USB controller independently from TouchDesigner.
+    window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
+    function showMidi(input,data){
+      const [statusByte,d1,d2]=data,kind=statusByte&0xf0,channel=(statusByte&0x0f)+1;
+      const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
+      const isCC=kind===0xb0,value=d2??0;
+      Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
+      midiMonitor.classList.remove('off');
+      midiMonitor.innerHTML='MIDI · <b>'+window.ELISA_MIDI.device+'</b><br>'+type+' · CH '+channel+' · '+(isCC?'CC ':'NOTE ')+d1+' · VALUE <b>'+value+'</b> · '+(value/127).toFixed(2);
+    }
+    function bindMidi(access){
+      const inputs=[...access.inputs.values()];
+      if(!inputs.length){midiMonitor.classList.add('off');midiMonitor.innerHTML='MIDI · NO DEVICE<br><b>connect AKAI then reload</b>';return}
+      midiMonitor.classList.remove('off');
+      midiMonitor.innerHTML='MIDI · <b>'+inputs.map(i=>i.name).join(' / ')+'</b><br>READY · move a knob / pad';
+      inputs.forEach(input=>input.onmidimessage=e=>showMidi(input,e.data));
+      access.onstatechange=()=>bindMidi(access);
+    }
+    if(navigator.requestMIDIAccess){
+      navigator.requestMIDIAccess().then(bindMidi).catch(err=>{midiMonitor.classList.add('off');midiMonitor.innerHTML='MIDI ERROR · '+err.message});
+    }else midiMonitor.innerHTML='MIDI · WEB MIDI NOT SUPPORTED';
+
     canvas.width=innerWidth; canvas.height=innerHeight;
 
     const {default:Hydra}=await import('hydra-synth');
