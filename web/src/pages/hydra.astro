@@ -72,13 +72,22 @@
 
     // MIDI probe: browser reads the same USB controller independently from TouchDesigner.
     window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
+    // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
+    window.ELISA_CTRL={deform:0,feedback:0,melt:0,chaos:0};
+    const MIDI_MACROS={16:'deform',17:'feedback',18:'melt',19:'chaos'};
+    window.deform=()=>window.ELISA_CTRL.deform;
+    window.feedback=()=>window.ELISA_CTRL.feedback;
+    window.melt=()=>window.ELISA_CTRL.melt;
+    window.chaos=()=>window.ELISA_CTRL.chaos;
     function showMidi(input,data){
       const [statusByte,d1,d2]=data,kind=statusByte&0xf0,channel=(statusByte&0x0f)+1;
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
+      if(isCC&&MIDI_MACROS[d1]) window.ELISA_CTRL[MIDI_MACROS[d1]]=value/127;
       midiMonitor.classList.remove('off');
-      midiMonitor.innerHTML='MIDI · <b>'+window.ELISA_MIDI.device+'</b><br>'+type+' · CH '+channel+' · '+(isCC?'CC ':'NOTE ')+d1+' · VALUE <b>'+value+'</b> · '+(value/127).toFixed(2);
+      const macro=isCC&&MIDI_MACROS[d1]?' · <b>'+MIDI_MACROS[d1].toUpperCase()+'</b>':'';
+      midiMonitor.innerHTML='MIDI · <b>'+window.ELISA_MIDI.device+'</b><br>'+type+' · CH '+channel+' · '+(isCC?'CC ':'NOTE ')+d1+' · VALUE <b>'+value+'</b>'+macro+'<br>D '+deform().toFixed(2)+' · F '+feedback().toFixed(2)+' · M '+melt().toFixed(2)+' · C '+chaos().toFixed(2);
     }
     function bindMidi(access){
       const inputs=[...access.inputs.values()];
@@ -109,6 +118,8 @@
     window.low=()=>audio?.fft?.[0]??0;
     window.mid=()=>((audio?.fft?.[1]??0)+(audio?.fft?.[2]??0))*.5;
     window.high=()=>audio?.fft?.[3]??0;
+    // Live coding vocabulary:
+    // low() mid() high() = audio / deform() feedback() melt() chaos() = AKAI CC16–19
 
     // THREE.JS landscape source -> Hydra s0. It keeps rendering in the background;
     // GENESIS decides when to expose/process it.
