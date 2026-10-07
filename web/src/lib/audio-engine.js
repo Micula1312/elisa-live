@@ -7,6 +7,7 @@ const state={
 window.ELISA_AUDIO=state;
 
 let ctx,analyser,source,stream,data,prevLevel=0,raf=0,mediaElement=null;
+const mediaNodes=new WeakMap();
 const audioBus=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("elisa-audio"):null;
 let lastBusPublish=0;
 const avg=(arr,a,b)=>{let s=0,n=0;for(let i=a;i<=b&&i<arr.length;i++){s+=arr[i];n++}return n?s/n/255:0};
@@ -75,17 +76,24 @@ export async function startAudio(deviceId=""){
 }
 
 export async function startTrack(element){
-  stopAudio();mediaElement=element;ctx=new AudioContext();await ctx.resume();setup();
-  source=ctx.createMediaElementSource(element);source.connect(analyser);source.connect(ctx.destination);
+  stopAudio({keepContext:true});mediaElement=element;
+  if(!ctx||ctx.state==="closed")ctx=new AudioContext();
+  await ctx.resume();setup();
+  let node=mediaNodes.get(element);
+  if(!node){node=ctx.createMediaElementSource(element);mediaNodes.set(element,node)}
+  source=node;source.connect(analyser);source.connect(ctx.destination);
   state.running=true;state.deviceId="";state.source="track";publish();
   await element.play();return state;
 }
 
-export function stopAudio(){
+export function stopAudio({keepContext=false}={}){
   if(raf)cancelAnimationFrame(raf);raf=0;
   if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;
   if(mediaElement){mediaElement.pause();mediaElement=null}
-  if(ctx)ctx.close();ctx=null;analyser=null;source=null;data=null;
+  try{source?.disconnect()}catch{}
+  try{analyser?.disconnect()}catch{}
+  if(ctx&&!keepContext){ctx.close();ctx=null}
+  analyser=null;source=null;data=null;
   state.running=false;state.source="none";state.sampleRate=0;
   state.level=state.low=state.mid=state.high=state.transient=0;
   state.lowRaw=state.midRaw=state.highRaw=0;prevLevel=0;publish();
