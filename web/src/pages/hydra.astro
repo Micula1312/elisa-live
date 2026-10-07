@@ -493,10 +493,13 @@
       landscape.flash*=.88;
       for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
-        const ridge=Math.sin(x*.28+landscapeT*.45)*1.05+Math.sin(z*.12-landscapeT*.7)*.72;
-        const detail=Math.sin(x*.92+z*.19+landscapeT*1.7)*(.12+hi*.55);
-        const swell=Math.sin(z*.055+landscapeT*.35)*(.55+lo*2.8);
-        pos.setY(i,-1.45+ridge*.52+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*.9);
+        const farewellDance=currentScene==='farewell'?(audioReact()*.85+audioChaos()*1.9):0;
+        const danceSpeed=1+farewellDance*(.8+hi*2.4);
+        const ridge=Math.sin(x*.28+landscapeT*.45*danceSpeed)*1.05+Math.sin(z*.12-landscapeT*.7*danceSpeed)*.72;
+        const detail=Math.sin(x*.92+z*.19+landscapeT*(1.7+farewellDance*3.2))*(.12+hi*(.55+farewellDance*1.45));
+        const swell=Math.sin(z*.055+landscapeT*(.35+farewellDance*.9))*(.55+lo*(2.8+farewellDance*5.8));
+        const beatDance=Math.sin(x*.42+z*.14+landscapeT*(1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*farewellDance);
+        pos.setY(i,-1.45+ridge*.52+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*(.9+farewellDance*1.8)+beatDance);
       }
       pos.needsUpdate=true;
       landscape.mesh.position.z=-28+(landscapeT*1.35%3.2);
@@ -719,10 +722,13 @@ render(o0)`;
 render(o0)`;
 
     const farewellLandscape=`src(s0)
-  .contrast(() => 1.16 + low()*.18)
+  .contrast(() => 1.16 + low()*.18 + audioChaos()*.16)
   .brightness(-.18)
   .color(.22,1,.08)
-  .modulate(noise(() => .8 + mid()*.7,.015),() => .004 + low()*.008)
+  .modulate(
+    noise(() => .8 + mid()*(.7+audioChaos()*3.2),.015),
+    () => .004 + low()*.008 + audioReact()*mid()*.018 + audioChaos()*(high()*.07+hit()*.045)
+  )
   .layer(src(s0).luma(.22).color(.22,1,.08).brightness(-.12))
   .out(o0)
 render(o0)`;
