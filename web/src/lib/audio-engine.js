@@ -76,14 +76,15 @@ export async function startAudio(deviceId=""){
 }
 
 export async function startTrack(element){
-  stopAudio({keepContext:true});mediaElement=element;
-  if(!ctx||ctx.state==="closed")ctx=new AudioContext();
-  await ctx.resume();setup();
-  let node=mediaNodes.get(element);
-  if(!node){node=ctx.createMediaElementSource(element);mediaNodes.set(element,node)}
-  source=node;source.connect(analyser);source.connect(ctx.destination);
+  stopAudio();mediaElement=element;
+  await element.play();
+  ctx=new AudioContext();await ctx.resume();setup();
+  const captured=element.captureStream?.()||element.mozCaptureStream?.();
+  if(captured){
+    stream=captured;source=ctx.createMediaStreamSource(captured);source.connect(analyser);
+  }
   state.running=true;state.deviceId="";state.source="track";publish();
-  await element.play();return state;
+  return state;
 }
 
 export function stopAudio({keepContext=false}={}){
