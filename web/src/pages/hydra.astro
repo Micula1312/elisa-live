@@ -421,28 +421,46 @@
     }
     renderLandscape();
 
-    const starter=`voronoi(350, .15)
-  .modulateScale(
-    osc(8, .08, 0).rotate(() => Math.sin(time)),
-    () => .42 + low() * .75
+    const starter=`voronoi(
+    () => 350 - deform() * 315,
+    () => .15 - deform() * .105
   )
-  .thresh(() => .82 - low() * .16)
+  .modulateScale(
+    osc(
+      () => 8 - deform() * 6.2,
+      () => .08 - deform() * .055,
+      0
+    ).rotate(() => Math.sin(time * (1 - deform()*.72))),
+    () => (.42 + low()*.75) * (1 - deform()*.72) + deform()*.055
+  )
+  .thresh(() => .82 - low()*.16 - deform()*.22)
   .modulateRotate(
-    osc(() => 6.5 + mid() * 5),
-    () => .30 + mid() * .75
+    osc(() => 6.5 + mid()*5 - deform()*4.8),
+    () => (.30 + mid()*.75) * (1 - deform()*.78)
   )
-  .thresh(() => .72 - mid() * .10)
-  .diff(src(o0).scale(() => 1.76 + low() * .16))
+  .thresh(() => .72 - mid()*.10 - deform()*.20)
+  .diff(
+    src(o0).scale(() => 1.76 + low()*.16 - deform()*.72)
+  )
   .modulateScale(
-    osc(() => 2 + high() * 8).modulateRotate(o0, .74),
-    () => .08 + high() * .30
+    noise(() => 2.2 - deform()*1.25, () => .08 + deform()*.12),
+    () => .08 + high()*.30 + deform()*.13
   )
   .diff(
     src(o0)
-      .rotate([-.012, .01, -.002, 0])
-      .scrollY(0, [-1/199800, 0].fast(.7))
+      .scale(() => 1.002 + deform()*.012)
+      .rotate(() => -.012 * (1-deform()))
+      .scrollY(0, () => -1/199800 * (1-deform()))
   )
-  .brightness(() => -.06 - high() * .12)
+  // CC17 / feedback() is the forest premonition:
+  // 0 = pure B/W, 1 = B/W + acid-green signal.
+  .color(
+    () => 1 - feedback()*.78,
+    1,
+    () => 1 - feedback()*.92
+  )
+  .saturate(() => 1 + feedback()*1.8)
+  .brightness(() => -.06 - high()*.12 + deform()*.035)
   .out(o0)
 
 render(o0)`;
