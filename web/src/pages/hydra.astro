@@ -483,6 +483,7 @@
         trackingMode=('FaceDetector' in window)?'face':'motion';status.textContent='WEBCAM + '+trackingMode.toUpperCase()+' TRACK · ONLINE';ensureHandTracking();return true;
       }catch(err){status.textContent='WEBCAM ERROR · '+err.message;status.classList.add('error');return false}
     }
+    let activeScene='custom01';
     let landscapeT=0;
     function renderLandscape(){
       requestAnimationFrame(renderLandscape);
@@ -493,7 +494,7 @@
       landscape.flash*=.88;
       for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
-        const farewellDance=currentScene==='farewell'?(audioReact()*.85+audioChaos()*1.9):0;
+        const farewellDance=activeScene==='farewell'?(audioReact()*.85+audioChaos()*1.9):0;
         const danceSpeed=1+farewellDance*(.8+hi*2.4);
         const ridge=Math.sin(x*.28+landscapeT*.45*danceSpeed)*1.05+Math.sin(z*.12-landscapeT*.7*danceSpeed)*.72;
         const detail=Math.sin(x*.92+z*.19+landscapeT*(1.7+farewellDance*3.2))*(.12+hi*(.55+farewellDance*1.45));
@@ -538,7 +539,7 @@
         const u=obj.userData,s=u.seed,age=(performance.now()-u.spawn)/1000;
         // Each planted tree grows over several seconds; LOW/MID act like fertilizer,
         // so louder music visibly accelerates and exaggerates the growth.
-        const growthDrive=(currentScene==='farewell'&&obj===farewellTree)?(1/(30*60)):(.0022+lo*.012+mi*.0045);
+        const growthDrive=(activeScene==='farewell'&&obj===farewellTree)?(1/(30*60)):(.0022+lo*.012+mi*.0045);
         u.growth=Math.min(1,u.growth+growthDrive);
         const ease=1-Math.pow(1-u.growth,3);
         const pulse=1+lo*(.20+(i%4)*.035)+mi*.055;
@@ -767,7 +768,7 @@ render(o0)`;
     async function loadScene(id){
       const scene=scenes[id];
       if(!scene)return;
-      currentScene=id;
+      currentScene=id;activeScene=id;
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
       if(id==='genesis'||id==='farewell'){
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
