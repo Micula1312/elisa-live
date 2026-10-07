@@ -275,7 +275,7 @@
   videoAmount.addEventListener("input",()=>vAmount.textContent=Number(videoAmount.value).toFixed(2));
   videoReact.addEventListener("input",()=>vReact.textContent=Number(videoReact.value).toFixed(1));
 
-  let subtitlesEnabled=true,lastSubtitleKey="",subtitlePreviewUntil=0;
+  let subtitlesEnabled=true,lastSubtitleKey="",subtitlePreviewUntil=0,voiceSubtitleStarted=0,voiceSubtitleRunning=false;
   subtitleToggle.textContent="SUBTITLES ON";subtitleToggle.classList.add("on");
   // Master-track absolute starts from the current regia backup.
   const dialogueScenes=[
@@ -292,6 +292,13 @@
   };
   const renderSubtitle=()=>{
     if(!subtitlesEnabled){subtitleLayer.classList.remove("on");return}
+    if(voiceSubtitleRunning){
+      const local=(performance.now()-voiceSubtitleStarted)/1000;
+      const cue=(dialogues.voiceBody||[]).find(q=>local>=q.time&&local<q.end);
+      setSubtitle(cue,cue?"voiceBody:"+cue.time:"");
+      if(local>=85){voiceSubtitleRunning=false;setSubtitle(null,"")}
+      return
+    }
     if(performance.now()<subtitlePreviewUntil)return;
     const t=master.currentTime||0;
     let scene=null;
@@ -748,6 +755,8 @@
     if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
     if(m.type==="fx-amount"){videoAmount.value=String(m.value);vAmount.textContent=Number(m.value).toFixed(2);applyVideoFx()}
     if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1);applyVideoFx()}
+    if(m.type==="voice-subtitles-play"){voiceSubtitleStarted=performance.now();voiceSubtitleRunning=true;subtitlesEnabled=true;subtitleToggle.textContent="SUBTITLES ON";subtitleToggle.classList.add("on");renderSubtitle();return}
+    if(m.type==="voice-subtitles-stop"){voiceSubtitleRunning=false;setSubtitle(null,"");return}
     if(m.type==="subtitles"){subtitlesEnabled=!!m.on;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);if(subtitlesEnabled){subtitlePreviewUntil=0;renderSubtitle();if(!master.currentTime)previewSubtitle()}else setSubtitle(null,"")}
   };
   const regiaChannel=new BroadcastChannel("elisa-regia");
