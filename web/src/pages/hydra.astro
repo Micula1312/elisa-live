@@ -363,7 +363,7 @@
     }
     async function trackHands(){
       if(!handLandmarker||!webcamReady||currentScene!=='hypnosis'||webcamVideo.readyState<2)return;
-      const now=performance.now();if(now-lastHandTrack<110)return;lastHandTrack=now;
+      const now=performance.now();if(now-lastHandTrack<180)return;lastHandTrack=now;
       try{
         handDebug='HANDS · SCANNING';status.textContent=handDebug;
         const r=handLandmarker.detectForVideo(webcamVideo,now),hands=r.landmarks||[];
@@ -399,7 +399,7 @@
     }
     async function trackFace(){
       if(!webcamReady||currentScene!=='hypnosis')return;
-      const now=performance.now();if(now-faceMotion.last<55)return;faceMotion.last=now;
+      const now=performance.now();if(now-faceMotion.last<90)return;faceMotion.last=now;
       if(!faceDetector&&'FaceDetector' in window){try{faceDetector=new FaceDetector({fastMode:true,maxDetectedFaces:1});trackingMode='face'}catch{}}
       let tx=null,ty=null,ts=null,velocityBoost=0;
       if(faceDetector){
@@ -432,7 +432,7 @@
       requestAnimationFrame(drawHypnosisType);
       typeCtx.clearRect(0,0,typeCanvas.width,typeCanvas.height);
       typeCtx.fillStyle='#000';typeCtx.fillRect(0,0,typeCanvas.width,typeCanvas.height);
-      trackFace();trackHands();
+      trackFace();
       const lo=low(),mi=mid(),hi=high(),f=faceMotion;
       const cx=f.x*typeCanvas.width,cy=f.y*typeCanvas.height;
       const proximity=Math.max(.65,Math.min(2.4,f.size/.28));
@@ -484,7 +484,7 @@
     async function ensureWebcam(){
       if(webcamReady)return true;
       try{
-        const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
+        const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:360},frameRate:{ideal:24,max:30}},audio:false});
         webcamVideo.srcObject=stream;await webcamVideo.play();s1.init({src:webcamVideo});webcamReady=true;
         trackingMode=('FaceDetector' in window)?'face':'motion';status.textContent='WEBCAM + '+trackingMode.toUpperCase()+' TRACK · ONLINE';ensureHandTracking();return true;
       }catch(err){status.textContent='WEBCAM ERROR · '+err.message;status.classList.add('error');return false}
@@ -641,51 +641,29 @@ render(o0)`;
     window.faceX=()=>faceMotion.x-.5;window.faceY=()=>faceMotion.y-.5;window.faceSize=()=>faceMotion.size;window.faceVelocity=()=>faceMotion.v;window.hypnosisDrop=()=>hypnosisDrop;
 
     const hypnosisWebcam=`src(s1)
-  .scale(() => 1.01 + low() * .035 + faceSize()*.06 + param1()*.045)
-  .scrollX(() => faceX()*.08)
-  .scrollY(() => -faceY()*.06)
-  .contrast(() => 1.28 + mid() * .7)
+  .scale(() => 1.01 + low()*.028 + faceSize()*.045 + param1()*.035)
+  .scrollX(() => faceX()*.065)
+  .scrollY(() => -faceY()*.05)
   .saturate(0)
+  .contrast(() => 1.18 + mid()*.42)
   .color(.22,1,.08)
   .modulate(
-    osc(() => 5 + high() * 18 + hypnosisDrop()*42,.02,0).rotate(Math.PI/2),
-    () => .004 + mid() * .045 + hypnosisDrop()*.16 + param1()*.075
-  )
-  .pixelate(
-    () => hypnosisDrop()>.05 ? 18 : 1280,
-    () => hypnosisDrop()>.05 ? 12 : 720
-  )
-  .diff(
-    src(s1)
-      .scrollX(() => Math.sin(time*1.7) * high() * .055)
-      .scrollY(() => Math.cos(time*1.2) * mid() * .035)
-      .scale(() => 1.002 + low() * .018)
-      .saturate(0)
-      .color(1,.10,.72)
-      .luma(() => .42 - high()*.16)
+    osc(() => 4 + high()*10 + hypnosisDrop()*24,.018,0).rotate(Math.PI/2),
+    () => .003 + mid()*.022 + hypnosisDrop()*.10 + param1()*.035
   )
   .layer(
     src(s2)
-      .luma(.35)
+      .luma(.30)
       .color(1,.10,.72)
-      .mult(src(s1).saturate(0).contrast(1.5))
-      .scale(() => 1 + low()*.08 + faceSize()*.16)
-      .scrollX(() => faceX()*.14)
-      .scrollY(() => -faceY()*.12)
+      .scale(() => 1 + low()*.05 + faceSize()*.10)
+      .scrollX(() => faceX()*.10)
+      .scrollY(() => -faceY()*.08)
   )
   .blend(
-    src(o0)
-      .scale(() => 1.004 + low()*.012)
-      .scrollX(() => Math.sin(time*.7)*mid()*.008),
-    () => .08 + high()*.16 + faceVelocity()*.34 + param2()*.32
-  )
-  .layer(
-    src(s3)
-      .luma(.08)
-      .scale(() => 1 + low()*.035)
+    src(o0).scale(() => 1.002 + low()*.006),
+    () => .035 + high()*.07 + faceVelocity()*.12 + param2()*.12
   )
   .out(o0)
-
 render(o0)`;
 
     const genesisLandscape=`src(s0)
@@ -736,28 +714,28 @@ render(o0)`;
 
 render(o0)`;
 
-    const resonanceGradient=`osc(() => .32 + low()*.22 + param1()*.35, () => .012 + mid()*.035, () => .18 + param2()*.8)
-  .rotate(() => Math.sin(time*.08)*.16 + param1()*.22)
+    const resonanceGradient=`gradient(() => .18 + Math.sin(time*.08)*.12)
   .color(1,.06,.72)
+  .rotate(() => Math.sin(time*.06)*.32)
   .blend(
-    osc(() => .18 + mid()*.18, .025, () => 1.1 + Math.sin(time*.12)*.7)
-      .rotate(() => 1.57 + Math.sin(time*.06)*.25)
+    gradient(() => .35 + Math.cos(time*.07)*.16)
+      .rotate(() => 1.57 + Math.sin(time*.05)*.38)
       .color(.10,1,.035),
-    () => .42 + Math.sin(time*.10)*.16 + low()*.12
+    () => .45 + Math.sin(time*.11)*.18
   )
   .modulate(
-    noise(() => .28 + mid()*.65 + audioChaos()*1.5, () => .04 + high()*.06),
-    () => .035 + audioReact()*(low()*.08 + mid()*.055) + audioChaos()*high()*.12
+    noise(() => .7 + mid()*1.4 + audioChaos()*2.2, () => .035 + high()*.04),
+    () => .018 + audioReact()*(low()*.05 + mid()*.035) + audioChaos()*high()*.08
   )
-  .scale(() => 1.02 + Math.sin(time*.11)*.035 + low()*.045)
   .blend(
-    src(o0)
-      .scale(() => .997 - low()*.006)
-      .rotate(() => Math.sin(time*.05)*.006 + mid()*.008),
-    () => .12 + param2()*.18 + audioReact()*high()*.08
+    osc(() => 2.2 + param1()*2.8, .015, () => .2 + param2()*1.2)
+      .color(.22,1,.08)
+      .rotate(() => time*.015),
+    () => .10 + high()*.10
   )
-  .contrast(() => 1.05 + high()*.18)
-  .saturate(() => 1.15 + param1()*.75)
+  .blend(src(o0).scale(() => .998 - low()*.003), () => .055 + param2()*.08)
+  .contrast(() => 1.08 + high()*.14)
+  .saturate(1.25)
   .out(o0)
 render(o0)`;
 
