@@ -212,7 +212,7 @@
       aichaLiveStartedAt=performance.now();aichaPlay.textContent="❚❚";aichaSource.textContent="REMOTE → REGIA · LIVE INPUT";
       cancelAnimationFrame(aichaLiveTimer);aichaLiveTimer=requestAnimationFrame(updateAichaClock);
     }else{
-      bus.postMessage({type:"audio-control",action:"pause"});
+      bus.postMessage({type:"audio-control",action:"stop-live"});
       cancelAnimationFrame(aichaLiveTimer);aichaPlay.textContent="▶";aichaTime.textContent="LIVE";aichaSource.textContent="REMOTE → REGIA · STOPPED";
     }
     bus.close();
