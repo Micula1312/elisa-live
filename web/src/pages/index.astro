@@ -44,7 +44,7 @@
     .post .placeholder{clip-path:inset(0);z-index:1;position:relative}
     .grid.breaking .post .placeholder{clip-path:none}
 
-    .post .placeholder{--pulse:1;--drift-x:0px;--drift-y:0px;transform:translate3d(var(--drift-x),var(--drift-y),0) scale(calc(var(--breath,1) * var(--pulse)));}
+    .post .placeholder{--pulse:1;--drift-x:0px;--drift-y:0px;transform:translate3d(var(--drift-x),var(--drift-y),0) scale(calc(var(--breath,1) * var(--pulse)));transition:transform .12s linear,filter 1.35s ease;}
     .post:nth-child(3n+1),.post[data-palette="black"]{background:#050505}.post:nth-child(3n+2),.post[data-palette="white"]{background:#f5f5f2}.post:nth-child(3n),.post[data-palette="red"]{background:#d71920}
     .placeholder[data-palette="black"]:not(.has-media){background:#050505!important;color:#fff}
     .placeholder[data-palette="white"]:not(.has-media){background:#f5f5f2!important;color:#111}
@@ -77,7 +77,7 @@
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #videoPanel.open{display:block}.vp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.vp-grid button,.vp-reset{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:8px;cursor:pointer}.vp-grid button.on{background:#fff;color:#111}.vp-row{display:grid;grid-template-columns:58px 1fr 36px;align-items:center;gap:7px;margin:8px 0}.vp-row input{width:100%}.vp-hint{opacity:.55;margin-top:9px;font-size:10px}.cue-monitor{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}.cue-led{border:1px solid #353a43;border-radius:6px;padding:6px 4px;text-align:center;opacity:.45;cursor:pointer;background:#11151a;color:#fff;font-family:inherit}.cue-led:hover{opacity:.8}.cue-led.on{background:#fff;color:#111;opacity:1}.cue-led b{display:block;font-size:12px}.cue-led small{font-size:8px;letter-spacing:.04em}.space-nav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.space-nav button{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:7px;cursor:pointer}.space-readout{grid-column:1/-1;font-size:9px;opacity:.62;text-align:center}
-    #feedScene{--fx-acid:0;--fx-glitch:0;--fx-pixel:0;--fx-contrast:1;--fx-hue:0deg;filter:contrast(var(--fx-contrast)) hue-rotate(var(--fx-hue));}
+    #feedScene{--fx-acid:0;--fx-glitch:0;--fx-pixel:0;--fx-contrast:1;--fx-hue:0deg;filter:contrast(var(--fx-contrast)) hue-rotate(var(--fx-hue));transition:filter 1.35s ease}
     #feedScene.fx-acid{filter:contrast(var(--fx-contrast)) saturate(calc(1 + var(--fx-acid)*2.4)) hue-rotate(var(--fx-hue))}
     #feedScene.fx-glitch .placeholder{filter:contrast(calc(1 + var(--fx-glitch)*.9)) brightness(calc(1 + var(--fx-glitch)*.12))!important}
     #feedScene.fx-pixel .placeholder{image-rendering:pixelated}
@@ -242,7 +242,7 @@
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
   window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}aichaSignal.style.width=((e.detail.level||0)*100)+"%";aichaSource.textContent="AUDIO BUS · "+String(e.detail.source||"none").toUpperCase()});
   populate();
-  const videoFx={acid:false,glitch:false,pixel:false};
+  const videoFx={acid:true,glitch:true,pixel:true};
   const applyVideoFx=()=>{
     const a=window.ELISA_AUDIO||{},low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
     const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
@@ -258,12 +258,14 @@
     const active=Object.entries(videoFx).filter(([,v])=>v).map(([k])=>k.toUpperCase());
     videoState.textContent=active.join("+")||"CLEAN";applyVideoFx();
   };
+  syncVideoFx();
   videoPanel.querySelectorAll("[data-fx]").forEach(btn=>btn.addEventListener("click",()=>{videoFx[btn.dataset.fx]=!videoFx[btn.dataset.fx];syncVideoFx()}));
   videoReset.addEventListener("click",()=>{Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()});
   videoAmount.addEventListener("input",()=>vAmount.textContent=Number(videoAmount.value).toFixed(2));
   videoReact.addEventListener("input",()=>vReact.textContent=Number(videoReact.value).toFixed(1));
 
-  let subtitlesEnabled=false,lastSubtitleKey="",subtitlePreviewUntil=0;
+  let subtitlesEnabled=true,lastSubtitleKey="",subtitlePreviewUntil=0;
+  subtitleToggle.textContent="SUBTITLES ON";subtitleToggle.classList.add("on");
   // Master-track absolute starts from the current regia backup.
   const dialogueScenes=[
     {start:0,module:"intro"},{start:120,module:"genesis"},{start:680,module:"hypnosis"},
