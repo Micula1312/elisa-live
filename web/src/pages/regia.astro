@@ -109,6 +109,20 @@ q("#sensitivity").oninput=e=>{setSensitivity(e.target.value);q("#sensVal").textC
 const bars={level:["#mLevel","#vLevel"],low:["#mLow","#vLow"],mid:["#mMid","#vMid"],high:["#mHigh","#vHigh"],transient:["#mHit","#vHit"]};
 window.addEventListener("elisa-audio",e=>{Object.entries(bars).forEach(([k,[b,v]])=>{const n=e.detail[k]||0;q(b).style.width=(n*100)+"%";q(v).textContent=n.toFixed(2)})});
 const control=new BroadcastChannel("elisa-regia");
+control.addEventListener("message",async e=>{
+ const m=e.data;
+ if(m?.type!=="audio-control")return;
+ try{
+  if(m.action==="live"){await startAudio(device.value);state.textContent="LIVE INPUT";soul.textContent="ONLINE"}
+  if(m.action==="track"){await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE";q("#play").textContent="❚❚ PAUSE MASTER"}
+  if(m.action==="play"){
+    if(window.ELISA_AUDIO?.source!=="track")await startTrack(master);else await master.play();
+    state.textContent="MASTER TRACK";q("#play").textContent="❚❚ PAUSE MASTER";
+  }
+  if(m.action==="pause"){master.pause();q("#play").textContent="▶ PLAY MASTER"}
+  if(m.action==="zero"){master.currentTime=0}
+ }catch(err){state.textContent=err.name||"AUDIO ERROR"}
+});
 const send=message=>{control.postMessage(message);localStorage.setItem("elisa-regia-command",JSON.stringify({id:Date.now()+Math.random(),message}))};
 document.querySelectorAll("[data-fx]").forEach(btn=>btn.onclick=()=>{btn.classList.toggle("on");send({type:"fx",fx:btn.dataset.fx,on:btn.classList.contains("on")})});
 q("#fxClean").onclick=()=>{document.querySelectorAll("[data-fx]").forEach(b=>b.classList.remove("on"));send({type:"fx-clean"})};
