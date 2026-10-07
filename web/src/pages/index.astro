@@ -401,29 +401,20 @@
     focusTimer=setTimeout(()=>{if(focusedPost===post){post.classList.remove("focused");post.style.removeProperty("transform");post.style.removeProperty("z-index");focusedPost=null}},FOCUS_HOLD);
   });
 
-  function autoScrollLoop(now){
+  function autoScrollLoop(){
     if(!autoScroll){autoScrollRaf=0;return}
-    if(!lastFrame)lastFrame=now;
-    const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;
     if(spatialEnabled||orbitEnabled){
-      morphWheel+=AUTO_SCROLL_SPEED*dt*.0019;
-      morphTarget=Math.min(1,morphTarget+AUTO_SCROLL_SPEED*dt*.00028);
+      morphWheel+=.0032;
+      morphTarget=Math.min(1,morphTarget+.00048);
     }else{
-      // feedScene is the actual scroll container. scrollBy is more reliable than
-      // fractional scrollTop += values during the live multi-display setup.
-      feed.scrollBy(0,AUTO_SCROLL_SPEED*dt);
+      feed.scrollTop=Math.min(feed.scrollHeight-feed.clientHeight,feed.scrollTop+1);
       ensureScrollBuffer();
     }
-    autoScrollRaf=requestAnimationFrame(autoScrollLoop);
   }
   function setAutoScroll(on){
     autoScroll=on;lastFrame=0;autoScrollBtn?.classList.toggle("on",on);
-    if(on){
-      if(autoScrollRaf)cancelAnimationFrame(autoScrollRaf);
-      autoScrollRaf=requestAnimationFrame(autoScrollLoop);
-    }else if(autoScrollRaf){
-      cancelAnimationFrame(autoScrollRaf);autoScrollRaf=0;
-    }
+    if(autoScrollRaf){clearInterval(autoScrollRaf);autoScrollRaf=0}
+    if(on)autoScrollRaf=setInterval(autoScrollLoop,24);
   }
   autoScrollBtn?.addEventListener("click",()=>setAutoScroll(true));
   const freezeFeedScroll=()=>setAutoScroll(false);
