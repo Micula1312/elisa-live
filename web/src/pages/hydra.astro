@@ -108,11 +108,11 @@
       if(isCC&&MIDI_MACROS[d1]){window.ELISA_CTRL[MIDI_MACROS[d1]]=value/127;if(d1===20||d1===21)applyMasterFade()}
       // AKAI pad 13 on MIDI channel 10: momentary DROP gate (note-on / note-off).
       if(channel===10&&d1===13&&(kind===0x90||kind===0x80)) setDrop(kind===0x90&&value>0);
-      if(channel===10&&kind===0x90&&value>0){
-        if(d1===1)spawnArchiveImage('single');
-        if(d1===2)spawnArchiveImage('burst');
-        if(d1===3)spawnArchiveImage('hero');
-        if(d1===4)spawnArchiveImage('rain');
+      if(channel===10&&kind===0x90&&value>0&&d1!==13){
+        const explicit={1:'single',2:'burst',3:'hero',4:'rain'}[d1];
+        const modes=['single','burst','hero','rain'];
+        const mode=explicit||modes[((d1%4)+4)%4];
+        spawnArchiveImage(mode);
       }
       midiMonitor.classList.remove('off');
       const macro=isCC&&MIDI_MACROS[d1]?' · <b>'+MIDI_MACROS[d1].toUpperCase()+'</b>':'';
@@ -708,6 +708,7 @@ render(o0)`;
       const scene=scenes[id];
       if(!scene)return;
       currentScene=id;
+      try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
       if(id==='genesis'){
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
