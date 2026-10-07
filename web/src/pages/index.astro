@@ -32,7 +32,7 @@
     .auth-meta{display:flex;justify-content:center;gap:8px;align-items:center;margin-top:17px;color:#9aa1ab;font-size:11px}
     .dot{width:4px;height:4px;background:#b4bac2;border-radius:50%}
     #feedScene{display:none;position:fixed;inset:0;background:#fafafa;color:#111;overflow-y:auto;transition:background-color .7s ease,color .7s ease}#feedScene.break-start{background:#000;color:#fff}#feedScene.break-start .grid{background:#000}#feedScene.break-start .feed-header{background:rgba(0,0,0,.88);color:#fff;border-color:#222}
-    .post{cursor:pointer}.post.focused{z-index:40!important;transition:transform .55s cubic-bezier(.16,1,.3,1)!important}.post.focused .placeholder{box-shadow:0 16px 55px rgba(0,0,0,.28)}
+    .post{cursor:pointer}.post.focused{position:relative;z-index:2147483000!important;transition:transform .55s cubic-bezier(.16,1,.3,1)!important;isolation:isolate}.post.focused .placeholder{box-shadow:0 16px 55px rgba(0,0,0,.28)}
     .feed-header{position:sticky;top:0;height:70px;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(250,250,250,.94);backdrop-filter:blur(12px);border-bottom:1px solid #ddd}
     .brand{font-size:22px;font-weight:700;letter-spacing:-.04em}.header-icons{display:flex;gap:18px;font-size:22px}
     .profile{max-width:950px;margin:auto;padding:55px 24px 28px;display:grid;grid-template-columns:180px 1fr;gap:60px;align-items:center}
@@ -389,12 +389,15 @@
     const post=e.target.closest(".post");if(!post)return;
     e.preventDefault();e.stopPropagation();
     clearTimeout(focusTimer);
-    if(focusedPost&&focusedPost!==post){focusedPost.classList.remove("focused");focusedPost.style.transform=""}
+    if(focusedPost&&focusedPost!==post){focusedPost.classList.remove("focused");focusedPost.style.transform="";focusedPost.style.removeProperty("z-index")}
     focusedPost=post;post.classList.add("focused");
     const r=post.getBoundingClientRect(),dx=innerWidth/2-(r.left+r.width/2),dy=innerHeight/2-(r.top+r.height/2);
     const targetW=Math.min(innerWidth*.78,1100),scale=Math.max(1.35,Math.min(3.8,targetW/Math.max(1,r.width)));
-    post.style.transform="translate("+dx.toFixed(1)+"px,"+dy.toFixed(1)+"px) scale("+scale.toFixed(3)+")";
-    focusTimer=setTimeout(()=>{if(focusedPost===post){post.classList.remove("focused");post.style.removeProperty("transform");focusedPost=null}},FOCUS_HOLD);
+    // B and D: clicked archive body always comes straight to the viewport centre,
+    // above every other feed tile. D keeps the deliberately broken grid underneath.
+    post.style.zIndex="2147483000";
+    post.style.transform="translate3d("+dx.toFixed(1)+"px,"+dy.toFixed(1)+"px,9999px) scale("+scale.toFixed(3)+")";
+    focusTimer=setTimeout(()=>{if(focusedPost===post){post.classList.remove("focused");post.style.removeProperty("transform");post.style.removeProperty("z-index");focusedPost=null}},FOCUS_HOLD);
   });
 
   function autoScrollLoop(now){
