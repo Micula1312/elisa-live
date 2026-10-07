@@ -195,6 +195,27 @@ footer {
   }
 }
 
+
+/* HYDRA CONTROL HIERARCHY */
+.hydra-deck{background:#090b09!important;border-top:2px solid var(--acid)!important}
+.hydra-scene-label{font-size:7px;letter-spacing:.16em;color:#777;margin:7px 0 4px}
+.hydra-buttons{display:grid!important;grid-template-columns:repeat(6,minmax(92px,1fr))!important;gap:5px!important;margin-bottom:9px}
+.hydra-buttons button{min-height:52px!important;padding:7px 8px!important;font-size:8px!important;border:1px solid #667066!important;background:#101410!important;color:#aaa!important;text-align:left}
+.hydra-buttons button strong{font-size:12px;letter-spacing:.08em;color:#f4f4f4}
+.hydra-buttons button:hover{border-color:var(--acid)!important;background:#10200d!important}
+.hydra-buttons button.live{background:var(--acid)!important;border-color:var(--acid)!important;color:#000!important;box-shadow:0 0 18px rgba(57,255,20,.24)}
+.hydra-buttons button.live strong{color:#000!important}
+.hydra-buttons button.todo{opacity:.45}
+.hydra-subpanel{border-top:1px solid #242824;padding:4px 0 3px;margin-top:2px}
+.hydra-subpanel button{opacity:.78}
+.hydra-subpanel button:hover{opacity:1}
+.genesis-objects,.hypnosis-type,.hydra-tools{gap:3px!important}
+.credits-edit{display:grid;grid-template-columns:1fr 110px;gap:5px;max-width:720px}
+.credits-edit textarea{min-height:76px;background:#050505;color:var(--acid);border:1px solid #31512b;padding:6px 8px;font:9px/1.35 Helvetica,Arial,sans-serif;resize:vertical;outline:none}
+.credits-edit textarea:focus{border-color:var(--acid)}
+.credits-edit button{border-color:#31512b;color:var(--acid)}
+.utility-panel{opacity:.72}
+@media(max-width:900px){.hydra-buttons{grid-template-columns:repeat(3,1fr)!important}}
 </style>
 </head>
 <body>
@@ -232,24 +253,42 @@ footer {
 <div class="video-note">REMOTE WEB CONTROL Â· keep the performance page open in another browser window/display.</div></div>
 </div></section>
 <section class="hydra-deck">
-<h2>HYDRA / SCENE DECK</h2>
+<h2>HYDRA / LIVE SCENES</h2>
+<div class="hydra-scene-label">SCENE SELECT — PRIMARY CONTROLS</div>
 <div class="hydra-buttons">
-<button data-hydra="custom01">CUSTOM 01 Â· CORRUPTED</button>
-<button data-hydra="genesis">GENESIS Â· 3D LANDSCAPE</button>
-<button data-hydra="hypnosis">HYPNOSIS Â· WEBCAM</button>
-<button data-hydra="resonance" class="todo">RESONANCE Â· TODO</button>
-<button data-hydra="farewell">FAREWELL · TREE / CREDITS</button>
+<button data-hydra="custom01">01<br><strong>CORRUPTED</strong></button>
+<button data-hydra="genesis">02<br><strong>GENESIS</strong></button>
+<button data-hydra="hypnosis">03<br><strong>HYPNOSIS</strong></button>
+<button data-hydra="resonance" class="todo">04<br><strong>RESONANCE</strong></button>
+<button data-hydra="farewell">05<br><strong>FINAL TREE</strong></button>
+<button data-hydra="credits">06<br><strong>CREDITS</strong></button>
 </div>
-<div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST Ã—6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
-<div class="hypnosis-input"><input id="hypnosisText" type="text" maxlength="18" value="I AM" placeholder="TYPE YOUR MASKâ€¦"><button id="hypnosisSend">SEND TYPE</button></div>
-<div class="hypnosis-type"><button data-hypnosis-word="I AM">I AM</button><button data-hypnosis-word="LOOK AT ME">LOOK AT ME</button><button data-hypnosis-word="ERROR">ERROR</button><button data-hypnosis-word="BODY">BODY</button><button data-hypnosis-word="ELISA">ELISA</button></div>
-<div class="hypnosis-input"><textarea id="farewellCreditsText" rows="4" placeholder="FINAL CREDITS">ELISA
+<div class="hydra-subpanel">
+  <div class="hydra-scene-label">GENESIS / OBJECTS</div>
+  <div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST ×6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
+</div>
+<div class="hydra-subpanel">
+  <div class="hydra-scene-label">HYPNOSIS / TYPE</div>
+  <div class="hypnosis-input"><input id="hypnosisText" type="text" maxlength="18" value="I AM" placeholder="TYPE YOUR MASK…"><button id="hypnosisSend">SEND</button></div>
+  <div class="hypnosis-type"><button data-hypnosis-word="I AM">I AM</button><button data-hypnosis-word="LOOK AT ME">LOOK AT ME</button><button data-hypnosis-word="ERROR">ERROR</button><button data-hypnosis-word="BODY">BODY</button><button data-hypnosis-word="ELISA">ELISA</button></div>
+</div>
+<div class="hydra-subpanel credits-panel">
+  <div class="hydra-scene-label">CREDITS / EDITABLE TEXT</div>
+  <div class="credits-edit"><textarea id="farewellCreditsText" rows="6" placeholder="FINAL CREDITS">BLIVET
 
-performance / live system
+ELISA — live performance
 
-Micol Gelsi</textarea><button id="farewellCreditsSend">START CREDITS</button></div>
-<div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button><button id="hydraHud">HIDE HUD</button></div>
-<div class="video-note">GENESIS: â†‘â†“ move Â· â†â†’ turn Â· TREE/FOREST progressively saturate the landscape.</div>
+visual / system
+Micol Gelsi
+
+BLIVET
+
+see you out there</textarea><button id="farewellCreditsSend">UPDATE CREDITS</button></div>
+</div>
+<div class="hydra-subpanel utility-panel">
+  <div class="hydra-scene-label">MASTER / UTILITY</div>
+  <div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button><button id="hydraHud">HIDE HUD</button></div>
+</div>
 </section>
 <footer><span>DISPLAY REGIA â€” KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE Â· 32:27</span></footer>
 </div>
@@ -310,7 +349,7 @@ q("#subtitles").onclick=e=>{const on=e.currentTarget.classList.toggle("on");e.cu
 q("#fxAmount").oninput=e=>{q("#fxAmountVal").textContent=Number(e.target.value).toFixed(2);send({type:"fx-amount",value:Number(e.target.value)})};
 q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).toFixed(1);send({type:"fx-react",value:Number(e.target.value)})};
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
-document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra})});
+document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra});if(btn.dataset.hydra==="credits")setTimeout(()=>send({type:"hydra-farewell-credits",text:q("#farewellCreditsText").value}),60)});
 document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{send({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
 q("#forestBurst").onclick=()=>send({type:"hydra-forest-burst",count:6});
 document.querySelectorAll("[data-hypnosis-word]").forEach(btn=>btn.onclick=()=>{q("#hypnosisText").value=btn.dataset.hypnosisWord;send({type:"hydra-hypnosis-word",word:btn.dataset.hypnosisWord})});
