@@ -75,12 +75,17 @@
     // MIDI probe: browser reads the same USB controller independently from TouchDesigner.
     window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
-    window.ELISA_CTRL={deform:0,feedback:0,melt:0,chaos:0,drop:0,fadeWhite:0,fadeBlack:0};
-    const MIDI_MACROS={16:'deform',17:'feedback',18:'melt',19:'chaos',20:'fadeWhite',21:'fadeBlack'};
-    window.deform=()=>window.ELISA_CTRL.deform;
-    window.feedback=()=>window.ELISA_CTRL.feedback;
-    window.melt=()=>window.ELISA_CTRL.melt;
-    window.chaos=()=>window.ELISA_CTRL.chaos;
+    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,drop:0,fadeWhite:0,fadeBlack:0};
+    const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'fadeWhite',21:'fadeBlack'};
+    window.param1=()=>window.ELISA_CTRL.param1;
+    window.param2=()=>window.ELISA_CTRL.param2;
+    window.audioReact=()=>window.ELISA_CTRL.audioReact;
+    window.audioChaos=()=>window.ELISA_CTRL.audioChaos;
+    // Backwards-compatible aliases so older authored patches never break.
+    window.deform=()=>param1();
+    window.feedback=()=>param2();
+    window.melt=()=>audioReact();
+    window.chaos=()=>audioChaos();
     window.drop=()=>window.ELISA_CTRL.drop;
     function applyMasterFade(){
       const w=window.ELISA_CTRL.fadeWhite||0,b=window.ELISA_CTRL.fadeBlack||0;
@@ -102,7 +107,7 @@
       if(channel===10&&d1===13&&(kind===0x90||kind===0x80)) setDrop(kind===0x90&&value>0);
       midiMonitor.classList.remove('off');
       const macro=isCC&&MIDI_MACROS[d1]?' · <b>'+MIDI_MACROS[d1].toUpperCase()+'</b>':'';
-      midiMonitor.innerHTML='MIDI · <b>'+window.ELISA_MIDI.device+'</b><br>'+type+' · CH '+channel+' · '+(isCC?'CC ':'NOTE ')+d1+' · VALUE <b>'+value+'</b>'+macro+'<br>D '+deform().toFixed(2)+' · F '+feedback().toFixed(2)+' · M '+melt().toFixed(2)+' · C '+chaos().toFixed(2);
+      midiMonitor.innerHTML='MIDI · <b>'+window.ELISA_MIDI.device+'</b><br>'+type+' · CH '+channel+' · '+(isCC?'CC ':'NOTE ')+d1+' · VALUE <b>'+value+'</b>'+macro+'<br>P1 '+param1().toFixed(2)+' · P2 '+param2().toFixed(2)+' · AUDIO '+audioReact().toFixed(2)+' · CHAOS '+audioChaos().toFixed(2);
     }
     function bindMidi(access){
       const inputs=[...access.inputs.values()];
@@ -133,16 +138,22 @@
     window.ELISA_SHARED_AUDIO={level:0,low:0,mid:0,high:0,transient:0,source:"none",updatedAt:0};
     const sharedAudioBus=new BroadcastChannel("elisa-audio");
     sharedAudioBus.onmessage=e=>{if(e.data?.type==="audio-frame")Object.assign(window.ELISA_SHARED_AUDIO,e.data)};
-    window.low=()=>window.ELISA_SHARED_AUDIO.low||0;
-    window.mid=()=>window.ELISA_SHARED_AUDIO.mid||0;
-    window.high=()=>window.ELISA_SHARED_AUDIO.high||0;
-    window.hit=()=>window.ELISA_SHARED_AUDIO.transient||0;
-    window.level=()=>window.ELISA_SHARED_AUDIO.level||0;
-    // Live coding vocabulary:
-    // low() mid() high() hit() = shared /regia audio
-    // deform() feedback() melt() chaos() = AKAI CC16–19
-    // drop() = AKAI PAD 13 / MIDI CH 10
-    // CC20 = global fade to WHITE · CC21 = global fade to BLACK
+    window.rawLow=()=>window.ELISA_SHARED_AUDIO.low||0;
+    window.rawMid=()=>window.ELISA_SHARED_AUDIO.mid||0;
+    window.rawHigh=()=>window.ELISA_SHARED_AUDIO.high||0;
+    window.rawHit=()=>window.ELISA_SHARED_AUDIO.transient||0;
+    window.rawLevel=()=>window.ELISA_SHARED_AUDIO.level||0;
+    const audioGain=()=>Math.max(0,audioReact())*(1+audioChaos()*1.65);
+    window.low=()=>Math.min(1.5,rawLow()*audioGain());
+    window.mid=()=>Math.min(1.5,rawMid()*audioGain()*(1+audioChaos()*.35));
+    window.high=()=>Math.min(1.8,rawHigh()*audioGain()*(1+audioChaos()*.9));
+    window.hit=()=>Math.min(2,rawHit()*audioGain()*(1+audioChaos()*1.8));
+    window.level=()=>Math.min(1.5,rawLevel()*audioGain());
+    // GLOBAL HYDRA MIDI GRAMMAR — identical in every scene:
+    // CC16 = PARAM 1 · CC17 = PARAM 2
+    // CC18 = AUDIO REACT amount · CC19 = AUDIO CHAOS / peak violence
+    // PAD 13 / MIDI CH10 = DROP
+    // CC20 = global WHITE fade · CC21 = global BLACK fade
 
     // THREE.JS landscape source -> Hydra s0. It keeps rendering in the background;
     // GENESIS decides when to expose/process it.
@@ -507,7 +518,7 @@ render(o0)`;
     window.faceX=()=>faceMotion.x-.5;window.faceY=()=>faceMotion.y-.5;window.faceSize=()=>faceMotion.size;window.faceVelocity=()=>faceMotion.v;window.hypnosisDrop=()=>hypnosisDrop;
 
     const hypnosisWebcam=`src(s1)
-  .scale(() => 1.01 + low() * .035 + faceSize()*.06)
+  .scale(() => 1.01 + low() * .035 + faceSize()*.06 + param1()*.045)
   .scrollX(() => faceX()*.08)
   .scrollY(() => -faceY()*.06)
   .contrast(() => 1.28 + mid() * .7)
@@ -515,7 +526,7 @@ render(o0)`;
   .color(.22,1,.08)
   .modulate(
     osc(() => 5 + high() * 18 + hypnosisDrop()*42,.02,0).rotate(Math.PI/2),
-    () => .004 + mid() * .045 + hypnosisDrop()*.16
+    () => .004 + mid() * .045 + hypnosisDrop()*.16 + param1()*.075
   )
   .pixelate(
     () => hypnosisDrop()>.05 ? 18 : 1280,
@@ -543,7 +554,7 @@ render(o0)`;
     src(o0)
       .scale(() => 1.004 + low()*.012)
       .scrollX(() => Math.sin(time*.7)*mid()*.008),
-    () => .08 + high()*.16 + faceVelocity()*.34
+    () => .08 + high()*.16 + faceVelocity()*.34 + param2()*.32
   )
   .layer(
     src(s3)
@@ -555,12 +566,13 @@ render(o0)`;
 render(o0)`;
 
     const genesisLandscape=`src(s0)
-  .contrast(() => 1.22 + low() * .62)
-  .brightness(() => -.16 + high() * .14)
+  .scale(() => 1 + param1()*.085)
+  .contrast(() => 1.22 + low() * .62 + param1()*.38)
+  .brightness(() => -.16 + high() * .14 + param2()*.08)
   .color(0.22,1.0,0.08)
   .modulate(
-    noise(() => 1.05 + mid() * 2.2, .035),
-    () => .010 + mid() * .06
+    noise(() => 1.05 + mid() * 2.2 + param1()*3.4, () => .035 + param2()*.07),
+    () => .010 + mid() * .06 + param1()*.075
   )
   .layer(
     src(s0)
@@ -575,7 +587,7 @@ render(o0)`;
       .color(1.0,.10,.72)
       .brightness(() => -.42 + high() * .28)
   )
-  .blend(src(o0).scale(() => 1.001 + low() * .002), () => .025 + low() * .035)
+  .blend(src(o0).scale(() => 1.001 + low() * .002 + param2()*.018), () => .025 + low() * .035 + param2()*.24)
   .layer(
     solid(1,.10,.72,1)
       .brightness(() => -.42 + genesisFlash() * .55)
@@ -620,6 +632,10 @@ render(o0)`;
       const scene=scenes[id];
       if(!scene)return;
       currentScene=id;
+      if(id==='genesis'){
+        try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
+        catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
+      }
       if(id==='hypnosis'&&!(await ensureWebcam()))return;
       capitalCounter.style.display=id==='genesis'?'block':'none';
       if(id!=='hypnosis'){hearts.length=0;heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height)}
