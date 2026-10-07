@@ -77,10 +77,12 @@
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #videoPanel.open{display:block}.vp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.vp-grid button,.vp-reset{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:8px;cursor:pointer}.vp-grid button.on{background:#fff;color:#111}.vp-row{display:grid;grid-template-columns:58px 1fr 36px;align-items:center;gap:7px;margin:8px 0}.vp-row input{width:100%}.vp-hint{opacity:.55;margin-top:9px;font-size:10px}.cue-monitor{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}.cue-led{border:1px solid #353a43;border-radius:6px;padding:6px 4px;text-align:center;opacity:.45;cursor:pointer;background:#11151a;color:#fff;font-family:inherit}.cue-led:hover{opacity:.8}.cue-led.on{background:#fff;color:#111;opacity:1}.cue-led b{display:block;font-size:12px}.cue-led small{font-size:8px;letter-spacing:.04em}.space-nav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.space-nav button{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:7px;cursor:pointer}.space-readout{grid-column:1/-1;font-size:9px;opacity:.62;text-align:center}
-    #feedScene{--fx-acid:0;--fx-glitch:0;--fx-pixel:0;--fx-contrast:1;--fx-hue:0deg;filter:contrast(var(--fx-contrast)) hue-rotate(var(--fx-hue));transition:filter 1.35s ease}
+    #feedScene{--fx-acid:0;--fx-glitch:0;--fx-pixel:0;--fx-blur:0px;--fx-contrast:1;--fx-hue:0deg;filter:contrast(var(--fx-contrast)) hue-rotate(var(--fx-hue));transition:filter 1.35s ease}
     #feedScene.fx-acid{filter:contrast(calc(var(--fx-contrast) + .22)) saturate(calc(1.8 + var(--fx-acid)*4.8)) hue-rotate(var(--fx-hue))}
     #feedScene.fx-glitch .placeholder{filter:contrast(calc(1.35 + var(--fx-glitch)*1.8)) brightness(calc(.94 + var(--fx-glitch)*.34)) saturate(calc(1.15 + var(--fx-glitch)*1.15))!important}
-    #feedScene.fx-pixel .placeholder{image-rendering:pixelated;filter:contrast(calc(1.18 + var(--fx-pixel)*1.35)) saturate(calc(.85 + var(--fx-pixel)*1.2))!important}
+    #feedScene.fx-pixel .placeholder{image-rendering:pixelated;filter:contrast(calc(1.18 + var(--fx-pixel)*1.35)) saturate(calc(.85 + var(--fx-pixel)*1.2)) blur(calc(var(--fx-pixel)*1.6px))!important}
+    #feedScene.fx-pixel img{image-rendering:pixelated;transform:scale(calc(1 + var(--fx-pixel)*.035))}
+    #feedScene.fx-blur .placeholder{filter:blur(var(--fx-blur)) contrast(calc(1 + var(--fx-blur)*.018))!important}
 
     #audioPanel{position:fixed;right:16px;bottom:16px;width:310px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #audioPanel.open{display:block} .ap-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ap-title{font-weight:700}.ap-state{opacity:.6}
@@ -165,7 +167,7 @@
   <div id="cueHud">S SCROLL · B BREATH I · D BREATH II · F FLOAT · G DEPTH · H 2D→3D · J ORBIT · K DISSOLVE · L HOLE</div>
   <aside id="videoPanel">
     <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
-    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
+    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button data-fx="blur">BLUR</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
     <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
@@ -251,7 +253,7 @@
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
   window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}aichaSignal.style.width=((e.detail.level||0)*100)+"%";aichaSource.textContent="AUDIO BUS · "+String(e.detail.source||"none").toUpperCase()});
   populate();
-  const videoFx={acid:false,glitch:false,pixel:false};
+  const videoFx={acid:false,glitch:false,pixel:false,blur:false};
   const applyVideoFx=()=>{
     const a=window.ELISA_AUDIO||{},low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
     const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
@@ -259,6 +261,7 @@
     feed.style.setProperty("--fx-acid",(Math.max(.55,fxAmount)*Math.max(.55,energy)).toFixed(3));
     feed.style.setProperty("--fx-glitch",(Math.max(.48,fxAmount)*Math.max(.45,high*.65+hit*.8)*Math.max(.7,fxReact)).toFixed(3));
     feed.style.setProperty("--fx-pixel",(Math.max(.48,fxAmount)*Math.max(.45,mid*.35+high*.65)*Math.max(.7,fxReact)).toFixed(3));
+    feed.style.setProperty("--fx-blur",(videoFx.blur?(1.2+fxAmount*(2+low*8+mid*5+hit*9)*Math.max(.65,fxReact)):0).toFixed(2)+"px");
     feed.style.setProperty("--fx-contrast",(1+(videoFx.glitch?fxAmount*Math.max(.18,energy)*.8:0)).toFixed(3));
     feed.style.setProperty("--fx-hue",(videoFx.acid?(65+fxAmount*55+mid*125+high*75).toFixed(1):0)+"deg");
   };
@@ -541,7 +544,7 @@
       // Darkness grows only after depth is established.
       const darkTarget=(spatialEnabled?THREE.MathUtils.smoothstep(p,.38,.88):0);
       sceneDark+=(darkTarget-sceneDark)*.035;
-      renderer.setClearColor(0x000000,sceneDark);
+      renderer.setClearColor(0x000000,1);
       const spiral=Math.max(0,(p-.72)/.28),tunnel=Math.max(0,(p-.30)/.70);
       // First movement is a clean zoom-out: the familiar 3-column feed becomes small and centred.
       // G must inherit the visual width of F: begin broad, then only recede once depth develops.
@@ -709,8 +712,8 @@
   const setFeedCue=(key)=>{
     if(["b","d","f"].includes(key)&&spatialEnabled)leave3D();
     if(key==="b"){breathEnabled=true;slipEnabled=false;floatEnabled=false;feed.classList.add("break-start")}
-    if(key==="d"){breathEnabled=true;slipEnabled=true;floatEnabled=false;feed.classList.add("break-start")}
-    if(key==="f"){breathEnabled=true;slipEnabled=true;floatEnabled=true;feed.classList.add("break-start")}
+    if(key==="d"){breathEnabled=true;slipEnabled=true;floatEnabled=false;feed.classList.add("break-start");feed.dataset.blackLock="1";feed.style.backgroundColor="#000"}
+    if(key==="f"){breathEnabled=true;slipEnabled=true;floatEnabled=true;feed.classList.add("break-start");feed.dataset.blackLock="1";feed.style.backgroundColor="#000"}
     if(key==="g"){if(!spatialEnabled)enter3D();return}
     if(key==="h"){if(!spatialEnabled)enter3D();orbitEnabled=true;morphTarget=1;syncCueMonitor();return}
     if(key==="j"){if(!spatialEnabled)enter3D();pixelEnabled=true;syncCueMonitor();return}
@@ -770,6 +773,7 @@
     feed.style.setProperty("--fx-acid",(Math.max(.55,fxAmount)*Math.max(.55,fxEnergy)).toFixed(3));
     feed.style.setProperty("--fx-glitch",(Math.max(.48,fxAmount)*Math.max(.45,high*.65+hit*.8)*Math.max(.7,fxReact)).toFixed(3));
     feed.style.setProperty("--fx-pixel",(Math.max(.48,fxAmount)*Math.max(.45,mid*.35+high*.65)*Math.max(.7,fxReact)).toFixed(3));
+    feed.style.setProperty("--fx-blur",(videoFx.blur?(1.2+fxAmount*(2+low*8+mid*5+hit*9)*Math.max(.65,fxReact)):0).toFixed(2)+"px");
     feed.style.setProperty("--fx-contrast",(1+(videoFx.glitch?fxAmount*fxEnergy*.8:0)).toFixed(3));
     feed.style.setProperty("--fx-hue",(videoFx.acid?(65+fxAmount*55+mid*125+high*75).toFixed(1):0)+"deg");
     lastLow+=(low-lastLow)*.16; lastMid+=(mid-lastMid)*.12; lastHigh+=(high-lastHigh)*.10;
@@ -799,7 +803,7 @@
     if(!slipEnabled&&flashEnergy>.16){
       const flash=Math.min(1,(flashEnergy-.16)*2.4);
       feed.style.backgroundColor="rgb("+Math.round(flash*235)+","+Math.round(flash*235)+","+Math.round(flash*235)+")";
-    }else if(feed.classList.contains("break-start")) feed.style.backgroundColor="";
+    }else if(feed.dataset.blackLock==="1") feed.style.backgroundColor="#000"; else if(feed.classList.contains("break-start")) feed.style.backgroundColor="";
     const posts=[...grid.querySelectorAll(".post")];
     posts.forEach((post,i)=>{
       const ph=post.querySelector(".placeholder"); if(!ph)return;
