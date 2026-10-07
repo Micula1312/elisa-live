@@ -23,7 +23,7 @@
     #midi-monitor b{color:#fff;font-weight:400} #midi-monitor.off{border-color:#555;color:#777}
     #capital-counter{display:none;position:fixed;right:18px;bottom:38px;z-index:35;text-align:right;font-family:Helvetica,Arial,sans-serif;pointer-events:none;mix-blend-mode:screen}
     #capital-counter .money{color:#39ff14;font-size:clamp(20px,2.4vw,38px);font-weight:700;letter-spacing:-.05em;text-shadow:0 0 12px rgba(57,255,20,.65)}
-    #capital-counter .tears{color:#ff2bd6;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,43,214,.6)}
+    #capital-counter .tears{color:#ff2400;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,36,0,.6)}
     #capital-counter.pop{animation:capitalPop .28s ease-out}@keyframes capitalPop{0%{transform:scale(1)}45%{transform:scale(1.22) rotate(-2deg)}100%{transform:scale(1)}}
   to{transform:translate(-50%,-34vh)}}
     #farewell-credits{position:fixed;inset:0;overflow:hidden;display:none;z-index:8;pointer-events:none;perspective:420px;background:linear-gradient(to bottom,transparent 0 54%,rgba(0,0,0,.16) 100%)}
@@ -142,7 +142,7 @@
 
     const {default:Hydra}=await import('hydra-synth');
     const THREE=await import('three');
-    const ACID=0x39ff14, MAGENTA=0xff2bd6;
+    const ACID=0x39ff14, FIRE_RED=0xff2400;
     let hypnosisWord='I AM',webcamReady=false,hypnosisDrop=0;
     const faceMotion={x:.5,y:.5,size:.28,v:0,px:.5,py:.5,ps:.28,last:0};
     let faceDetector=null,trackingMode='motion',handLandmarker=null,handTrackingLoading=false,lastHandTrack=0,heartGesture=false,heartHold=0;
@@ -243,7 +243,7 @@
       obj.userData={kind:id,seed,baseX:obj.position.x,baseY:obj.position.y,baseZ:obj.position.z,spawn:performance.now(),growth:id==='tree'?0:1};
       if(id==='tree')obj.scale.set(.015,.015,.015);
       if(['phone','diamond','cola','pistol'].includes(id)){
-        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(MAGENTA)});
+        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(FIRE_RED)});
         landscape.flash=1;
       }
       landscape.objects[id].push(obj);landscape.scene.add(obj);incrementCapital(id);
@@ -538,8 +538,8 @@
         obj.position.x=u.baseX+Math.sin(landscapeT*(.7+s*.06)+s)*(1+mi*2.2);
         obj.position.z=u.baseZ+Math.cos(landscapeT*(.45+s*.04)+s)*(.6+hi*1.8);
         const pop=1+lo*.65+mi*.22+hi*.18+Math.max(0,.7-age)*.45;obj.scale.setScalar(pop);
-        const magentaMix=Math.max(0,1-age/1.35);
-        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(magentaMix>.08?MAGENTA:ACID)});
+        const redMix=Math.max(0,1-age/1.35);
+        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(redMix>.08?FIRE_RED:ACID)});
       }));
       landscape.objects.tree.forEach((obj,i)=>{
         const u=obj.userData,s=u.seed,age=(performance.now()-u.spawn)/1000;
@@ -555,9 +555,9 @@
         obj.rotation.y=Math.sin(landscapeT*.18+s)*(.06+mi*.08);
         obj.rotation.z=Math.sin(landscapeT*.35+s)*(.012+hi*.045);
         obj.position.y=u.baseY+Math.sin(landscapeT*.3+s)*hi*.08;
-        // Fresh trees briefly bloom magenta, then settle into acid green.
+        // Fresh trees briefly bloom fire red, then settle into acid green.
         const newborn=Math.max(0,1-age/1.1);
-        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(newborn>.06?MAGENTA:ACID)});
+        obj.traverse(ch=>{if(ch.material?.color)ch.material.color.setHex(newborn>.06?FIRE_RED:ACID)});
       });
       landscape.objects.swarm.forEach((obj,i)=>{
         const u=obj.userData,s=u.seed,sp=obj.geometry.attributes.position;
@@ -654,7 +654,7 @@ render(o0)`;
   .layer(
     src(s2)
       .luma(.30)
-      .color(1,.10,.72)
+      .color(1,.035,.0)
       .scale(() => 1 + low()*.05 + faceSize()*.10)
       .scrollX(() => faceX()*.10)
       .scrollY(() => -faceY()*.08)
@@ -685,7 +685,7 @@ render(o0)`;
   .layer(
     src(s0)
       .luma(() => .76 - high() * .12)
-      .color(1.0,.10,.72)
+      .color(1.0,.035,.0)
       .brightness(() => -.42 + high() * .28)
   )
   .blend(src(o0).scale(() => 1.001 + low() * .002 + param2()*.018), () => .025 + low() * .035 + param2()*.24)
@@ -714,29 +714,43 @@ render(o0)`;
 
 render(o0)`;
 
-    const resonanceGradient=`gradient(() => .18 + Math.sin(time*.08)*.12)
-  .color(1,.06,.72)
-  .rotate(() => Math.sin(time*.06)*.32)
-  .blend(
-    gradient(() => .35 + Math.cos(time*.07)*.16)
-      .rotate(() => 1.57 + Math.sin(time*.05)*.38)
-      .color(.10,1,.035),
-    () => .45 + Math.sin(time*.11)*.18
-  )
-  .modulate(
-    noise(() => .7 + mid()*1.4 + audioChaos()*2.2, () => .035 + high()*.04),
-    () => .018 + audioReact()*(low()*.05 + mid()*.035) + audioChaos()*high()*.08
-  )
-  .blend(
-    osc(() => 2.2 + param1()*2.8, .015, () => .2 + param2()*1.2)
-      .color(.22,1,.08)
-      .rotate(() => time*.015),
-    () => .10 + high()*.10
-  )
-  .blend(src(o0).scale(() => .998 - low()*.003), () => .055 + param2()*.08)
-  .contrast(() => 1.08 + high()*.14)
-  .saturate(1.25)
-  .out(o0)
+    // RESONANCE — adapted from Ritchse "trying to get closer" (CC BY-NC-SA 4.0).
+    // Original structure preserved; live macros/audio are added to the main controllable values.
+    const resonanceGradient=`osc(
+  () => 60 + param1()*70 + high()*18*audioReact(),
+  () => -.015 + mid()*.035*audioReact(),
+  () => .30 + param2()*.85
+)
+.diff(
+  osc(
+    () => 60 + param1()*45,
+    () => .08 + high()*.035*audioReact()
+  ).rotate(() => Math.PI/2 + param2()*.28)
+)
+.modulateScale(
+  noise(
+    () => 3.5 + param1()*5 + mid()*2.2*audioReact(),
+    () => .25 + high()*.18*audioReact() + audioChaos()*.32
+  ).modulateScale(
+    osc(() => 15 + param2()*20).rotate(() => Math.sin(time/2)),
+    () => .45 + audioChaos()*.45
+  ),
+  () => .6 + low()*.35*audioReact() + audioChaos()*.45
+)
+.color(1,.10,.03)
+.contrast(() => 1.4 + high()*.35*audioReact())
+.add(
+  src(o0).modulate(o0, () => .04 + audioChaos()*.055),
+  () => .6 + param2()*.22
+)
+.invert()
+.brightness(() => .10 + low()*.08*audioReact())
+.contrast(() => 1.2 + param1()*.45)
+.modulateScale(
+  osc(() => 2 + mid()*1.8*audioReact()),
+  () => -.2 - low()*.12*audioReact() - audioChaos()*.18
+)
+.out(o0)
 render(o0)`;
 
     const farewellLandscape=`src(s0)
