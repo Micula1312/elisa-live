@@ -7,6 +7,8 @@ const state={
 window.ELISA_AUDIO=state;
 
 let ctx,analyser,source,stream,data,prevLevel=0,raf=0,mediaElement=null;
+const audioBus=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("elisa-audio"):null;
+let lastBusPublish=0;
 const avg=(arr,a,b)=>{let s=0,n=0;for(let i=a;i<=b&&i<arr.length;i++){s+=arr[i];n++}return n?s/n/255:0};
 const clamp01=v=>Math.max(0,Math.min(1,v));
 const smooth=(current,target,attack=.28,release=.09)=>current+(target-current)*(target>current?attack:release);
@@ -15,6 +17,10 @@ function publish(){
   state.updatedAt=performance.now();
   const detail={...state};
   window.dispatchEvent(new CustomEvent("elisa-audio",{detail}));
+  // Cross-window audio bus: /regia becomes the browser audio authority.
+  // Throttled to ~30fps so Hydra/web receive the same LOW/MID/HIGH/HIT without flooding.
+  const now=performance.now();
+  if(audioBus&&now-lastBusPublish>32){audioBus.postMessage({type:"audio-frame",...detail});lastBusPublish=now}
   // Stable adapter for Hydra / other browser clients.
   window.ELISA_AUDIO.get=()=>({...state});
 }

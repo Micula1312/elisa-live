@@ -112,14 +112,20 @@
     const hearts=[];let handDebug='HANDS · WAITING',handTrackError='';
     const motionCanvas=document.createElement('canvas'),motionCtx=motionCanvas.getContext('2d',{willReadFrequently:true});
     motionCanvas.width=160;motionCanvas.height=90;let motionPrev=null;
-    const hydra=new Hydra({canvas,detectAudio:true,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
-    const audio=hydra.synth.a;
-    if(audio){audio.setBins(4);audio.setSmooth(.82);audio.setCutoff(1);audio.setScale(6);audio.show()}
-    window.low=()=>audio?.fft?.[0]??0;
-    window.mid=()=>((audio?.fft?.[1]??0)+(audio?.fft?.[2]??0))*.5;
-    window.high=()=>audio?.fft?.[3]??0;
+    const hydra=new Hydra({canvas,detectAudio:false,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
+    // Shared browser audio authority. /regia publishes one normalized analysis stream;
+    // Hydra consumes it instead of opening a second microphone/analyser.
+    window.ELISA_SHARED_AUDIO={level:0,low:0,mid:0,high:0,transient:0,source:"none",updatedAt:0};
+    const sharedAudioBus=new BroadcastChannel("elisa-audio");
+    sharedAudioBus.onmessage=e=>{if(e.data?.type==="audio-frame")Object.assign(window.ELISA_SHARED_AUDIO,e.data)};
+    window.low=()=>window.ELISA_SHARED_AUDIO.low||0;
+    window.mid=()=>window.ELISA_SHARED_AUDIO.mid||0;
+    window.high=()=>window.ELISA_SHARED_AUDIO.high||0;
+    window.hit=()=>window.ELISA_SHARED_AUDIO.transient||0;
+    window.level=()=>window.ELISA_SHARED_AUDIO.level||0;
     // Live coding vocabulary:
-    // low() mid() high() = audio / deform() feedback() melt() chaos() = AKAI CC16–19
+    // low() mid() high() hit() = shared /regia audio
+    // deform() feedback() melt() chaos() = AKAI CC16–19
 
     // THREE.JS landscape source -> Hydra s0. It keeps rendering in the background;
     // GENESIS decides when to expose/process it.
