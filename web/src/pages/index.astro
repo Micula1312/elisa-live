@@ -649,12 +649,15 @@
   };
   const setCyclone=(on)=>{on?enter3D():leave3D()};
   addEventListener("wheel",e=>{
-    if(!orbitEnabled)return;
+    if(!spatialEnabled)return;
     e.preventDefault();
     const d=Math.max(-140,Math.min(140,e.deltaY));
     morphWheel+=d*.0016;
-    // Down-scroll progressively converts page travel into depth and finally the first vortex turn.
+    // G is the start of the scroll-driven handoff. Wheel opens depth progressively;
+    // once the field is deep enough it arms H/orbit without requiring a second hard cut.
     morphTarget=Math.max(0,Math.min(1,morphTarget+d*cycloneCfg.sensitivity));
+    if(morphTarget>.52&&!orbitEnabled){orbitEnabled=true;syncCueMonitor()}
+    if(morphTarget<.42&&orbitEnabled){orbitEnabled=false;syncCueMonitor()}
   },{passive:false});
 
   const captureHandoff=()=>{
