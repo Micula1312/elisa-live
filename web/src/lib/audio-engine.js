@@ -16,7 +16,12 @@ const smooth=(current,target,attack=.28,release=.09)=>current+(target-current)*(
 
 function publish(){
   state.updatedAt=performance.now();
-  const detail={...state};
+  const detail={
+    level:state.level,low:state.low,mid:state.mid,high:state.high,transient:state.transient,
+    lowRaw:state.lowRaw,midRaw:state.midRaw,highRaw:state.highRaw,
+    running:state.running,deviceId:state.deviceId,sensitivity:state.sensitivity,
+    source:state.source,sampleRate:state.sampleRate,updatedAt:state.updatedAt
+  };
   window.dispatchEvent(new CustomEvent("elisa-audio",{detail}));
   // Cross-window audio bus: /regia becomes the browser audio authority.
   // Throttled to ~30fps so Hydra/web receive the same LOW/MID/HIGH/HIT without flooding.
