@@ -421,7 +421,10 @@
     }
     renderLandscape();
 
-    const starter=`voronoi(
+    const starter=`// PERFORMANCE ARC
+// CC16: GLITCH -> PARTICLES -> FLUID
+// CC17: B/W -> ACID GREEN
+voronoi(
     () => 350 - deform() * 315,
     () => .15 - deform() * .105
   )
@@ -443,8 +446,19 @@
     src(o0).scale(() => 1.76 + low()*.16 - deform()*.72)
   )
   .modulateScale(
-    noise(() => 2.2 - deform()*1.25, () => .08 + deform()*.12),
-    () => .08 + high()*.30 + deform()*.13
+    noise(
+      () => 2.2 - deform()*1.45,
+      () => .08 + deform()*.09
+    ),
+    () => (.08 + high()*.30)*(1-deform()*.62) + deform()*.085
+  )
+  // As CC16 opens, hard cells dissolve into a slower continuous flow.
+  .modulate(
+    noise(
+      () => 1.8 - deform()*.95,
+      () => .035 + deform()*.025
+    ),
+    () => deform() * (.035 + low()*.055 + mid()*.025)
   )
   .diff(
     src(o0)
@@ -459,7 +473,8 @@
     1,
     () => 1 - feedback()*.92
   )
-  .saturate(() => 1 + feedback()*1.8)
+  // Keep the forest cue mostly monochrome until the second half of CC17.
+  .saturate(() => 1 + Math.pow(feedback(),1.7)*2.15)
   .brightness(() => -.06 - high()*.12 + deform()*.035)
   .out(o0)
 
