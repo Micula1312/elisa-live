@@ -205,19 +205,17 @@
   document.querySelector("#aichaMin").onclick=()=>aichaDesktop.classList.toggle("min");
   let aichaLiveOn=false,aichaLiveStartedAt=0,aichaLiveTimer=0;
   async function setAichaLive(on){
+    const bus=new BroadcastChannel("elisa-regia");
+    aichaLiveOn=on;
     if(on){
-      try{
-        let wanted=[...device.options].find(o=>/usb audio|behringer|uca202|uca 202/i.test(o.textContent||""));
-        if(!wanted){await populate();wanted=[...device.options].find(o=>/usb audio|behringer|uca202|uca 202/i.test(o.textContent||""))}
-        if(wanted)device.value=wanted.value;
-        await startAudio(device.value);
-        aichaLiveOn=true;aichaLiveStartedAt=performance.now();aichaPlay.textContent="❚❚";astate.textContent="LIVE IN";arm.textContent="RE-ARM LIVE";aichaSource.textContent="ELISA_MASTER.wav · PLAYING";aichaLiveTimer=requestAnimationFrame(updateAichaClock);
-      }catch(e){aichaSource.textContent="AUDIO INPUT ERROR";console.error("AICHA live:",e)}
+      bus.postMessage({type:"audio-control",action:"live"});
+      aichaLiveStartedAt=performance.now();aichaPlay.textContent="❚❚";aichaSource.textContent="REMOTE → REGIA · LIVE INPUT";
+      cancelAnimationFrame(aichaLiveTimer);aichaLiveTimer=requestAnimationFrame(updateAichaClock);
     }else{
-      // Visual/player OFF: keep the shared input analyser alive, but gate the performance reaction to zero.
-      aichaLiveOn=false;cancelAnimationFrame(aichaLiveTimer);aichaPlay.textContent="▶";aichaTime.textContent="LIVE";aichaSource.textContent="ELISA_MASTER.wav · STOPPED";
-      window.dispatchEvent(new CustomEvent("elisa-performance-gate",{detail:{on:false}}));
+      bus.postMessage({type:"audio-control",action:"pause"});
+      cancelAnimationFrame(aichaLiveTimer);aichaPlay.textContent="▶";aichaTime.textContent="LIVE";aichaSource.textContent="REMOTE → REGIA · STOPPED";
     }
+    bus.close();
     window.dispatchEvent(new CustomEvent("elisa-performance-gate",{detail:{on:aichaLiveOn}}));
   }
   function updateAichaClock(){if(!aichaLiveOn)return;const t=(performance.now()-aichaLiveStartedAt)/1000;aichaTime.textContent=Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");aichaLiveTimer=requestAnimationFrame(updateAichaClock)}
