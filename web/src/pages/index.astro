@@ -415,7 +415,12 @@
   }
   function setAutoScroll(on){
     autoScroll=on;lastFrame=0;autoScrollBtn?.classList.toggle("on",on);
-    if(on&&!autoScrollRaf)autoScrollRaf=requestAnimationFrame(autoScrollLoop);
+    if(on){
+      if(autoScrollRaf)cancelAnimationFrame(autoScrollRaf);
+      autoScrollRaf=requestAnimationFrame(autoScrollLoop);
+    }else if(autoScrollRaf){
+      cancelAnimationFrame(autoScrollRaf);autoScrollRaf=0;
+    }
   }
   autoScrollBtn?.addEventListener("click",()=>setAutoScroll(true));
   const freezeFeedScroll=()=>setAutoScroll(false);
@@ -759,11 +764,11 @@
     const low=e.detail.low||0,mid=e.detail.mid||0,high=e.detail.high||0,hit=e.detail.transient||0;
     const fxAmount=Number(videoAmount.value),fxReact=Number(videoReact.value);
     const fxEnergy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
-    feed.style.setProperty("--fx-acid",(fxAmount*fxEnergy).toFixed(3));
+    feed.style.setProperty("--fx-acid",(fxAmount*Math.max(.30,fxEnergy)).toFixed(3));
     feed.style.setProperty("--fx-glitch",(fxAmount*(high*.65+hit*.8)*fxReact).toFixed(3));
     feed.style.setProperty("--fx-pixel",(fxAmount*(mid*.35+high*.65)*fxReact).toFixed(3));
     feed.style.setProperty("--fx-contrast",(1+(videoFx.glitch?fxAmount*fxEnergy*.8:0)).toFixed(3));
-    feed.style.setProperty("--fx-hue",(videoFx.acid?(fxAmount*(20+mid*170+high*90)*fxReact).toFixed(1):0)+"deg");
+    feed.style.setProperty("--fx-hue",(videoFx.acid?(fxAmount*(42+mid*170+high*90)*Math.max(.45,fxReact)).toFixed(1):0)+"deg");
     lastLow+=(low-lastLow)*.16; lastMid+=(mid-lastMid)*.12; lastHigh+=(high-lastHigh)*.10;
     const now=performance.now(),dt=Math.min(.05,(now-lastAudioFrame)/1000);lastAudioFrame=now;
     motionClock+=dt*(.75+lastLow*.8+lastMid*.35);
