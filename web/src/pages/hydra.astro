@@ -741,7 +741,8 @@ render(o0)`;
       genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
       hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
       resonance:{label:'RESONANCE · TODO',code:null},
-      farewell:{label:'FAREWELL · TREE / CREDITS',code:farewellLandscape}
+      farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
+      credits:{label:'CREDITS · EDITABLE',code:'solid(0,0,0,1).out(o0)\nrender(o0)'}
     };
     let currentScene='custom01';
     code.value=scenes[currentScene].code;
@@ -776,6 +777,7 @@ render(o0)`;
       }
       if(id==='hypnosis'&&!(await ensureWebcam()))return;
       if(id==='farewell')startFarewell(); else hideFarewell();
+      if(id==='credits')showFarewellCredits(farewellCreditsInner.textContent||'BLIVET');
       capitalCounter.style.display=id==='genesis'?'block':'none';
       if(id!=='hypnosis'){hearts.length=0;heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height)}
       sceneTag.textContent='HYDRA · '+scene.label;
@@ -829,7 +831,7 @@ render(o0)`;
       m=m||{};
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
-      if(m.type==='hydra-farewell-credits')showFarewellCredits(m.text);
+      if(m.type==='hydra-farewell-credits'){farewellCreditsInner.textContent=String(m.text||'').trim()||'BLIVET';if(currentScene==='credits')showFarewellCredits(m.text)}
       if(m.type==='hydra-clean')cleanHydra();
       if(m.type==='hydra-object-add')addGenesisFromRegia(m.object);
       if(m.type==='hydra-forest-burst')addForestBurst(m.count||6);
