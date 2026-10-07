@@ -353,7 +353,7 @@
   });
   let autoScroll=false, autoScrollRaf=0, lastFrame=0,focusedPost=null,focusedPlane=null,focusTimer=0;
   const FOCUS_HOLD=2600;
-  const AUTO_SCROLL_SPEED=34; // px per second; S is the only control
+  const AUTO_SCROLL_SPEED=42; // px per second; S is the only control
 
   function appendBatch(){
     // Deterministic reorder: recognisable repetitions, but never an obvious identical page loop.
@@ -408,7 +408,9 @@
       morphWheel+=AUTO_SCROLL_SPEED*dt*.0019;
       morphTarget=Math.min(1,morphTarget+AUTO_SCROLL_SPEED*dt*.00028);
     }else{
-      feed.scrollTop+=AUTO_SCROLL_SPEED*dt;
+      // feedScene is the actual scroll container. scrollBy is more reliable than
+      // fractional scrollTop += values during the live multi-display setup.
+      feed.scrollBy(0,AUTO_SCROLL_SPEED*dt);
       ensureScrollBuffer();
     }
     autoScrollRaf=requestAnimationFrame(autoScrollLoop);
