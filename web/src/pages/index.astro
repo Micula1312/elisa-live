@@ -78,9 +78,9 @@
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #videoPanel.open{display:block}.vp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.vp-grid button,.vp-reset{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:8px;cursor:pointer}.vp-grid button.on{background:#fff;color:#111}.vp-row{display:grid;grid-template-columns:58px 1fr 36px;align-items:center;gap:7px;margin:8px 0}.vp-row input{width:100%}.vp-hint{opacity:.55;margin-top:9px;font-size:10px}.cue-monitor{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}.cue-led{border:1px solid #353a43;border-radius:6px;padding:6px 4px;text-align:center;opacity:.45;cursor:pointer;background:#11151a;color:#fff;font-family:inherit}.cue-led:hover{opacity:.8}.cue-led.on{background:#fff;color:#111;opacity:1}.cue-led b{display:block;font-size:12px}.cue-led small{font-size:8px;letter-spacing:.04em}.space-nav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.space-nav button{background:#181b20;color:#fff;border:1px solid #353a43;border-radius:7px;padding:7px;cursor:pointer}.space-readout{grid-column:1/-1;font-size:9px;opacity:.62;text-align:center}
     #feedScene{--fx-acid:0;--fx-glitch:0;--fx-pixel:0;--fx-contrast:1;--fx-hue:0deg;filter:contrast(var(--fx-contrast)) hue-rotate(var(--fx-hue));transition:filter 1.35s ease}
-    #feedScene.fx-acid{filter:contrast(var(--fx-contrast)) saturate(calc(1 + var(--fx-acid)*2.4)) hue-rotate(var(--fx-hue))}
-    #feedScene.fx-glitch .placeholder{filter:contrast(calc(1 + var(--fx-glitch)*.9)) brightness(calc(1 + var(--fx-glitch)*.12))!important}
-    #feedScene.fx-pixel .placeholder{image-rendering:pixelated}
+    #feedScene.fx-acid{filter:contrast(calc(var(--fx-contrast) + .22)) saturate(calc(1.8 + var(--fx-acid)*4.8)) hue-rotate(var(--fx-hue))}
+    #feedScene.fx-glitch .placeholder{filter:contrast(calc(1.35 + var(--fx-glitch)*1.8)) brightness(calc(.94 + var(--fx-glitch)*.34)) saturate(calc(1.15 + var(--fx-glitch)*1.15))!important}
+    #feedScene.fx-pixel .placeholder{image-rendering:pixelated;filter:contrast(calc(1.18 + var(--fx-pixel)*1.35)) saturate(calc(.85 + var(--fx-pixel)*1.2))!important}
 
     #audioPanel{position:fixed;right:16px;bottom:16px;width:310px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
     #audioPanel.open{display:block} .ap-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ap-title{font-weight:700}.ap-state{opacity:.6}
@@ -247,11 +247,11 @@
     const a=window.ELISA_AUDIO||{},low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
     const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
     const energy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
-    feed.style.setProperty("--fx-acid",(fxAmount*Math.max(.22,energy)).toFixed(3));
-    feed.style.setProperty("--fx-glitch",(fxAmount*Math.max(.18,high*.65+hit*.8)*fxReact).toFixed(3));
-    feed.style.setProperty("--fx-pixel",(fxAmount*Math.max(.2,mid*.35+high*.65)*fxReact).toFixed(3));
+    feed.style.setProperty("--fx-acid",(Math.max(.55,fxAmount)*Math.max(.55,energy)).toFixed(3));
+    feed.style.setProperty("--fx-glitch",(Math.max(.48,fxAmount)*Math.max(.45,high*.65+hit*.8)*Math.max(.7,fxReact)).toFixed(3));
+    feed.style.setProperty("--fx-pixel",(Math.max(.48,fxAmount)*Math.max(.45,mid*.35+high*.65)*Math.max(.7,fxReact)).toFixed(3));
     feed.style.setProperty("--fx-contrast",(1+(videoFx.glitch?fxAmount*Math.max(.18,energy)*.8:0)).toFixed(3));
-    feed.style.setProperty("--fx-hue",(videoFx.acid?(fxAmount*(28+mid*170+high*90)*Math.max(.35,fxReact)).toFixed(1):0)+"deg");
+    feed.style.setProperty("--fx-hue",(videoFx.acid?(65+fxAmount*55+mid*125+high*75).toFixed(1):0)+"deg");
   };
   const syncVideoFx=()=>{
     for(const [fx,on] of Object.entries(videoFx)){feedScene?.classList.toggle("fx-"+fx,on);cycloneScene?.classList.toggle("fx-"+fx,on);videoPanel.querySelector('[data-fx="'+fx+'"]')?.classList.toggle("on",on)}
@@ -758,11 +758,11 @@
     const low=e.detail.low||0,mid=e.detail.mid||0,high=e.detail.high||0,hit=e.detail.transient||0;
     const fxAmount=Number(videoAmount.value),fxReact=Number(videoReact.value);
     const fxEnergy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
-    feed.style.setProperty("--fx-acid",(fxAmount*Math.max(.30,fxEnergy)).toFixed(3));
-    feed.style.setProperty("--fx-glitch",(fxAmount*(high*.65+hit*.8)*fxReact).toFixed(3));
-    feed.style.setProperty("--fx-pixel",(fxAmount*(mid*.35+high*.65)*fxReact).toFixed(3));
+    feed.style.setProperty("--fx-acid",(Math.max(.55,fxAmount)*Math.max(.55,fxEnergy)).toFixed(3));
+    feed.style.setProperty("--fx-glitch",(Math.max(.48,fxAmount)*Math.max(.45,high*.65+hit*.8)*Math.max(.7,fxReact)).toFixed(3));
+    feed.style.setProperty("--fx-pixel",(Math.max(.48,fxAmount)*Math.max(.45,mid*.35+high*.65)*Math.max(.7,fxReact)).toFixed(3));
     feed.style.setProperty("--fx-contrast",(1+(videoFx.glitch?fxAmount*fxEnergy*.8:0)).toFixed(3));
-    feed.style.setProperty("--fx-hue",(videoFx.acid?(fxAmount*(42+mid*170+high*90)*Math.max(.45,fxReact)).toFixed(1):0)+"deg");
+    feed.style.setProperty("--fx-hue",(videoFx.acid?(65+fxAmount*55+mid*125+high*75).toFixed(1):0)+"deg");
     lastLow+=(low-lastLow)*.16; lastMid+=(mid-lastMid)*.12; lastHigh+=(high-lastHigh)*.10;
     const now=performance.now(),dt=Math.min(.05,(now-lastAudioFrame)/1000);lastAudioFrame=now;
     motionClock+=dt*(.75+lastLow*.8+lastMid*.35);
