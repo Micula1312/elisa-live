@@ -722,6 +722,31 @@ render(o0)`;
 
 render(o0)`;
 
+    const resonanceGradient=`osc(() => .32 + low()*.22 + param1()*.35, () => .012 + mid()*.035, () => .18 + param2()*.8)
+  .rotate(() => Math.sin(time*.08)*.16 + param1()*.22)
+  .color(1,.06,.72)
+  .blend(
+    osc(() => .18 + mid()*.18, .025, () => 1.1 + Math.sin(time*.12)*.7)
+      .rotate(() => 1.57 + Math.sin(time*.06)*.25)
+      .color(.10,1,.035),
+    () => .42 + Math.sin(time*.10)*.16 + low()*.12
+  )
+  .modulate(
+    noise(() => .28 + mid()*.65 + audioChaos()*1.5, () => .04 + high()*.06),
+    () => .035 + audioReact()*(low()*.08 + mid()*.055) + audioChaos()*high()*.12
+  )
+  .scale(() => 1.02 + Math.sin(time*.11)*.035 + low()*.045)
+  .blend(
+    src(o0)
+      .scale(() => .997 - low()*.006)
+      .rotate(() => Math.sin(time*.05)*.006 + mid()*.008),
+    () => .12 + param2()*.18 + audioReact()*high()*.08
+  )
+  .contrast(() => 1.05 + high()*.18)
+  .saturate(() => 1.15 + param1()*.75)
+  .out(o0)
+render(o0)`;
+
     const farewellLandscape=`src(s0)
   .contrast(() => 1.16 + low()*.18 + audioChaos()*.16)
   .brightness(-.18)
@@ -740,7 +765,7 @@ render(o0)`;
       custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
       genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
       hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
-      resonance:{label:'RESONANCE · TODO',code:null},
+      resonance:{label:'RESONANCE · GRADIENT FLOW',code:resonanceGradient},
       farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
       credits:{label:'CREDITS · EDITABLE',code:'solid(0,0,0,1).out(o0)\nrender(o0)'}
     };
