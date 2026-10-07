@@ -785,6 +785,13 @@ render(o0)`;
       if(m.type==='hydra-blackout')blackoutHydra();
       if(m.type==='hydra-back')back();
       if(m.type==='hydra-editor')toggleEditor()
+      if(m.type==='hydra-hud'){
+        const visible=m.visible!==false;
+        midiMonitor.style.display=visible?'':'none';
+        editorToggle.style.display=visible?'':'none';
+        sceneTag.style.display=visible?'':'none';
+        if(!visible)editor.classList.remove('open');
+      }
     };
     const regiaChannel=new BroadcastChannel('elisa-regia');
     regiaChannel.onmessage=e=>handleRegia(e.data);
