@@ -1,4 +1,4 @@
-﻿---
+---
 ---
 <!doctype html>
 <html lang="it">
@@ -20,181 +20,6 @@ button{background:#111;color:#ddd;border:1px solid #444;padding:10px 13px;cursor
 .vol{display:grid;grid-template-columns:60px 1fr 45px;gap:8px;align-items:center;margin-top:14px;font-size:11px}.video{border-top:1px solid #444;padding:20px}.video-grid{display:grid;grid-template-columns:.72fr 1.28fr;gap:18px}.fx,.cues{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.fx #subtitles{grid-column:span 2}.fx #subtitles.on{background:#eee;color:#000}.fx button.on,.cues button.on{background:#eee;color:#000}.vrow{display:grid;grid-template-columns:70px 1fr 45px;gap:8px;align-items:center;margin-top:12px;font-size:11px}.vrow input{width:100%}.video-note{font-size:10px;color:#777;margin-top:10px}.hydra-deck{border-top:1px solid #444;padding:20px}.hydra-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.hydra-tools{display:flex;gap:7px;margin-top:8px}.genesis-objects{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}.genesis-objects button{flex:1;min-width:120px;border-color:#31512b}.genesis-objects button:nth-child(n+4){border-color:#6a255d;color:#ff83e9}.genesis-objects button:nth-child(n+4):hover{background:var(--pink);color:#050505;border-color:var(--pink)}.genesis-objects button.on{background:var(--acid);color:#000}.hypnosis-type{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}.hypnosis-type button{flex:1;min-width:110px;border-color:#6a255d;color:#ff83e9}.hypnosis-type button:hover{background:var(--pink);color:#050505;border-color:var(--pink)}.hypnosis-input{display:flex;gap:7px;margin-top:8px}.hypnosis-input input{flex:1;min-width:0;background:#050505;color:var(--pink);border:1px solid #6a255d;padding:10px 12px;outline:none}.hypnosis-input input:focus{border-color:var(--pink);box-shadow:0 0 10px rgba(255,43,214,.2)}.hypnosis-input button{border-color:var(--pink);color:var(--pink)}.hydra-tools button{flex:1}.hydra-buttons button.todo{border-style:dashed;color:#888}.hydra-buttons button.live{background:#eee;color:#000}
 footer{padding:11px 20px;border-top:1px solid #444;color:#777;font-size:10px;display:flex;justify-content:space-between}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
-
-/* ===== AICHA COMPACT COCKPIT ===== */
-
-body {
-  padding: 7px !important;
-  background-size: 18px 18px !important;
-}
-
-.shell {
-  max-width: 1480px !important;
-}
-
-header {
-  padding: 7px 11px !important;
-}
-
-.title {
-  font-size: 13px !important;
-}
-
-.soul,
-h2 {
-  font-size: 8px !important;
-}
-
-h2 {
-  margin-bottom: 7px !important;
-}
-
-.panel,
-.video,
-.hydra-deck {
-  padding: 9px 11px !important;
-  min-height: 0 !important;
-}
-
-.state {
-  font-size: 9px !important;
-  margin-bottom: 5px !important;
-}
-
-/* MICRO BUTTONS */
-
-button {
-  min-height: 22px !important;
-  padding: 3px 7px !important;
-  font-size: 8px !important;
-  letter-spacing: .055em !important;
-  border-radius: 0 !important;
-}
-
-.actions,
-.trackactions,
-.hydra-tools,
-.genesis-objects,
-.hypnosis-type,
-.hypnosis-input {
-  gap: 3px !important;
-  margin-top: 4px !important;
-  margin-bottom: 4px !important;
-}
-
-.genesis-objects button,
-.hypnosis-type button,
-.hydra-tools button {
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
-}
-
-/* HYDRA = STRISCIA DI COMANDI */
-
-.hydra-buttons {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 3px !important;
-}
-
-/* AUDIO */
-
-.meterrow {
-  grid-template-columns: 32px 1fr 29px !important;
-  gap: 5px !important;
-  margin: 3px 0 !important;
-  font-size: 8px !important;
-}
-
-.meter {
-  height: 4px !important;
-}
-
-.sens,
-.vol,
-.vrow {
-  margin-top: 5px !important;
-  font-size: 8px !important;
-}
-
-/* CLOCK */
-
-.clock {
-  font-size: clamp(27px,3.2vw,47px) !important;
-  margin: 6px 0 !important;
-}
-
-.timeline {
-  margin: 7px 0 2px !important;
-  padding-top: 13px !important;
-}
-
-.markers {
-  height: 18px !important;
-}
-
-.marker {
-  height: 9px !important;
-}
-
-.marker.major {
-  height: 14px !important;
-}
-
-.nextcue,
-.video-note {
-  font-size: 8px !important;
-  margin-top: 4px !important;
-}
-
-/* VIDEO CONTROL */
-
-.video-grid {
-  gap: 9px !important;
-}
-
-.fx,
-.cues {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 3px !important;
-}
-
-.fx #subtitles {
-  grid-column: auto !important;
-}
-
-/* INPUT */
-
-.device {
-  gap: 3px !important;
-}
-
-.device select {
-  padding: 3px 6px !important;
-  font-size: 9px !important;
-}
-
-.hypnosis-input {
-  max-width: 400px !important;
-}
-
-.hypnosis-input input {
-  padding: 3px 6px !important;
-  font-size: 9px !important;
-}
-
-footer {
-  padding: 6px 11px !important;
-  font-size: 7px !important;
-}
-
-@media(max-width:760px) {
-  body {
-    padding: 0 !important;
-  }
-}
-
 </style>
 </head>
 <body>
@@ -203,7 +28,7 @@ footer {
 <div class="grid">
 <section class="panel">
 <h2>AUDIO MASTER / LIVE INPUT</h2>
-<div class="state">SOURCE â€” <b id="audioState">OFF</b></div>
+<div class="state">SOURCE — <b id="audioState">OFF</b></div>
 <div class="device"><select id="audioDevice"><option value="">Default audio input</option></select><button id="refresh">REFRESH</button></div>
 <div class="actions"><button id="arm">ARM LIVE</button><button id="trackSource">USE TRACK</button></div>
 <div class="meterrow"><span>LEVEL</span><div class="meter"><i id="mLevel"></i></div><span id="vLevel">0.00</span></div>
@@ -217,8 +42,8 @@ footer {
 <h2>MASTER TRACK / PERFORMANCE CLOCK</h2>
 <div class="clock"><span id="now">00:00</span> <small>/ <span id="total">32:27</span></small></div>
 <audio id="master" src="/audio/elisa_master.mp3" preload="metadata"></audio>
-<div class="timeline"><div class="markers" id="markers"></div><input class="seek" id="seek" type="range" min="0" max="1000" step="1" value="0"></div><div class="nextcue" id="nextCue">NEXT â€” 01:00 FACE ID</div>
-<div class="trackactions"><button id="play">â–¶ PLAY MASTER</button><button id="zero">â†º 00:00</button></div>
+<div class="timeline"><div class="markers" id="markers"></div><input class="seek" id="seek" type="range" min="0" max="1000" step="1" value="0"></div><div class="nextcue" id="nextCue">NEXT — 01:00 FACE ID</div>
+<div class="trackactions"><button id="play">▶ PLAY MASTER</button><button id="zero">↺ 00:00</button></div>
 <label class="vol"><span>VOLUME</span><input id="volume" type="range" min="0" max="1" step=".01" value="1"><span id="volVal">100%</span></label>
 </section>
 </div>
@@ -228,25 +53,25 @@ footer {
 <div><div class="state">INTERFACE FX</div><div class="fx"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button id="fxClean">CLEAN</button><button id="subtitles">SUBTITLES OFF</button></div>
 <label class="vrow"><span>AMOUNT</span><input id="fxAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="fxAmountVal">.55</span></label>
 <label class="vrow"><span>REACT</span><input id="fxReact" type="range" min="0" max="2" step=".05" value="1"><span id="fxReactVal">1.0</span></label></div>
-<div><div class="state">FEED / SPACE CUES</div><div class="cues"><button data-cue="s">S Â· SCROLL</button><button data-cue="b">B Â· BREATH I</button><button data-cue="d">D Â· BREATH II</button><button data-cue="f">F Â· FLOAT</button><button data-cue="g">G Â· 3D</button><button data-cue="h">H Â· ORBIT</button><button data-cue="j">J Â· DISTANCE</button><button data-cue="k">K Â· FLOW</button><button data-cue="l">L Â· IMPLODE</button></div>
-<div class="video-note">REMOTE WEB CONTROL Â· keep the performance page open in another browser window/display.</div></div>
+<div><div class="state">FEED / SPACE CUES</div><div class="cues"><button data-cue="s">S · SCROLL</button><button data-cue="b">B · BREATH I</button><button data-cue="d">D · BREATH II</button><button data-cue="f">F · FLOAT</button><button data-cue="g">G · 3D</button><button data-cue="h">H · ORBIT</button><button data-cue="j">J · DISTANCE</button><button data-cue="k">K · FLOW</button><button data-cue="l">L · IMPLODE</button></div>
+<div class="video-note">REMOTE WEB CONTROL · keep the performance page open in another browser window/display.</div></div>
 </div></section>
 <section class="hydra-deck">
 <h2>HYDRA / SCENE DECK</h2>
 <div class="hydra-buttons">
-<button data-hydra="custom01">CUSTOM 01 Â· CORRUPTED</button>
-<button data-hydra="genesis">GENESIS Â· 3D LANDSCAPE</button>
-<button data-hydra="hypnosis">HYPNOSIS Â· WEBCAM</button>
-<button data-hydra="resonance" class="todo">RESONANCE Â· TODO</button>
-<button data-hydra="farewell" class="todo">FAREWELL Â· TODO</button>
+<button data-hydra="custom01">CUSTOM 01 · CORRUPTED</button>
+<button data-hydra="genesis">GENESIS · 3D LANDSCAPE</button>
+<button data-hydra="hypnosis">HYPNOSIS · WEBCAM</button>
+<button data-hydra="resonance" class="todo">RESONANCE · TODO</button>
+<button data-hydra="farewell" class="todo">FAREWELL · TODO</button>
 </div>
-<div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST Ã—6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
-<div class="hypnosis-input"><input id="hypnosisText" type="text" maxlength="18" value="I AM" placeholder="TYPE YOUR MASKâ€¦"><button id="hypnosisSend">SEND TYPE</button></div>
+<div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST ×6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
+<div class="hypnosis-input"><input id="hypnosisText" type="text" maxlength="18" value="I AM" placeholder="TYPE YOUR MASK…"><button id="hypnosisSend">SEND TYPE</button></div>
 <div class="hypnosis-type"><button data-hypnosis-word="I AM">I AM</button><button data-hypnosis-word="LOOK AT ME">LOOK AT ME</button><button data-hypnosis-word="ERROR">ERROR</button><button data-hypnosis-word="BODY">BODY</button><button data-hypnosis-word="ELISA">ELISA</button></div>
 <div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button></div>
-<div class="video-note">GENESIS: â†‘â†“ move Â· â†â†’ turn Â· TREE/FOREST progressively saturate the landscape.</div>
+<div class="video-note">GENESIS: ↑↓ move · ←→ turn · TREE/FOREST progressively saturate the landscape.</div>
 </section>
-<footer><span>DISPLAY REGIA â€” KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE Â· 32:27</span></footer>
+<footer><span>DISPLAY REGIA — KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE · 32:27</span></footer>
 </div>
 <script type="module">
 import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
@@ -255,8 +80,8 @@ const fmt=t=>{t=Math.max(0,Number(t)||0);return String(Math.floor(t/60)).padStar
 const SHOW_DURATION=1947;
 const cues=[[0,"TEXT INTRO",1],[60,"FACE ID",1],[90,"LOADER",0],[120,"HYDRA I",1],[260,"FOTO",0],[313,"VIDEO VERT.",0],[380,"FOTO",0],[500,"3D TOUCH",1],[680,"HYDRA II",1],[800,"ROTAZIONI",0],[900,"FORESTA + NUMERI",1],[1080,"FORESTA + IMMAGINI",0],[1240,"ARCHIVIO 3D",1],[1460,"HYDRA III",1],[1550,"TRANSIZIONE",0],[1610,"NUCLEO ROSSO",1],[1680,"ALBERO",0],[1770,"BLIVET",1],[1840,"HYDRA IV",1]];
 const markers=q("#markers"),nextCue=q("#nextCue");
-cues.forEach(([t,label,major])=>{const m=document.createElement("i");m.className="marker"+(major?" major":"");m.style.left=(t/SHOW_DURATION*100)+"%";m.dataset.time=t;m.title=fmt(t)+" Â· "+label;markers.appendChild(m)});
-function syncCue(t){const upcoming=cues.find(([ct])=>ct>t+.5);[...markers.children].forEach(m=>m.classList.toggle("next",upcoming&&Number(m.dataset.time)===upcoming[0]));nextCue.textContent=upcoming?"NEXT â€” "+fmt(upcoming[0])+" "+upcoming[1]:"END OF SHOW"}
+cues.forEach(([t,label,major])=>{const m=document.createElement("i");m.className="marker"+(major?" major":"");m.style.left=(t/SHOW_DURATION*100)+"%";m.dataset.time=t;m.title=fmt(t)+" · "+label;markers.appendChild(m)});
+function syncCue(t){const upcoming=cues.find(([ct])=>ct>t+.5);[...markers.children].forEach(m=>m.classList.toggle("next",upcoming&&Number(m.dataset.time)===upcoming[0]));nextCue.textContent=upcoming?"NEXT — "+fmt(upcoming[0])+" "+upcoming[1]:"END OF SHOW"}
 async function populate(){
  try{
   const saved=localStorage.getItem("elisa-audio-device")||"",inputs=await listAudioInputs();
@@ -267,37 +92,23 @@ async function populate(){
 }
 device.addEventListener("change",()=>localStorage.setItem("elisa-audio-device",device.value));
 q("#refresh").onclick=populate;
-q("#arm").onclick=async()=>{try{state.textContent="REQUESTINGâ€¦";await startAudio(device.value);localStorage.setItem("elisa-audio-device",device.value);state.textContent="LIVE INPUT";soul.textContent="ONLINE";await populate()}catch(e){state.textContent=e.name||"AUDIO ERROR"}};
-q("#trackSource").onclick=async()=>{try{await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE";q("#play").textContent="âšâš PAUSE MASTER"}catch(e){state.textContent=e.name||"TRACK ERROR"}};
+q("#arm").onclick=async()=>{try{state.textContent="REQUESTING…";await startAudio(device.value);localStorage.setItem("elisa-audio-device",device.value);state.textContent="LIVE INPUT";soul.textContent="ONLINE";await populate()}catch(e){state.textContent=e.name||"AUDIO ERROR"}};
+q("#trackSource").onclick=async()=>{try{await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE";q("#play").textContent="❚❚ PAUSE MASTER"}catch(e){state.textContent=e.name||"TRACK ERROR"}};
 q("#play").onclick=async()=>{try{
  if(window.ELISA_AUDIO?.source!=="track"){await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE"}
  else if(master.paused)await master.play();else master.pause();
- q("#play").textContent=master.paused?"â–¶ PLAY MASTER":"âšâš PAUSE MASTER";
+ q("#play").textContent=master.paused?"▶ PLAY MASTER":"❚❚ PAUSE MASTER";
 }catch(e){state.textContent=e.name||"TRACK ERROR"}};
 q("#zero").onclick=()=>master.currentTime=0;
 master.addEventListener("loadedmetadata",()=>{if(Number.isFinite(master.duration))q("#total").textContent=fmt(master.duration)});
 master.addEventListener("timeupdate",()=>{q("#now").textContent=fmt(master.currentTime);syncCue(master.currentTime);if(!seek.matches(":active"))seek.value=master.duration?Math.round(master.currentTime/master.duration*1000):0});
-master.addEventListener("ended",()=>q("#play").textContent="â–¶ PLAY MASTER");
+master.addEventListener("ended",()=>q("#play").textContent="▶ PLAY MASTER");
 seek.oninput=()=>{if(master.duration)master.currentTime=Number(seek.value)/1000*master.duration};
 q("#volume").oninput=e=>{master.volume=Number(e.target.value);q("#volVal").textContent=Math.round(master.volume*100)+"%"};
 q("#sensitivity").oninput=e=>{setSensitivity(e.target.value);q("#sensVal").textContent=Number(e.target.value).toFixed(1)};
 const bars={level:["#mLevel","#vLevel"],low:["#mLow","#vLow"],mid:["#mMid","#vMid"],high:["#mHigh","#vHigh"],transient:["#mHit","#vHit"]};
 window.addEventListener("elisa-audio",e=>{Object.entries(bars).forEach(([k,[b,v]])=>{const n=e.detail[k]||0;q(b).style.width=(n*100)+"%";q(v).textContent=n.toFixed(2)})});
 const control=new BroadcastChannel("elisa-regia");
-control.addEventListener("message",async e=>{
- const m=e.data;
- if(m?.type!=="audio-control")return;
- try{
-  if(m.action==="live"){await startAudio(device.value);state.textContent="LIVE INPUT";soul.textContent="ONLINE"}
-  if(m.action==="track"){await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE";q("#play").textContent="❚❚ PAUSE MASTER"}
-  if(m.action==="play"){
-    if(window.ELISA_AUDIO?.source!=="track")await startTrack(master);else await master.play();
-    state.textContent="MASTER TRACK";q("#play").textContent="❚❚ PAUSE MASTER";
-  }
-  if(m.action==="pause"){master.pause();q("#play").textContent="▶ PLAY MASTER"}
-  if(m.action==="zero"){master.currentTime=0}
- }catch(err){state.textContent=err.name||"AUDIO ERROR"}
-});
 const send=message=>{control.postMessage(message);localStorage.setItem("elisa-regia-command",JSON.stringify({id:Date.now()+Math.random(),message}))};
 document.querySelectorAll("[data-fx]").forEach(btn=>btn.onclick=()=>{btn.classList.toggle("on");send({type:"fx",fx:btn.dataset.fx,on:btn.classList.contains("on")})});
 q("#fxClean").onclick=()=>{document.querySelectorAll("[data-fx]").forEach(b=>b.classList.remove("on"));send({type:"fx-clean"})};
