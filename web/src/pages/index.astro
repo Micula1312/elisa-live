@@ -71,7 +71,7 @@
     #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#fff;overflow:hidden;opacity:0;transition:opacity .75s ease,background-color 1.15s ease}#cycloneScene.on{display:block}#cycloneScene.dark{background:#000}#slashLight{position:absolute;inset:-12%;z-index:3;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,255,255,.98) 0 1%,rgba(210,225,255,.72) 2%,rgba(150,180,255,.20) 7%,transparent 19%),linear-gradient(12deg,transparent 46%,rgba(220,232,255,.06) 48%,rgba(255,255,255,.72) 49.7%,rgba(220,232,255,.08) 51.2%,transparent 54%),linear-gradient(102deg,transparent 48.6%,rgba(255,255,255,.32) 49.7%,rgba(220,232,255,.05) 51%,transparent 52%);filter:blur(2px);mix-blend-mode:screen;transform:scale(.18) rotate(-5deg);transition:opacity .28s ease,transform .8s cubic-bezier(.15,.8,.2,1)}#slashLight.on{opacity:.92;transform:scale(1.12) rotate(2deg)}#cycloneScene canvas{display:block;width:100%;height:100%}
     #aichaDesktopPlayer{position:fixed;left:22px;top:22px;z-index:10030;width:238px;background:#080808;color:#e9e9e9;border:1px solid #444;box-shadow:5px 5px 0 #000;font:11px/1.2 "Courier New",monospace;user-select:none}
     #aichaDesktopPlayer .aicha-title{height:25px;display:flex;align-items:center;justify-content:space-between;padding:0 7px;background:#161616;border-bottom:1px solid #444;color:#39ff14;letter-spacing:.05em}
-    #aichaDesktopPlayer .aicha-body{padding:9px}.aicha-track{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#aaa;margin-bottom:8px}.aicha-transport{display:flex;gap:5px}.aicha-transport button{width:32px;height:27px;padding:0;border:1px solid #555;background:#111;color:#eee;cursor:pointer}.aicha-transport button:hover{color:#39ff14;border-color:#39ff14}.aicha-mini-time{margin-left:auto;align-self:center;color:#39ff14}.aicha-signal{height:4px;margin-top:8px;background:#1b1b1b;overflow:hidden}.aicha-signal i{display:block;height:100%;width:0;background:#39ff14}.aicha-source{margin-top:6px;color:#666;font-size:9px;letter-spacing:.08em}
+    #aichaDesktopPlayer .aicha-body{padding:9px}.aicha-track{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#aaa;margin-bottom:8px}.aicha-transport{display:flex;gap:5px}.aicha-transport button{width:32px;height:27px;padding:0;border:1px solid #555;background:#111;color:#eee;cursor:pointer}.aicha-transport button:hover{color:#39ff14;border-color:#39ff14}.aicha-mini-time{margin-left:auto;align-self:center;color:#39ff14}.aicha-signal{height:4px;margin-top:8px;background:#1b1b1b;overflow:hidden}.aicha-signal i{display:block;height:100%;width:0;background:#39ff14}.aicha-source{margin-top:6px;color:#666;font-size:9px;letter-spacing:.08em}.aicha-fakefile{display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:6px;border:1px dotted #444;background:#101010;cursor:pointer}.aicha-fakefile:hover{border-color:#39ff14}.aicha-fakefile .ico{font-size:18px}.aicha-fakefile small{display:block;color:#666;font-size:8px;margin-top:2px}
     #aichaDesktopPlayer.min .aicha-body{display:none}#aichaDesktopPlayer.min{width:176px}
     #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:10020;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 Helvetica,Arial,sans-serif;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
@@ -152,8 +152,9 @@
   <aside id="aichaDesktopPlayer">
     <div class="aicha-title"><span>♪ AICHA_PLAYER.EXE</span><button id="aichaMin" aria-label="minimize">_</button></div>
     <div class="aicha-body">
-      <div class="aicha-track">ELISA_MASTER_AUDIO</div>
-      <div class="aicha-transport"><button id="aichaPlay">▶</button><button id="aichaZero">↺</button><span class="aicha-mini-time" id="aichaTime">00:00</span></div>
+      <div class="aicha-fakefile" id="aichaFakeFile" title="ELISA_MASTER.wav"><span class="ico">♫</span><span>ELISA_MASTER.wav<small>MASTER AUDIO · 32:27</small></span></div>
+      <div class="aicha-track">ELISA_MASTER.wav</div>
+      <div class="aicha-transport"><button id="aichaPlay">▶</button><button id="aichaZero">■</button><span class="aicha-mini-time" id="aichaTime">LIVE</span></div>
       <div class="aicha-signal"><i id="aichaSignal"></i></div>
       <div class="aicha-source" id="aichaSource">AUDIO BUS · WAITING</div>
     </div>
@@ -200,10 +201,29 @@
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
   const cycloneScene=document.querySelector("#cycloneScene"),slashLight=document.querySelector("#slashLight"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
-  const aichaDesktop=document.querySelector("#aichaDesktopPlayer"),aichaPlay=document.querySelector("#aichaPlay"),aichaZero=document.querySelector("#aichaZero"),aichaTime=document.querySelector("#aichaTime"),aichaSignal=document.querySelector("#aichaSignal"),aichaSource=document.querySelector("#aichaSource");
+  const aichaDesktop=document.querySelector("#aichaDesktopPlayer"),aichaPlay=document.querySelector("#aichaPlay"),aichaZero=document.querySelector("#aichaZero"),aichaTime=document.querySelector("#aichaTime"),aichaSignal=document.querySelector("#aichaSignal"),aichaSource=document.querySelector("#aichaSource"),aichaFakeFile=document.querySelector("#aichaFakeFile");
   document.querySelector("#aichaMin").onclick=()=>aichaDesktop.classList.toggle("min");
-  aichaPlay.onclick=()=>trackPlay.click();
-  aichaZero.onclick=()=>trackReset.click();
+  let aichaLiveOn=false,aichaLiveStartedAt=0,aichaLiveTimer=0;
+  async function setAichaLive(on){
+    if(on){
+      try{
+        let wanted=[...device.options].find(o=>/usb audio|behringer|uca202|uca 202/i.test(o.textContent||""));
+        if(!wanted){await populate();wanted=[...device.options].find(o=>/usb audio|behringer|uca202|uca 202/i.test(o.textContent||""))}
+        if(wanted)device.value=wanted.value;
+        await startAudio(device.value);
+        aichaLiveOn=true;aichaLiveStartedAt=performance.now();aichaPlay.textContent="❚❚";astate.textContent="LIVE IN";arm.textContent="RE-ARM LIVE";aichaSource.textContent="ELISA_MASTER.wav · PLAYING";aichaLiveTimer=requestAnimationFrame(updateAichaClock);
+      }catch(e){aichaSource.textContent="AUDIO INPUT ERROR";console.error("AICHA live:",e)}
+    }else{
+      // Visual/player OFF: keep the shared input analyser alive, but gate the performance reaction to zero.
+      aichaLiveOn=false;cancelAnimationFrame(aichaLiveTimer);aichaPlay.textContent="▶";aichaTime.textContent="LIVE";aichaSource.textContent="ELISA_MASTER.wav · STOPPED";
+      window.dispatchEvent(new CustomEvent("elisa-performance-gate",{detail:{on:false}}));
+    }
+    window.dispatchEvent(new CustomEvent("elisa-performance-gate",{detail:{on:aichaLiveOn}}));
+  }
+  function updateAichaClock(){if(!aichaLiveOn)return;const t=(performance.now()-aichaLiveStartedAt)/1000;aichaTime.textContent=Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");aichaLiveTimer=requestAnimationFrame(updateAichaClock)}
+  aichaPlay.onclick=()=>setAichaLive(!aichaLiveOn);
+  aichaZero.onclick=()=>setAichaLive(false);
+  aichaFakeFile.ondblclick=()=>setAichaLive(true);
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
     try{
@@ -218,7 +238,7 @@
   arm.addEventListener("click",async()=>{try{astate.textContent="REQUESTING…";await startAudio(device.value);astate.textContent="LIVE IN";arm.textContent="RE-ARM LIVE";await populate()}catch(e){astate.textContent=(e.name||"AUDIO ERROR");console.error("ELISA live audio input:",e)}});
   trackPlay.addEventListener("click",async()=>{try{if(window.ELISA_AUDIO?.source==="track"&&!master.paused){master.pause();trackPlay.textContent="RESUME MASTER";astate.textContent="MASTER PAUSED";return}if(window.ELISA_AUDIO?.source!=="track")await startTrack(master);else await master.play();trackPlay.textContent="PAUSE MASTER";astate.textContent="MASTER TRACK"}catch(e){astate.textContent=e.name||"TRACK ERROR";console.error("ELISA master track:",e)}});
   trackReset.addEventListener("click",()=>{master.currentTime=0});
-  master.addEventListener("timeupdate",()=>{const t=master.currentTime||0,d=master.duration||0;const ft=Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");vTime.textContent=ft;aichaTime.textContent=ft;if(!audioSeek.matches(":active"))audioSeek.value=d?Math.round(t/d*1000):0});
+  master.addEventListener("timeupdate",()=>{const t=master.currentTime||0,d=master.duration||0;const ft=Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");vTime.textContent=ft;if(!aichaLiveOn)aichaTime.textContent="LIVE";if(!audioSeek.matches(":active"))audioSeek.value=d?Math.round(t/d*1000):0});
   audioSeek.addEventListener("input",()=>{if(Number.isFinite(master.duration)&&master.duration>0)master.currentTime=(Number(audioSeek.value)/1000)*master.duration});
   master.addEventListener("ended",()=>{trackPlay.textContent="PLAY MASTER";astate.textContent="MASTER END"});
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
