@@ -242,7 +242,7 @@
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
   window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}aichaSignal.style.width=((e.detail.level||0)*100)+"%";aichaSource.textContent="AUDIO BUS · "+String(e.detail.source||"none").toUpperCase()});
   populate();
-  const videoFx={acid:true,glitch:true,pixel:true};
+  const videoFx={acid:false,glitch:false,pixel:false};
   const applyVideoFx=()=>{
     const a=window.ELISA_AUDIO||{},low=a.low||0,mid=a.mid||0,high=a.high||0,hit=a.transient||0;
     const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
@@ -258,7 +258,6 @@
     const active=Object.entries(videoFx).filter(([,v])=>v).map(([k])=>k.toUpperCase());
     videoState.textContent=active.join("+")||"CLEAN";applyVideoFx();
   };
-  syncVideoFx();
   videoPanel.querySelectorAll("[data-fx]").forEach(btn=>btn.addEventListener("click",()=>{videoFx[btn.dataset.fx]=!videoFx[btn.dataset.fx];syncVideoFx()}));
   videoReset.addEventListener("click",()=>{Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()});
   videoAmount.addEventListener("input",()=>vAmount.textContent=Number(videoAmount.value).toFixed(2));
