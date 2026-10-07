@@ -853,7 +853,12 @@ render(o0)`;
     editorToggle.addEventListener('click',toggleEditor);
     window.addEventListener('keydown',(e)=>{
       if(e.code==='Space'&&document.activeElement!==code&&currentScene==='hypnosis'){e.preventDefault();hypnosisDrop=1;status.textContent='DROP · DISINTEGRATE'}
-      if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)&&document.activeElement!==code){e.preventDefault();moveGenesisCamera(e.key)}
+      if(['ArrowLeft','ArrowRight'].includes(e.key)&&document.activeElement!==code){
+        e.preventDefault();
+        const sceneOrder=Object.keys(scenes),at=sceneOrder.indexOf(currentScene),dir=e.key==='ArrowRight'?1:-1;
+        loadScene(sceneOrder[(at+dir+sceneOrder.length)%sceneOrder.length]);
+      }
+      if(['ArrowUp','ArrowDown'].includes(e.key)&&document.activeElement!==code&&(currentScene==='genesis'||currentScene==='farewell')){e.preventDefault();moveGenesisCamera(e.key)}
       if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();toggleEditor()}
       if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();run()}
       if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();back()}
