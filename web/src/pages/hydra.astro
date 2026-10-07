@@ -21,7 +21,7 @@
     #status.error{color:#ff8b8b}
     #midi-monitor{position:fixed;left:16px;top:16px;z-index:45;min-width:260px;padding:10px 12px;border:1px solid rgba(57,255,20,.45);background:rgba(0,0,0,.78);color:#39ff14;font:11px/1.45 Helvetica,Arial,sans-serif;letter-spacing:.06em;pointer-events:none}
     #midi-monitor b{color:#fff;font-weight:400} #midi-monitor.off{border-color:#555;color:#777}
-    #capital-counter{position:fixed;right:18px;bottom:38px;z-index:35;text-align:right;font-family:Helvetica,Arial,sans-serif;pointer-events:none;mix-blend-mode:screen}
+    #capital-counter{display:none;position:fixed;right:18px;bottom:38px;z-index:35;text-align:right;font-family:Helvetica,Arial,sans-serif;pointer-events:none;mix-blend-mode:screen}
     #capital-counter .money{color:#39ff14;font-size:clamp(20px,2.4vw,38px);font-weight:700;letter-spacing:-.05em;text-shadow:0 0 12px rgba(57,255,20,.65)}
     #capital-counter .tears{color:#ff2bd6;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,43,214,.6)}
     #capital-counter.pop{animation:capitalPop .28s ease-out}@keyframes capitalPop{0%{transform:scale(1)}45%{transform:scale(1.22) rotate(-2deg)}100%{transform:scale(1)}}
@@ -605,6 +605,7 @@ render(o0)`;
       currentScene=id;
       if(id==='hypnosis'&&!(await ensureWebcam()))return;
       capitalCounter.style.display=id==='genesis'?'block':'none';
+      if(id!=='hypnosis'){hearts.length=0;heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height)}
       sceneTag.textContent='HYDRA · '+scene.label;
       if(!scene.code){
         status.textContent=scene.label+' · EMPTY SLOT';
