@@ -69,6 +69,10 @@
 
   
     #cycloneScene{position:fixed;inset:0;z-index:45;display:none;background:#fff;overflow:hidden;opacity:0;transition:opacity .75s ease,background-color 1.15s ease}#cycloneScene.on{display:block}#cycloneScene.dark{background:#000}#slashLight{position:absolute;inset:-12%;z-index:3;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,255,255,.98) 0 1%,rgba(210,225,255,.72) 2%,rgba(150,180,255,.20) 7%,transparent 19%),linear-gradient(12deg,transparent 46%,rgba(220,232,255,.06) 48%,rgba(255,255,255,.72) 49.7%,rgba(220,232,255,.08) 51.2%,transparent 54%),linear-gradient(102deg,transparent 48.6%,rgba(255,255,255,.32) 49.7%,rgba(220,232,255,.05) 51%,transparent 52%);filter:blur(2px);mix-blend-mode:screen;transform:scale(.18) rotate(-5deg);transition:opacity .28s ease,transform .8s cubic-bezier(.15,.8,.2,1)}#slashLight.on{opacity:.92;transform:scale(1.12) rotate(2deg)}#cycloneScene canvas{display:block;width:100%;height:100%}
+    #aichaDesktopPlayer{position:fixed;left:22px;top:22px;z-index:10030;width:238px;background:#080808;color:#e9e9e9;border:1px solid #444;box-shadow:5px 5px 0 #000;font:11px/1.2 "Courier New",monospace;user-select:none}
+    #aichaDesktopPlayer .aicha-title{height:25px;display:flex;align-items:center;justify-content:space-between;padding:0 7px;background:#161616;border-bottom:1px solid #444;color:#39ff14;letter-spacing:.05em}
+    #aichaDesktopPlayer .aicha-body{padding:9px}.aicha-track{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#aaa;margin-bottom:8px}.aicha-transport{display:flex;gap:5px}.aicha-transport button{width:32px;height:27px;padding:0;border:1px solid #555;background:#111;color:#eee;cursor:pointer}.aicha-transport button:hover{color:#39ff14;border-color:#39ff14}.aicha-mini-time{margin-left:auto;align-self:center;color:#39ff14}.aicha-signal{height:4px;margin-top:8px;background:#1b1b1b;overflow:hidden}.aicha-signal i{display:block;height:100%;width:0;background:#39ff14}.aicha-source{margin-top:6px;color:#666;font-size:9px;letter-spacing:.08em}
+    #aichaDesktopPlayer.min .aicha-body{display:none}#aichaDesktopPlayer.min{width:176px}
     #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:10020;text-align:center;color:#fff;font:500 clamp(22px,2.2vw,40px)/1.3 Helvetica,Arial,sans-serif;text-shadow:0 2px 12px #000,0 0 28px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
     #performanceSubtitles.on{opacity:1}.subtitle-speaker{display:block;font-size:.34em;letter-spacing:.14em;margin-bottom:8px;opacity:.7;text-transform:uppercase}
     #videoPanel{position:fixed;left:16px;top:16px;width:300px;padding:14px;background:rgba(10,12,16,.94);color:#fff;border:1px solid #30343b;border-radius:12px;z-index:9999;font:12px/1.3 monospace;box-shadow:0 12px 40px rgba(0,0,0,.28);display:none}
@@ -145,6 +149,15 @@
     start.addEventListener('click',authenticate);
   </script>
 
+  <aside id="aichaDesktopPlayer">
+    <div class="aicha-title"><span>♪ AICHA_PLAYER.EXE</span><button id="aichaMin" aria-label="minimize">_</button></div>
+    <div class="aicha-body">
+      <div class="aicha-track">ELISA_MASTER_AUDIO</div>
+      <div class="aicha-transport"><button id="aichaPlay">▶</button><button id="aichaZero">↺</button><span class="aicha-mini-time" id="aichaTime">00:00</span></div>
+      <div class="aicha-signal"><i id="aichaSignal"></i></div>
+      <div class="aicha-source" id="aichaSource">AUDIO BUS · WAITING</div>
+    </div>
+  </aside>
   <div id="cycloneScene"><div id="slashLight"></div></div>
   <div id="archiveHole"></div>
   <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
@@ -187,6 +200,10 @@
   const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
   const cycloneScene=document.querySelector("#cycloneScene"),slashLight=document.querySelector("#slashLight"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
+  const aichaDesktop=document.querySelector("#aichaDesktopPlayer"),aichaPlay=document.querySelector("#aichaPlay"),aichaZero=document.querySelector("#aichaZero"),aichaTime=document.querySelector("#aichaTime"),aichaSignal=document.querySelector("#aichaSignal"),aichaSource=document.querySelector("#aichaSource");
+  document.querySelector("#aichaMin").onclick=()=>aichaDesktop.classList.toggle("min");
+  aichaPlay.onclick=()=>trackPlay.click();
+  aichaZero.onclick=()=>trackReset.click();
   const bars={level:["mLevel","vLevel"],low:["mLow","vLow"],mid:["mMid","vMid"],high:["mHigh","vHigh"],transient:["mHit","vHit"]};
   async function populate(){
     try{
@@ -201,11 +218,11 @@
   arm.addEventListener("click",async()=>{try{astate.textContent="REQUESTING…";await startAudio(device.value);astate.textContent="LIVE IN";arm.textContent="RE-ARM LIVE";await populate()}catch(e){astate.textContent=(e.name||"AUDIO ERROR");console.error("ELISA live audio input:",e)}});
   trackPlay.addEventListener("click",async()=>{try{if(window.ELISA_AUDIO?.source==="track"&&!master.paused){master.pause();trackPlay.textContent="RESUME MASTER";astate.textContent="MASTER PAUSED";return}if(window.ELISA_AUDIO?.source!=="track")await startTrack(master);else await master.play();trackPlay.textContent="PAUSE MASTER";astate.textContent="MASTER TRACK"}catch(e){astate.textContent=e.name||"TRACK ERROR";console.error("ELISA master track:",e)}});
   trackReset.addEventListener("click",()=>{master.currentTime=0});
-  master.addEventListener("timeupdate",()=>{const t=master.currentTime||0,d=master.duration||0;vTime.textContent=Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");if(!audioSeek.matches(":active"))audioSeek.value=d?Math.round(t/d*1000):0});
+  master.addEventListener("timeupdate",()=>{const t=master.currentTime||0,d=master.duration||0;const ft=Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");vTime.textContent=ft;aichaTime.textContent=ft;if(!audioSeek.matches(":active"))audioSeek.value=d?Math.round(t/d*1000):0});
   audioSeek.addEventListener("input",()=>{if(Number.isFinite(master.duration)&&master.duration>0)master.currentTime=(Number(audioSeek.value)/1000)*master.duration});
   master.addEventListener("ended",()=>{trackPlay.textContent="PLAY MASTER";astate.textContent="MASTER END"});
   sensitivity.addEventListener("input",()=>{setSensitivity(sensitivity.value);sensValue.textContent=Number(sensitivity.value).toFixed(1)});
-  window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}});
+  window.addEventListener("elisa-audio",e=>{for(const [key,[bar,val]] of Object.entries(bars)){const n=e.detail[key]||0;document.getElementById(bar).style.width=(n*100)+"%";document.getElementById(val).textContent=n.toFixed(2)}aichaSignal.style.width=((e.detail.level||0)*100)+"%";aichaSource.textContent="AUDIO BUS · "+String(e.detail.source||"none").toUpperCase()});
   populate();
   const videoFx={acid:false,glitch:false,pixel:false};
   const applyVideoFx=()=>{
