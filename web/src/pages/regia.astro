@@ -243,7 +243,7 @@ footer {
 <div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST Ã—6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
 <div class="hypnosis-input"><input id="hypnosisText" type="text" maxlength="18" value="I AM" placeholder="TYPE YOUR MASKâ€¦"><button id="hypnosisSend">SEND TYPE</button></div>
 <div class="hypnosis-type"><button data-hypnosis-word="I AM">I AM</button><button data-hypnosis-word="LOOK AT ME">LOOK AT ME</button><button data-hypnosis-word="ERROR">ERROR</button><button data-hypnosis-word="BODY">BODY</button><button data-hypnosis-word="ELISA">ELISA</button></div>
-<div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button></div>
+<div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button><button id="hydraHud">HIDE HUD</button></div>
 <div class="video-note">GENESIS: â†‘â†“ move Â· â†â†’ turn Â· TREE/FOREST progressively saturate the landscape.</div>
 </section>
 <footer><span>DISPLAY REGIA â€” KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE Â· 32:27</span></footer>
@@ -316,6 +316,13 @@ q("#hydraBlackout").onclick=()=>send({type:"hydra-blackout"});
 q("#hydraClean").onclick=()=>send({type:"hydra-clean"});
 q("#hydraBack").onclick=()=>send({type:"hydra-back"});
 q("#hydraEditor").onclick=()=>send({type:"hydra-editor"});
+let hydraHudVisible=true;
+q("#hydraHud").onclick=()=>{
+  hydraHudVisible=!hydraHudVisible;
+  send({type:"hydra-hud",visible:hydraHudVisible});
+  q("#hydraHud").textContent=hydraHudVisible?"HIDE HUD":"SHOW HUD";
+  q("#hydraHud").classList.toggle("on",!hydraHudVisible);
+};
 syncCue(0);populate();
 </script>
 </body>
