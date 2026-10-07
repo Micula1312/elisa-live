@@ -25,11 +25,20 @@
     #capital-counter .money{color:#39ff14;font-size:clamp(20px,2.4vw,38px);font-weight:700;letter-spacing:-.05em;text-shadow:0 0 12px rgba(57,255,20,.65)}
     #capital-counter .tears{color:#ff2bd6;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,43,214,.6)}
     #capital-counter.pop{animation:capitalPop .28s ease-out}@keyframes capitalPop{0%{transform:scale(1)}45%{transform:scale(1.22) rotate(-2deg)}100%{transform:scale(1)}}
+  #farewell-sun{position:fixed;left:50%;top:63%;width:18vmin;height:18vmin;border-radius:50%;background:#39FF14;box-shadow:0 0 42px rgba(57,255,20,.42);transform:translate(-50%,40vh);opacity:0;z-index:4;pointer-events:none}
+    #farewell-sun.on{opacity:.92;animation:farewellSunrise 34s linear forwards}
+    @keyframes farewellSunrise{from{transform:translate(-50%,42vh)}to{transform:translate(-50%,-34vh)}}
+    #farewell-credits{position:fixed;inset:0;overflow:hidden;display:none;z-index:8;pointer-events:none;perspective:420px;background:linear-gradient(to bottom,transparent 0 54%,rgba(0,0,0,.16) 100%)}
+    #farewell-credits.on{display:block}
+    #farewell-credits-inner{position:absolute;left:12%;right:12%;top:100%;text-align:center;color:#39FF14;font:700 clamp(22px,3.1vw,54px)/1.55 Helvetica,Arial,sans-serif;white-space:pre-wrap;letter-spacing:.035em;transform-origin:50% 100%;animation:farewellCrawl 46s linear forwards}
+    @keyframes farewellCrawl{0%{transform:rotateX(22deg) translateY(0) scale(1)}100%{transform:rotateX(27deg) translateY(-190vh) scale(.72)}}
   </style>
 </head>
 <body>
   <canvas id="hydra-canvas"></canvas>
   <div id="master-fade"></div>
+  <div id="farewell-sun"></div>
+  <div id="farewell-credits"><div id="farewell-credits-inner"></div></div>
   <canvas id="landscape-source" style="display:none"></canvas>
   <canvas id="type-source" style="display:none"></canvas>
   <canvas id="heart-source" style="display:none"></canvas>
@@ -60,6 +69,8 @@
     const editorToggle=document.getElementById('editor-toggle');
     const midiMonitor=document.getElementById('midi-monitor');
     const masterFade=document.getElementById('master-fade');
+    const farewellSun=document.getElementById('farewell-sun'),farewellCredits=document.getElementById('farewell-credits'),farewellCreditsInner=document.getElementById('farewell-credits-inner');
+    let farewellTree=null,farewellStartedAt=0;
     const capitalCounter=document.getElementById('capital-counter'),moneyCount=document.getElementById('money-count'),tearCount=document.getElementById('tear-count');
     let capital=0,tears=0;
     function incrementCapital(id){
@@ -240,6 +251,28 @@
       }
       landscape.objects[id].push(obj);landscape.scene.add(obj);incrementCapital(id);
       status.textContent='ADD '+id.toUpperCase()+' · '+landscape.objects[id].length;
+    }
+    function clearLandscapeObjects(){
+      Object.values(landscape.objects).forEach(list=>{list.forEach(obj=>landscape.scene.remove(obj));list.length=0});
+      farewellTree=null;
+    }
+    function startFarewell(){
+      clearLandscapeObjects();landscape.nav.x=0;landscape.nav.z=0;landscape.nav.yaw=0;
+      landscape.camera.position.set(0,4.6,10);landscape.camera.lookAt(0,-1,-18);
+      addGenesisObject('tree');farewellTree=landscape.objects.tree[landscape.objects.tree.length-1];
+      if(farewellTree){
+        farewellTree.position.set(0,-1.1,-18);farewellTree.userData.baseX=0;farewellTree.userData.baseY=-1.1;farewellTree.userData.baseZ=-18;farewellTree.userData.growth=0;farewellTree.scale.set(.01,.01,.01);
+      }
+      farewellStartedAt=performance.now();
+      farewellSun.classList.remove('on');void farewellSun.offsetWidth;farewellSun.classList.add('on');
+      farewellCredits.classList.remove('on');
+    }
+    function showFarewellCredits(text){
+      farewellCreditsInner.textContent=String(text||'').trim()||'ELISA';
+      farewellCredits.classList.remove('on');void farewellCredits.offsetWidth;farewellCredits.classList.add('on');
+    }
+    function hideFarewell(){
+      farewellSun.classList.remove('on');farewellCredits.classList.remove('on');
     }
     s0.init({src:landscapeCanvas});
     typeCanvas.width=960;typeCanvas.height=540;s2.init({src:typeCanvas});
@@ -502,7 +535,7 @@
         const u=obj.userData,s=u.seed,age=(performance.now()-u.spawn)/1000;
         // Each planted tree grows over several seconds; LOW/MID act like fertilizer,
         // so louder music visibly accelerates and exaggerates the growth.
-        const growthDrive=.0022+lo*.012+mi*.0045;
+        const growthDrive=(currentScene==='farewell'&&obj===farewellTree)?(1/(30*60)):(.0022+lo*.012+mi*.0045);
         u.growth=Math.min(1,u.growth+growthDrive);
         const ease=1-Math.pow(1-u.growth,3);
         const pulse=1+lo*(.20+(i%4)*.035)+mi*.055;
@@ -685,6 +718,15 @@ render(o0)`;
 
 render(o0)`;
 
+    const farewellLandscape=`src(s0)
+  .contrast(() => 1.16 + low()*.18)
+  .brightness(-.18)
+  .color(.22,1,.08)
+  .modulate(noise(() => .8 + mid()*.7,.015),() => .004 + low()*.008)
+  .layer(src(s0).luma(.22).color(.22,1,.08).brightness(-.12))
+  .out(o0)
+render(o0)`;
+
     // Scene deck structure. CUSTOM 01 stays untouched; GENESIS is the first new authored scene.
     // The other slots are placeholders to be rewritten together later.
     const scenes={
@@ -692,7 +734,7 @@ render(o0)`;
       genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
       hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
       resonance:{label:'RESONANCE · TODO',code:null},
-      farewell:{label:'FAREWELL · TODO',code:null}
+      farewell:{label:'FAREWELL · TREE / CREDITS',code:farewellLandscape}
     };
     let currentScene='custom01';
     code.value=scenes[currentScene].code;
@@ -721,11 +763,12 @@ render(o0)`;
       if(!scene)return;
       currentScene=id;
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
-      if(id==='genesis'){
+      if(id==='genesis'||id==='farewell'){
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
       if(id==='hypnosis'&&!(await ensureWebcam()))return;
+      if(id==='farewell')startFarewell(); else hideFarewell();
       capitalCounter.style.display=id==='genesis'?'block':'none';
       if(id!=='hypnosis'){hearts.length=0;heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height)}
       sceneTag.textContent='HYDRA · '+scene.label;
@@ -779,6 +822,7 @@ render(o0)`;
       m=m||{};
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
+      if(m.type==='hydra-farewell-credits')showFarewellCredits(m.text);
       if(m.type==='hydra-clean')cleanHydra();
       if(m.type==='hydra-object-add')addGenesisFromRegia(m.object);
       if(m.type==='hydra-forest-burst')addForestBurst(m.count||6);
