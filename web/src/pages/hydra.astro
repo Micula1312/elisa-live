@@ -716,39 +716,51 @@ render(o0)`;
 
     // RESONANCE — adapted from Ritchse "trying to get closer" (CC BY-NC-SA 4.0).
     // Original structure preserved; live macros/audio are added to the main controllable values.
+    // RESONANCE — adapted from Ritchse, "trying to get closer" (CC BY-NC-SA 4.0).
+    // Audio envelopes: LOW = breathing, MID = flow, HIGH = texture, HIT = accents.
+    let resonancePulse=0,resonanceLastTick=performance.now();
+    const resonanceBeat=()=>{
+      const now=performance.now(),dt=Math.min(.08,(now-resonanceLastTick)/1000);
+      resonanceLastTick=now;
+      resonancePulse=Math.max(hit()*audioReact(),resonancePulse*Math.exp(-dt*5.5));
+      return resonancePulse;
+    };
     const resonanceGradient=`osc(
-  () => 60 + param1()*70 + high()*18*audioReact(),
-  () => -.015 + mid()*.035*audioReact(),
-  () => .30 + param2()*.85
+  () => 54 + param1()*72 + high()*24*audioReact(),
+  () => -.015 + mid()*.065*audioReact(),
+  () => .3 + param2()*.8 + resonanceBeat()*.22
 )
 .diff(
   osc(
-    () => 60 + param1()*45,
-    () => .08 + high()*.035*audioReact()
-  ).rotate(() => Math.PI/2 + param2()*.28)
+    () => 60 + param1()*45 + high()*22*audioReact(),
+    () => .08 + mid()*.025*audioReact()
+  ).rotate(() => Math.PI/2 + param2()*.3 + Math.sin(time*.35)*mid()*.28*audioReact())
 )
 .modulateScale(
   noise(
-    () => 3.5 + param1()*5 + mid()*2.2*audioReact(),
-    () => .25 + high()*.18*audioReact() + audioChaos()*.32
+    () => 3.5 + param1()*5 + mid()*3.8*audioReact(),
+    () => .25 + high()*.2*audioReact() + audioChaos()*.3
   ).modulateScale(
-    osc(() => 15 + param2()*20).rotate(() => Math.sin(time/2)),
-    () => .45 + audioChaos()*.45
+    osc(() => 15 + param2()*20 + high()*15*audioReact())
+      .rotate(() => Math.sin(time/2 + mid()*1.8*audioReact())),
+    () => .45 + audioChaos()*.4
   ),
-  () => .6 + low()*.35*audioReact() + audioChaos()*.45
+  () => .52 + low()*.85*audioReact() + resonancePulse*.3 + audioChaos()*.3
 )
-.color(1,.10,.03)
-.contrast(() => 1.4 + high()*.35*audioReact())
+.color(1,.035,.0)
+.contrast(() => 1.35 + high()*.45*audioReact())
 .add(
-  src(o0).modulate(o0, () => .04 + audioChaos()*.055),
-  () => .6 + param2()*.22
+  src(o0)
+    .modulate(o0, () => .025 + mid()*.035*audioReact() + audioChaos()*.05)
+    .scale(() => .997 - low()*.012*audioReact()),
+  () => .48 + param2()*.18 + low()*.12*audioReact()
 )
 .invert()
-.brightness(() => .10 + low()*.08*audioReact())
-.contrast(() => 1.2 + param1()*.45)
+.brightness(() => .08 + low()*.1*audioReact() + resonancePulse*.12)
+.contrast(() => 1.2 + param1()*.4 + resonancePulse*.4)
 .modulateScale(
-  osc(() => 2 + mid()*1.8*audioReact()),
-  () => -.2 - low()*.12*audioReact() - audioChaos()*.18
+  osc(() => 2 + mid()*3*audioReact()),
+  () => -.2 - low()*.3*audioReact() - resonancePulse*.25 - audioChaos()*.16
 )
 .out(o0)
 render(o0)`;
