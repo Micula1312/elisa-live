@@ -150,9 +150,9 @@
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // AKAI pad 13 on MIDI channel 10: momentary DROP gate (note-on / note-off).
       if(channel===10&&d1===13&&(kind===0x90||kind===0x80)) setDrop(kind===0x90&&value>0);
-      // CH10 pad 14: global momentary video invert, all Hydra scenes.
-      if(channel===10&&d1===14&&(kind===0x90||kind===0x80))setInvert(kind===0x90&&value>0);
-      if(currentScene==='genesis'&&channel===10&&kind===0x90&&value>0&&d1!==13&&d1!==14){
+      // MPD218 CH10 NOTE 105: global momentary invert, including background.
+      if(channel===10&&d1===105&&(kind===0x90||kind===0x80))setInvert(kind===0x90&&value>0);
+      if(currentScene==='genesis'&&channel===10&&kind===0x90&&value>0&&d1!==13&&d1!==105){
         const explicit={1:'single',2:'burst',3:'hero',4:'rain'}[d1];
         const modes=['single','burst','hero','rain'];
         const mode=explicit||modes[((d1%4)+4)%4];
