@@ -220,10 +220,11 @@
     aichaLiveOn=on;
     if(on){
       bus.postMessage({type:"audio-control",action:"live"});
+      bus.postMessage({type:"performance-timer",action:"start"});
       aichaLiveStartedAt=performance.now();aichaPlay.textContent="❚❚";aichaSource.textContent="REMOTE → REGIA · LIVE INPUT";
       cancelAnimationFrame(aichaLiveTimer);aichaLiveTimer=requestAnimationFrame(updateAichaClock);
     }else{
-      bus.postMessage({type:"audio-control",action:"stop-live"});
+      bus.postMessage({type:"performance-timer",action:"pause"});
       cancelAnimationFrame(aichaLiveTimer);aichaPlay.textContent="▶";aichaTime.textContent="LIVE";aichaSource.textContent="REMOTE → REGIA · STOPPED";
     }
     bus.close();
