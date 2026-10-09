@@ -906,6 +906,10 @@ render(o0)`;
         if(!visible)editor.classList.remove('open');
       }
     };
+    midiMonitor.style.display='none';
+    editorToggle.style.display='none';
+    sceneTag.style.display='none';
+    editor.classList.remove('open');
     const regiaChannel=new BroadcastChannel('elisa-regia');
     regiaChannel.onmessage=e=>handleRegia(e.data);
     addEventListener('storage',e=>{if(e.key==='elisa-regia-command'&&e.newValue){try{handleRegia(JSON.parse(e.newValue).message)}catch{}}});
