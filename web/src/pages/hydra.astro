@@ -86,7 +86,7 @@
     // MIDI probe: browser reads the same USB controller independently from TouchDesigner.
     window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
-    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,drop:0,fadeWhite:0,fadeBlack:0};
+    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
     const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'fadeWhite',21:'fadeBlack'};
     window.param1=()=>window.ELISA_CTRL.param1;
     window.param2=()=>window.ELISA_CTRL.param2;
@@ -125,6 +125,7 @@
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
       if(isCC&&MIDI_MACROS[d1]){window.ELISA_CTRL[MIDI_MACROS[d1]]=value/127;if(d1===20||d1===21)applyMasterFade()}
+      if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // AKAI pad 13 on MIDI channel 10: momentary DROP gate (note-on / note-off).
       if(channel===10&&d1===13&&(kind===0x90||kind===0x80)) setDrop(kind===0x90&&value>0);
       if(currentScene==='genesis'&&channel===10&&kind===0x90&&value>0&&d1!==13){
@@ -784,6 +785,16 @@ render(o0)`;
       () => .06 + audioChaos()*.12 + resonancePulse*.08),
   () => Math.min(.65,param1()*.52 + resonancePulse*param1()*.13)
 )
+.layer(
+  src(s1)
+    .scale(() => 1.12 + param2()*.22)
+    .saturate(0)
+    .contrast(() => 1.6 + param1()*.8)
+    .color(.22,1,.07)
+    .modulate(noise(() => 2 + audioChaos()*4,.035), () => .015 + param2()*.11)
+    .luma(() => .34 + high()*.14)
+    .mult(solid(1,1,1,() => window.ELISA_CTRL.resonanceCam))
+)
 .saturate(1.35)
 .contrast(() => 1.13 + high()*.12*audioReact())
 .out(o0)
@@ -806,8 +817,8 @@ render(o0)`;
     const scenes={
       custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
       genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
+      resonance:{label:'RESONANCE · PRE-HYPNOSIS / WEBCAM',code:resonanceGradient},
       hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
-      resonance:{label:'RESONANCE · GRADIENT FLOW',code:resonanceGradient},
       farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
      };
     let currentScene='custom01';
@@ -841,7 +852,7 @@ render(o0)`;
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
-      if(id==='hypnosis'&&!(await ensureWebcam()))return;
+      if((id==='hypnosis'||id==='resonance')&&!(await ensureWebcam()))return;
       if(id==='farewell')startFarewell(); else hideFarewell();
       capitalCounter.style.display=id==='genesis'?'block':'none';
       if(id!=='hypnosis'){hearts.length=0;heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height)}
