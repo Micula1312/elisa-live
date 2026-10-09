@@ -108,7 +108,17 @@
       if(currentScene==='hypnosis')hypnosisDrop=on?1:0;
       status.textContent=on?'DROP · MIDI 13':'DROP · RELEASE';
     }
+    let midiTarget=localStorage.getItem('elisa-midi-target')==='td'?'td':'hydra';
+    const midiRouteBus=new BroadcastChannel('elisa-midi-route');
+    midiRouteBus.onmessage=e=>{
+      if(e.data?.type!=='midi-target')return;
+      midiTarget=e.data.target==='td'?'td':'hydra';
+      localStorage.setItem('elisa-midi-target',midiTarget);
+      if(midiTarget==='td'){setDrop(false);midiMonitor.innerHTML='MIDI · TOUCHDESIGNER ACTIVE<br><b>HYDRA CONTROLS MUTED</b>'}
+      else midiMonitor.innerHTML='MIDI · HYDRA ACTIVE<br><b>move a knob / pad</b>';
+    };
     function showMidi(input,data){
+      if(midiTarget!=='hydra')return;
       const [statusByte,d1,d2]=data,kind=statusByte&0xf0,channel=(statusByte&0x0f)+1;
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
