@@ -290,7 +290,7 @@ see you out there</textarea><div><button id="farewellCreditsSend">UPDATE</button
   <div class="setup-tools"><input id="setupName" type="text" value="ELISA LIVE" placeholder="SETUP NAME"><button id="setupSave">SAVE JSON</button><button id="setupLoad">LOAD JSON</button><input id="setupFile" type="file" accept=".json,application/json" hidden></div>
   <div class="setup-status" id="setupStatus">SAVE / RESTORE REGIA CONTROLS</div>
 </div>
-<div class="hydra-subpanel utility-panel">
+<div class="hydra-subpanel"><div class="hydra-scene-label">MIDI ROUTING / AKAI</div><div class="hydra-tools"><button id="midiHydra">● HYDRA</button><button id="midiTD">TOUCHDESIGNER</button></div><div class="setup-status" id="midiRouteStatus">MIDI TARGET · HYDRA</div></div><div class="hydra-subpanel utility-panel">
   <div class="hydra-scene-label">MASTER / UTILITY</div>
   <div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button><button id="hydraHud">HIDE HUD</button></div>
 </div>
@@ -300,6 +300,19 @@ see you out there</textarea><div><button id="farewellCreditsSend">UPDATE</button
 <script type="module">
 import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
 const q=s=>document.querySelector(s),device=q("#audioDevice"),state=q("#audioState"),soul=q("#soul"),master=q("#master"),seek=q("#seek");
+const midiRouteBus=new BroadcastChannel("elisa-midi-route");
+let midiTarget=localStorage.getItem("elisa-midi-target")==="td"?"td":"hydra";
+function setMidiTarget(target){
+ midiTarget=target;localStorage.setItem("elisa-midi-target",target);
+ q("#midiHydra").classList.toggle("on",target==="hydra");
+ q("#midiTD").classList.toggle("on",target==="td");
+ q("#midiRouteStatus").textContent=target==="hydra"?"MIDI TARGET · HYDRA":"MIDI TARGET · TOUCHDESIGNER (HYDRA MUTED)";
+ midiRouteBus.postMessage({type:"midi-target",target});
+}
+q("#midiHydra").onclick=()=>setMidiTarget("hydra");
+q("#midiTD").onclick=()=>setMidiTarget("td");
+setMidiTarget(midiTarget);
+
 let liveTimerRunning=false,liveTimerStarted=0,liveTimerElapsed=0,liveTimerRaf=0;
 const liveTimer=q("#liveTimer"),liveTimerStart=q("#liveTimerStart"),liveTimerReset=q("#liveTimerReset");
 const renderLiveTimer=()=>{
