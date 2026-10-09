@@ -103,6 +103,7 @@
       if(w>=b){masterFade.style.background='#fff';masterFade.style.opacity=String(w)}
       else{masterFade.style.background='#000';masterFade.style.opacity=String(b)}
     }
+    function setInvert(on){canvas.style.filter=on?'invert(1)':'none';}
     function setDrop(on){
       window.ELISA_CTRL.drop=on?1:0;
       if(on)archiveDrop();
@@ -128,7 +129,9 @@
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // AKAI pad 13 on MIDI channel 10: momentary DROP gate (note-on / note-off).
       if(channel===10&&d1===13&&(kind===0x90||kind===0x80)) setDrop(kind===0x90&&value>0);
-      if(currentScene==='genesis'&&channel===10&&kind===0x90&&value>0&&d1!==13){
+      // CH10 pad 14: global momentary video invert, all Hydra scenes.
+      if(channel===10&&d1===14&&(kind===0x90||kind===0x80))setInvert(kind===0x90&&value>0);
+      if(currentScene==='genesis'&&channel===10&&kind===0x90&&value>0&&d1!==13&&d1!==14){
         const explicit={1:'single',2:'burst',3:'hero',4:'rain'}[d1];
         const modes=['single','burst','hero','rain'];
         const mode=explicit||modes[((d1%4)+4)%4];
@@ -164,9 +167,10 @@
     const hydra=new Hydra({canvas,detectAudio:false,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
     // Shared browser audio authority. /regia publishes one normalized analysis stream;
     // Hydra consumes it instead of opening a second microphone/analyser.
-    window.ELISA_SHARED_AUDIO={level:0,low:0,mid:0,high:0,transient:0,source:"none",updatedAt:0};
+    window.ELISA_SHARED_AUDIO={level:0,low:0,mid:0,high:0,transient:0,bell500:0,source:"none",updatedAt:0};
     const sharedAudioBus=new BroadcastChannel("elisa-audio");
     sharedAudioBus.onmessage=e=>{if(e.data?.type==="audio-frame")Object.assign(window.ELISA_SHARED_AUDIO,e.data)};
+    window.bell500=()=>window.ELISA_SHARED_AUDIO.bell500||0;
     window.rawLow=()=>window.ELISA_SHARED_AUDIO.low||0;
     window.rawMid=()=>window.ELISA_SHARED_AUDIO.mid||0;
     window.rawHigh=()=>window.ELISA_SHARED_AUDIO.high||0;
@@ -266,7 +270,34 @@
       farewellTree=null;
       if(farewellSun3D){landscape.scene.remove(farewellSun3D);farewellSun3D.geometry?.dispose();farewellSun3D.material?.dispose();farewellSun3D=null}
     }
+    // FINAL TREE: lightweight 3D starbursts triggered by energy around 500 Hz.
+    const farewellStars=[];
+    let lastBell=0,bellWasHigh=false;
+    const starShape=new THREE.Shape();
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI/5-Math.PI/2,r=i%2?.27:.68;
+      const x=Math.cos(a)*r,y=Math.sin(a)*r;
+      if(i===0)starShape.moveTo(x,y);else starShape.lineTo(x,y);
+    }
+    starShape.closePath();
+    const starGeometry=new THREE.ExtrudeGeometry(starShape,{depth:.16,bevelEnabled:true,bevelThickness:.07,bevelSize:.06,bevelSegments:1,steps:1});
+    function spawnFarewellStars(){
+      for(let i=0;i<3&&farewellStars.length<42;i++){
+        const material=new THREE.MeshBasicMaterial({color:i===0?0xffffff:ACID,transparent:true,opacity:.95,side:THREE.DoubleSide,depthWrite:false});
+        const star=new THREE.Mesh(starGeometry,material);
+        const angle=Math.random()*Math.PI*2,dist=2+Math.random()*7;
+        star.position.set(Math.cos(angle)*dist,1+Math.random()*6,-17+Math.sin(angle)*dist);
+        const size=.22+Math.random()*.55;star.scale.setScalar(size);
+        star.userData={birth:performance.now(),life:1900+Math.random()*2200,baseSize:size,vy:.003+Math.random()*.004,spin:.015+Math.random()*.02};
+        farewellStars.push(star);landscape.scene.add(star);
+      }
+    }
+    function clearFarewellStars(){
+      farewellStars.forEach(star=>{landscape.scene.remove(star);star.material.dispose()});
+      farewellStars.length=0;bellWasHigh=false;lastBell=0;
+    }
     function startFarewell(){
+      clearFarewellStars();
       clearLandscapeObjects();landscape.nav.x=0;landscape.nav.z=0;landscape.nav.yaw=0;
       landscape.camera.position.set(0,4.6,10);landscape.camera.lookAt(0,-1,-18);
       addGenesisObject('tree');farewellTree=landscape.objects.tree[landscape.objects.tree.length-1];
@@ -590,6 +621,20 @@
         farewellSun3D.rotation.x+=.0007+high()*.0015;
         farewellSun3D.material.opacity=.58+low()*.18;
       }
+      if(activeScene==='farewell'){
+        const energy=bell500(),now=performance.now();
+        const highBell=energy>.16;
+        if(highBell&&!bellWasHigh&&now-lastBell>220){spawnFarewellStars();lastBell=now}
+        bellWasHigh=energy>.105;
+        for(let i=farewellStars.length-1;i>=0;i--){
+          const star=farewellStars[i],u=star.userData,age=(now-u.birth)/u.life;
+          if(age>=1){landscape.scene.remove(star);star.material.dispose();farewellStars.splice(i,1);continue}
+          star.position.y+=u.vy*(1+energy*2);
+          star.rotation.y+=u.spin;star.rotation.z+=u.spin*.7;
+          star.scale.setScalar(u.baseSize*(.75+Math.sin(age*Math.PI)*.7));
+          star.material.opacity=Math.min(1,(1-age)*1.3);
+        }
+      }else if(farewellStars.length)clearFarewellStars();
       landscape.renderer.render(landscape.scene,landscape.camera);
     }
     renderLandscape();
