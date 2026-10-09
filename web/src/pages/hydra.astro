@@ -103,7 +103,26 @@
       if(w>=b){masterFade.style.background='#fff';masterFade.style.opacity=String(w)}
       else{masterFade.style.background='#000';masterFade.style.opacity=String(b)}
     }
-    function setInvert(on){canvas.style.filter=on?'invert(1)':'none';}
+    // Global pad invert and audio-reactive Resonance polarity.
+    // Inversion changes capped at roughly 6 Hz.
+    let padInvert=false,resonanceInvert=false,lastResonanceSwitch=0;
+    function applyInvert(){canvas.style.filter=(padInvert!==resonanceInvert)?'invert(1)':'none'}
+    function setInvert(on){padInvert=!!on;applyInvert()}
+    function updateResonanceStrobe(now){
+      if(currentScene!=='resonance'||midiTarget!=='hydra'){
+        if(resonanceInvert){resonanceInvert=false;applyInvert()}
+        return;
+      }
+      const drive=param1(),energy=Math.min(1,hit()*.8+low()*.36+high()*.22);
+      const active=drive>.035&&energy>(.60-drive*.46);
+      const wave=Math.sin(now*.001*(8+drive*22));
+      const wanted=active&&wave>(.88-drive*.95);
+      if(wanted!==resonanceInvert&&now-lastResonanceSwitch>165){
+        resonanceInvert=wanted;lastResonanceSwitch=now;applyInvert();
+      }
+    }
+    function resonanceStrobeLoop(now){updateResonanceStrobe(now);requestAnimationFrame(resonanceStrobeLoop)}
+    requestAnimationFrame(resonanceStrobeLoop);
     function setDrop(on){
       window.ELISA_CTRL.drop=on?1:0;
       if(on)archiveDrop();
@@ -116,7 +135,7 @@
       if(e.data?.type!=='midi-target')return;
       midiTarget=e.data.target==='td'?'td':'hydra';
       localStorage.setItem('elisa-midi-target',midiTarget);
-      if(midiTarget==='td'){setDrop(false);midiMonitor.innerHTML='MIDI · TOUCHDESIGNER ACTIVE<br><b>HYDRA CONTROLS MUTED</b>'}
+      if(midiTarget==='td'){setDrop(false);setInvert(false);resonanceInvert=false;applyInvert();midiMonitor.innerHTML='MIDI · TOUCHDESIGNER ACTIVE<br><b>HYDRA CONTROLS MUTED</b>'}
       else midiMonitor.innerHTML='MIDI · HYDRA ACTIVE<br><b>move a knob / pad</b>';
     };
     function showMidi(input,data){
@@ -784,7 +803,7 @@ render(o0)`;
 
     // RESONANCE — Ritchse "trying to get closer" (CC BY-NC-SA 4.0), adapted.
     // Lime-green base + blurred cyan; fire red enters via CC16.
-    // CC16 red, CC17 liquid deformation, CC18 audio intensity, CC19 chaos.
+    // CC16 audio-hit invert drive + red, CC17 liquid, CC18 audio, CC19 chaos/webcam.
     let resonancePulse=0,resonanceLastTick=performance.now();
     const resonanceBeat=()=>{
       const now=performance.now(),dt=Math.min(.08,(now-resonanceLastTick)/1000);
@@ -891,6 +910,7 @@ render(o0)`;
       const scene=scenes[id];
       if(!scene)return;
       currentScene=id;activeScene=id;
+      if(id!=='resonance'){resonanceInvert=false;applyInvert()}
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
       if(id==='genesis'||id==='farewell'){
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
