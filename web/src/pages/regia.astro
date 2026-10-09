@@ -296,7 +296,7 @@ see you out there</textarea><div><button id="farewellCreditsSend">UPDATE</button
 </div>
 <div class="hydra-subpanel"><div class="hydra-scene-label">MIDI ROUTING / AKAI</div><div class="hydra-tools"><button id="midiHydra">● HYDRA</button><button id="midiTD">TOUCHDESIGNER</button></div><div class="setup-status" id="midiRouteStatus">MIDI TARGET · HYDRA</div></div><div class="hydra-subpanel utility-panel">
   <div class="hydra-scene-label">MASTER / UTILITY</div>
-  <div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button><button id="hydraHud">HIDE HUD</button></div>
+  <div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button><button id="hydraHud" class="on">SHOW HUD</button></div>
 </div>
 </section>
 <footer><span>DISPLAY REGIA â€” KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE Â· 32:27</span></footer>
@@ -442,7 +442,7 @@ q("#hydraBlackout").onclick=()=>send({type:"hydra-blackout"});
 q("#hydraClean").onclick=()=>send({type:"hydra-clean"});
 q("#hydraBack").onclick=()=>send({type:"hydra-back"});
 q("#hydraEditor").onclick=()=>send({type:"hydra-editor"});
-let hydraHudVisible=true;
+let hydraHudVisible=false;
 q("#hydraHud").onclick=()=>{
   hydraHudVisible=!hydraHudVisible;
   send({type:"hydra-hud",visible:hydraHudVisible});
