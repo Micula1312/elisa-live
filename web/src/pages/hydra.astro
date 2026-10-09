@@ -107,9 +107,10 @@
     }
     // Global pad invert and audio-reactive Resonance polarity.
     // Inversion changes capped at roughly 6 Hz.
-    let padInvert=false,resonanceInvert=false,lastResonanceSwitch=0,resonancePadPunchUntil=0;
-    function applyInvert(){document.getElementById('global-invert').style.display=(padInvert!==resonanceInvert||performance.now()<resonancePadPunchUntil)?'block':'none'}
-    function setInvert(on){padInvert=!!on;applyInvert()}
+    let resonanceInvert=false,lastResonanceSwitch=0,resonancePadPunchUntil=0;
+    function applyInvert(){document.getElementById('global-invert').style.display=(resonanceInvert||performance.now()<resonancePadPunchUntil)?'block':'none'}
+    // Every press makes a brief pulse, never a held/infinite invert.
+    function setInvert(on){if(on){resonancePadPunchUntil=performance.now()+105;applyInvert()}}
     function updateResonanceStrobe(now){
       if(currentScene!=='resonance'||midiTarget!=='hydra'){
         if(resonanceInvert){resonanceInvert=false;applyInvert()}
@@ -151,7 +152,7 @@
       // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
       const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
       if(channel===10&&noteEvent){
-        if(d1===105||d1===14)setInvert(pressed);
+        if(d1===105||d1===14){if(pressed)setInvert(true)}
         else if(d1===104||d1===13)setDrop(pressed);
         else if(pressed){
           if(currentScene==='genesis'){
