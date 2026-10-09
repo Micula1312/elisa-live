@@ -785,15 +785,14 @@ render(o0)`;
       () => .06 + audioChaos()*.12 + resonancePulse*.08),
   () => Math.min(.65,param1()*.52 + resonancePulse*param1()*.13)
 )
-.layer(
+.blend(
   src(s1)
     .scale(() => 1.12 + param2()*.22)
     .saturate(0)
     .contrast(() => 1.6 + param1()*.8)
     .color(.22,1,.07)
-    .modulate(noise(() => 2 + audioChaos()*4,.035), () => .015 + param2()*.11)
-    .luma(() => .34 + high()*.14)
-    .mult(solid(1,1,1,() => window.ELISA_CTRL.resonanceCam))
+    .modulate(noise(() => 2 + audioChaos()*4,.035), () => .015 + param2()*.11),
+  () => window.ELISA_CTRL.resonanceCam*.88
 )
 .saturate(1.35)
 .contrast(() => 1.13 + high()*.12*audioReact())
