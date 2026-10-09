@@ -107,8 +107,8 @@
     }
     // Global pad invert and audio-reactive Resonance polarity.
     // Inversion changes capped at roughly 6 Hz.
-    let padInvert=false,resonanceInvert=false,lastResonanceSwitch=0;
-    function applyInvert(){document.getElementById('global-invert').style.display=(padInvert!==resonanceInvert)?'block':'none'}
+    let padInvert=false,resonanceInvert=false,lastResonanceSwitch=0,resonancePadPunchUntil=0;
+    function applyInvert(){document.getElementById('global-invert').style.display=(padInvert!==resonanceInvert||performance.now()<resonancePadPunchUntil)?'block':'none'}
     function setInvert(on){padInvert=!!on;applyInvert()}
     function updateResonanceStrobe(now){
       if(currentScene!=='resonance'||midiTarget!=='hydra'){
@@ -123,7 +123,7 @@
         resonanceInvert=wanted;lastResonanceSwitch=now;applyInvert();
       }
     }
-    function resonanceStrobeLoop(now){updateResonanceStrobe(now);requestAnimationFrame(resonanceStrobeLoop)}
+    function resonanceStrobeLoop(now){updateResonanceStrobe(now);if(resonancePadPunchUntil&&now>=resonancePadPunchUntil){resonancePadPunchUntil=0;applyInvert()}requestAnimationFrame(resonanceStrobeLoop)}
     requestAnimationFrame(resonanceStrobeLoop);
     function setDrop(on){
       window.ELISA_CTRL.drop=on?1:0;
@@ -148,15 +148,19 @@
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
       if(isCC&&MIDI_MACROS[d1]){window.ELISA_CTRL[MIDI_MACROS[d1]]=value/127;if(d1===20||d1===21)applyMasterFade()}
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
-      // AKAI pad 13 on MIDI channel 10: momentary DROP gate (note-on / note-off).
-      if(channel===10&&d1===13&&(kind===0x90||kind===0x80)) setDrop(kind===0x90&&value>0);
-      // MPD218 CH10 NOTE 105: global momentary invert, including background.
-      if(channel===10&&d1===105&&(kind===0x90||kind===0x80))setInvert(kind===0x90&&value>0);
-      if(currentScene==='genesis'&&channel===10&&kind===0x90&&value>0&&d1!==13&&d1!==105){
-        const explicit={1:'single',2:'burst',3:'hero',4:'rain'}[d1];
-        const modes=['single','burst','hero','rain'];
-        const mode=explicit||modes[((d1%4)+4)%4];
-        spawnArchiveImage(mode);
+      // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
+      const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
+      if(channel===10&&noteEvent){
+        if(d1===105||d1===14)setInvert(pressed);
+        else if(d1===104||d1===13)setDrop(pressed);
+        else if(pressed){
+          if(currentScene==='genesis'){
+            const modes=['single','burst','hero','rain'];
+            spawnArchiveImage(modes[((d1-100)%4+4)%4]);
+          }else if(currentScene==='hypnosis')setDrop(true);
+          else if(currentScene==='farewell')spawnFarewellStars();
+          else{resonancePadPunchUntil=performance.now()+130;applyInvert()}
+        }else if(currentScene==='hypnosis')setDrop(false);
       }
       midiMonitor.classList.remove('off');
       const macro=isCC&&MIDI_MACROS[d1]?' · <b>'+MIDI_MACROS[d1].toUpperCase()+'</b>':'';
