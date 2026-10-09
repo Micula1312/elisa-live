@@ -9,6 +9,7 @@
   <style>
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
     #hydra-canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}#master-fade{position:fixed;inset:0;z-index:12;pointer-events:none;background:#000;opacity:0}
+    #global-invert{position:fixed;inset:0;z-index:11;background:#fff;mix-blend-mode:difference;pointer-events:none;display:none}
     #editor-shell{position:fixed;left:3vw;top:5vh;width:min(720px,70vw);height:82vh;z-index:20;
       background:rgba(0,0,0,.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.28);
       box-shadow:0 0 40px rgba(0,0,0,.45);display:none}
@@ -36,6 +37,7 @@
 <body>
   <canvas id="hydra-canvas"></canvas>
   <div id="master-fade"></div>
+  <div id="global-invert" aria-hidden="true"></div>
   <div id="farewell-credits"><div id="farewell-credits-inner"></div></div>
   <canvas id="landscape-source" style="display:none"></canvas>
   <canvas id="type-source" style="display:none"></canvas>
@@ -106,7 +108,7 @@
     // Global pad invert and audio-reactive Resonance polarity.
     // Inversion changes capped at roughly 6 Hz.
     let padInvert=false,resonanceInvert=false,lastResonanceSwitch=0;
-    function applyInvert(){canvas.style.filter=(padInvert!==resonanceInvert)?'invert(1)':'none'}
+    function applyInvert(){document.getElementById('global-invert').style.display=(padInvert!==resonanceInvert)?'block':'none'}
     function setInvert(on){padInvert=!!on;applyInvert()}
     function updateResonanceStrobe(now){
       if(currentScene!=='resonance'||midiTarget!=='hydra'){
