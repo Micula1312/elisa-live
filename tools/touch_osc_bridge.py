@@ -30,7 +30,7 @@ def send_osc(name, value):
 
 
 class Handler(BaseHTTPRequestHandler):
-    def headers(self, code=200, mime="application/json"):
+    def send_response_headers(self, code=200, mime="application/json"):
         self.send_response(code)
         self.send_header("Content-Type", mime)
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -40,14 +40,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_OPTIONS(self):
-        self.headers(204)
+        self.send_response_headers(204)
 
     def do_GET(self):
         if self.path == "/health":
-            self.headers()
+            self.send_response_headers()
             self.wfile.write(b'{"ok":true}')
         elif self.path in ("/", "/touch-control"):
-            self.headers(200, "text/html; charset=utf-8")
+            self.send_response_headers(200, "text/html; charset=utf-8")
             ip = self.headers.get("Host", "localhost").split(":")[0]
             html = ('<meta name="viewport" content="width=device-width,initial-scale=1">'
                     '<body style="font:20px Arial;background:#090909;color:#39ff14;padding:30px">'
@@ -56,12 +56,12 @@ class Handler(BaseHTTPRequestHandler):
                     'APRI IL CONTROLLER</a></body>')
             self.wfile.write(html.encode("utf-8"))
         else:
-            self.headers(404)
+            self.send_response_headers(404)
             self.wfile.write(b'{"error":"not found"}')
 
     def do_POST(self):
         if self.path != "/control":
-            self.headers(404)
+            self.send_response_headers(404)
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -73,10 +73,10 @@ class Handler(BaseHTTPRequestHandler):
             if name not in ALLOWED or not (0 <= value <= 1):
                 raise ValueError("invalid control")
             send_osc(name, value)
-            self.headers()
+            self.send_response_headers()
             self.wfile.write(b'{"ok":true}')
         except (ValueError, TypeError, KeyError, json.JSONDecodeError):
-            self.headers(400)
+            self.send_response_headers(400)
             self.wfile.write(b'{"error":"invalid command"}')
 
 
