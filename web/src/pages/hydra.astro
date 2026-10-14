@@ -44,6 +44,8 @@
   <canvas id="heart-source" style="display:none"></canvas>
   <canvas id="archive-source" style="display:none"></canvas>
   <video id="webcam-source" autoplay muted playsinline style="display:none"></video>
+  <video id="remote-webcam" autoplay muted playsinline style="display:none;position:fixed;z-index:8;right:2vw;bottom:3vh;width:36vw;max-width:520px;aspect-ratio:4/3;object-fit:cover;transform:scaleX(-1);mix-blend-mode:screen;filter:grayscale(1) contrast(1.6) sepia(1) hue-rotate(55deg) saturate(5);pointer-events:none"></video>
+  <div id="dual-cam-controls" style="position:fixed;z-index:30;bottom:10px;left:10px;display:flex;gap:6px"><button id="local-cam-toggle" style="background:#111;color:#39ff14;border:1px solid #39ff14;padding:8px">CAM 01 ON</button><button id="remote-cam-toggle" style="background:#111;color:#39ff14;border:1px solid #39ff14;padding:8px">CAM 02 ON</button></div>
   <section id="editor-shell">
     <div id="bar"><span>ELISA / HYDRA LIVE</span><span>CTRL+ENTER RUN · CTRL+Z BACK · CTRL+E HIDE</span></div>
     <textarea id="code" spellcheck="false"></textarea>
@@ -999,6 +1001,51 @@ render(o0)`;
     editorToggle.style.display='none';
     sceneTag.style.display='none';
     editor.classList.remove('open');
+    // Independent HYPNOSIS camera switches. Remote WebRTC is a composited video layer.
+    const remoteVideo=document.getElementById('remote-webcam');
+    const localToggle=document.getElementById('local-cam-toggle');
+    const remoteToggle=document.getElementById('remote-cam-toggle');
+    const blankCamera=document.createElement('canvas');blankCamera.width=640;blankCamera.height=360;
+    let localCamOn=true,remoteCamOn=true,remotePeer=null,remoteLast=0;
+    function updateDualCams(){
+      localToggle.textContent='CAM 01 '+(localCamOn?'ON':'OFF');
+      remoteToggle.textContent='CAM 02 '+(remoteCamOn?'ON':'OFF');
+      try{if(webcamReady)s1.init({src:localCamOn?webcamVideo:blankCamera})}catch{}
+      remoteVideo.style.display=currentScene==='hypnosis'&&remoteCamOn&&remoteVideo.srcObject?'block':'none';
+    }
+    localToggle.onclick=()=>{localCamOn=!localCamOn;updateDualCams()};
+    remoteToggle.onclick=()=>{remoteCamOn=!remoteCamOn;updateDualCams()};
+    const remoteBridge=location.protocol+'//'+location.hostname+':8765';
+    async function remoteSend(kind,data){await fetch(remoteBridge+'/remote/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,data})})}
+    async function remoteIce(peer){
+      if(peer.iceGatheringState==='complete')return;
+      await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('ICE TIMEOUT')),9000);const check=()=>{if(peer.iceGatheringState==='complete'){clearTimeout(timer);peer.removeEventListener('icegatheringstatechange',check);resolve()}};peer.addEventListener('icegatheringstatechange',check)});
+    }
+    async function remotePoll(){
+      try{
+        const r=await fetch(remoteBridge+'/remote/events?since='+remoteLast,{cache:'no-store'});
+        if(r.ok){
+          const data=await r.json();
+          for(const event of data.events){
+            remoteLast=Math.max(remoteLast,event.id);
+            if(event.kind==='word')setHypnosisWord(event.data);
+            if(event.kind==='hangup'){if(remotePeer)remotePeer.close();remotePeer=null;remoteVideo.srcObject=null;updateDualCams()}
+            if(event.kind==='offer'){
+              if(remotePeer)remotePeer.close();
+              const peer=new RTCPeerConnection({iceServers:[]});remotePeer=peer;
+              peer.ontrack=e=>{if(remotePeer===peer){remoteVideo.srcObject=e.streams[0];remoteVideo.play().catch(()=>{});updateDualCams()}};
+              await peer.setRemoteDescription(event.data);
+              const answer=await peer.createAnswer();await peer.setLocalDescription(answer);
+              await remoteIce(peer);
+              if(remotePeer===peer)await remoteSend('answer',peer.localDescription);
+            }
+          }
+        }
+      }catch(e){/* The original local performance continues without bridge. */}
+      setTimeout(remotePoll,550);
+    }
+    remotePoll();
+    setInterval(()=>{remoteVideo.style.display=currentScene==='hypnosis'&&remoteCamOn&&remoteVideo.srcObject?'block':'none'},500);
     const regiaChannel=new BroadcastChannel('elisa-regia');
     regiaChannel.onmessage=e=>handleRegia(e.data);
     addEventListener('storage',e=>{if(e.key==='elisa-regia-command'&&e.newValue){try{handleRegia(JSON.parse(e.newValue).message)}catch{}}});
