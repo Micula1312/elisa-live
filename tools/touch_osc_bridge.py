@@ -5,6 +5,7 @@ Astro page: http://PC-LAN-IP:4321/touch-control
 TouchDesigner: OSC In CHOP port 9000, OSC addresses /elisa/fx/<name>.
 """
 import json
+import threading
 import os
 import socket
 import struct
@@ -17,6 +18,9 @@ OSC_PORT = int(os.getenv("ELISA_OSC_PORT", "9000"))
 ALLOWED = {"glitch", "feedback", "pixel", "blur", "displace", "audio",
            "blend", "master", "freeze", "invert", "bypass", "blackout", "strobe"}
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+events = []
+event_lock = threading.Lock()
+
 
 
 def osc_string(value):
@@ -43,7 +47,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response_headers(204)
 
     def do_GET(self):
-        if self.path == "/health":
+        if self.path.startswith("/remote/events"):
+            from urllib.parse import urlparse, parse_qs
+            since = int(parse_qs(urlparse(self.path).query).get("since", ["0"])[0])
+            with event_lock:
+                pending = [e for e in events if e["id"] > since]
+            self.send_response_headers()
+            self.wfile.write(json.dumps({"events": pending}).encode())
+        elif self.path == "/health":
             self.send_response_headers()
             self.wfile.write(b'{"ok":true}')
         elif self.path in ("/", "/touch-control"):
@@ -60,6 +71,23 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(b'{"error":"not found"}')
 
     def do_POST(self):
+        if self.path == "/remote/send":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if not 0 < length < 200000: raise ValueError("length")
+                payload = json.loads(self.rfile.read(length))
+                kind = payload.get("kind")
+                if kind not in ("offer", "answer", "hangup", "word", "cam-local"): raise ValueError("kind")
+                data = payload.get("data")
+                if kind == "word": data = str(data or "")[:18]
+                with event_lock:
+                    events.append({"id": events[-1]["id"] + 1 if events else 1, "kind": kind, "data": data})
+                    del events[:-100]
+                self.send_response_headers()
+                self.wfile.write(b'{"ok":true}')
+            except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                self.send_response_headers(400)
+            return
         if self.path != "/control":
             self.send_response_headers(404)
             return
