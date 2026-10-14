@@ -31,12 +31,12 @@ details input{margin-top:5px;padding:8px;font-size:12px}
 <div class="buttons"><button id="enter">● ENTER CAM</button><button id="leave">○ EXIT CAM</button></div>
 <h2>LIVE TEXT</h2>
 <div class="row"><input id="word" maxlength="18" placeholder="TYPE YOUR MASK…" aria-label="Live text"><button id="send">SEND</button></div>
-<details><summary>SETTINGS · BRIDGE URL</summary><label>BRIDGE URL <input id="bridge" value="" spellcheck="false"></label><p>La webcam richiede HTTPS su iPhone.</p></details>
+<details><summary>SETTINGS · BRIDGE AUTO</summary><label>BRIDGE URL <input id="bridge" value="" spellcheck="false"></label><p>La webcam richiede HTTPS su iPhone.</p></details>
 <script>
-const $=id=>document.getElementById(id),bridge=$('bridge'),status=$('status');bridge.value=localStorage.getItem('elisa-remote-bridge')||location.protocol+'//'+location.hostname+':8765';
+const $=id=>document.getElementById(id),bridge=$('bridge'),status=$('status');bridge.value=location.protocol+'//'+location.hostname+':8765';
 let stream=null,pc=null,last=0,session=0;
 const endpoint=()=>bridge.value.replace(/\/$/,'');
-bridge.addEventListener('change',()=>localStorage.setItem('elisa-remote-bridge',bridge.value));
+bridge.addEventListener('change',()=>{bridge.value=bridge.value.trim();});
 async function send(kind,data){const r=await fetch(endpoint()+'/remote/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,data})});if(!r.ok)throw Error('BRIDGE OFFLINE')}
 async function completeIce(peer){if(peer.iceGatheringState==='complete')return;await new Promise((resolve,reject)=>{let timeout=setTimeout(()=>{peer.removeEventListener('icegatheringstatechange',check);reject(Error('ICE TIMEOUT'))},9000);function check(){if(peer.iceGatheringState==='complete'){clearTimeout(timeout);peer.removeEventListener('icegatheringstatechange',check);resolve()}}peer.addEventListener('icegatheringstatechange',check)})}
 async function leave(){session++;if(pc){pc.close();pc=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('preview').srcObject=null;status.textContent='CAM 02 OFF';await send('hangup',null).catch(()=>{})}
