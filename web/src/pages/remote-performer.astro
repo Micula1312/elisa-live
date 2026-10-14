@@ -1,8 +1,37 @@
 ---
 ---
 <!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ELISA / REMOTE CAM</title><style>
-*{box-sizing:border-box}body{margin:0;background:#080908;color:#39ff14;font:15px Helvetica,Arial,sans-serif;padding:24px;min-height:100dvh}h1{font-size:30px;letter-spacing:-1px}button,input{font:inherit}button{background:#101710;color:#39ff14;border:1px solid #39ff14;border-radius:8px;padding:16px;min-height:55px}button:disabled{opacity:.35}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px}video{width:100%;aspect-ratio:4/3;object-fit:cover;background:#171717;transform:scaleX(-1);border:1px solid #35502f;border-radius:10px}input{width:100%;background:#111;color:#fff;border:1px solid #35502f;padding:15px;border-radius:8px}.row{display:flex;gap:8px}.row button{flex:1}p{color:#aaa;font-size:12px}#status{padding:10px;border:1px solid #35502f;margin:15px 0}
-</style></head><body><h1>ELISA / CAM 02</h1><p>HYPNOSIS — REMOTE PERFORMER</p><div id="status">DISCONNECTED</div><video id="preview" autoplay muted playsinline></video><div class="buttons"><button id="enter">● ENTER CAM</button><button id="leave">○ EXIT CAM</button></div><h2>LIVE TEXT</h2><div class="row"><input id="word" maxlength="18" placeholder="TYPE YOUR MASK…"><button id="send">SEND</button></div><p>La fotocamera si accende soltanto premendo ENTER. EXIT interrompe la trasmissione. Richiede HTTPS su iPhone.</p><label>BRIDGE URL <input id="bridge" value="" spellcheck="false"></label>
+*{box-sizing:border-box}
+:root{color-scheme:dark}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080908;color:#39ff14;font:14px Helvetica,Arial,sans-serif}
+body{height:100dvh;display:flex;flex-direction:column;padding:clamp(10px,2vh,20px);padding-top:max(10px,env(safe-area-inset-top));padding-bottom:max(10px,env(safe-area-inset-bottom));gap:clamp(7px,1.1vh,12px)}
+h1{font-size:clamp(20px,3vw,30px);letter-spacing:-1px;margin:0;line-height:1.05}
+h2{font-size:clamp(13px,1.8vw,18px);margin:3px 0 0;letter-spacing:.04em}
+p{color:#aaa;font-size:11px;margin:0;line-height:1.3}
+button,input{font:inherit;min-width:0}
+button{background:#101710;color:#39ff14;border:1px solid #39ff14;border-radius:7px;padding:10px;min-height:44px;cursor:pointer}
+button:disabled{opacity:.35}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+video{display:block;width:100%;height:100%;object-fit:contain;background:#171717;transform:scaleX(-1);border:1px solid #35502f;border-radius:10px}
+.camera-wrap{flex:1 1 auto;min-height:75px;max-height:44dvh;display:flex;align-items:stretch;justify-content:center}
+input{width:100%;background:#111;color:#fff;border:1px solid #35502f;padding:12px;border-radius:7px}
+.row{display:flex;gap:8px}.row input{flex:1}.row button{flex:0 0 86px}
+#status{padding:9px 11px;border:1px solid #35502f;margin:0;font-size:12px;min-height:34px}
+details{border-top:1px solid #35502f;padding-top:7px;font-size:11px;color:#aaa}
+summary{cursor:pointer;user-select:none}
+details label{display:block;margin-top:8px}
+details input{margin-top:5px;padding:8px;font-size:12px}
+@media(min-width:700px){body{max-width:740px;margin:auto}.camera-wrap{max-height:42dvh}}
+@media(max-height:640px){body{gap:5px;padding-top:6px;padding-bottom:6px}.camera-wrap{max-height:33dvh;min-height:50px}button{min-height:36px;padding:6px}#status{min-height:28px;padding:5px 8px}h1{font-size:19px}p{font-size:10px}}
+</style></head><body>
+<h1>ELISA / CAM 02</h1>
+<p>HYPNOSIS — REMOTE PERFORMER</p>
+<div id="status">DISCONNECTED</div>
+<div class="camera-wrap"><video id="preview" autoplay muted playsinline></video></div>
+<div class="buttons"><button id="enter">● ENTER CAM</button><button id="leave">○ EXIT CAM</button></div>
+<h2>LIVE TEXT</h2>
+<div class="row"><input id="word" maxlength="18" placeholder="TYPE YOUR MASK…" aria-label="Live text"><button id="send">SEND</button></div>
+<details><summary>SETTINGS · BRIDGE URL</summary><label>BRIDGE URL <input id="bridge" value="" spellcheck="false"></label><p>La webcam richiede HTTPS su iPhone.</p></details>
 <script>
 const $=id=>document.getElementById(id),bridge=$('bridge'),status=$('status');bridge.value=localStorage.getItem('elisa-remote-bridge')||location.protocol+'//'+location.hostname+':8765';
 let stream=null,pc=null,last=0,session=0;
