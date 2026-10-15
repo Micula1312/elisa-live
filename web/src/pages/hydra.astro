@@ -94,6 +94,19 @@
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
     window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
     const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'fadeWhite',21:'fadeBlack'};
+    // Ease CC16–19 between incoming 7-bit MIDI steps; fades CC20/21 remain immediate.
+    const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0};
+    let smoothLast=performance.now();
+    function smoothMidi(now){
+      const dt=Math.min(.08,(now-smoothLast)/1000);smoothLast=now;
+      const alpha=1-Math.exp(-dt/0.19);
+      for(const key of Object.keys(smoothTargets)){
+        const current=window.ELISA_CTRL[key],target=smoothTargets[key];
+        window.ELISA_CTRL[key]=Math.abs(target-current)<.0005?target:current+(target-current)*alpha;
+      }
+      requestAnimationFrame(smoothMidi);
+    }
+    requestAnimationFrame(smoothMidi);
     window.param1=()=>window.ELISA_CTRL.param1;
     window.param2=()=>window.ELISA_CTRL.param2;
     window.audioReact=()=>window.ELISA_CTRL.audioReact;
@@ -151,7 +164,7 @@
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
-      if(isCC&&MIDI_MACROS[d1]){window.ELISA_CTRL[MIDI_MACROS[d1]]=value/127;if(d1===20||d1===21)applyMasterFade()}
+      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;if(d1===20||d1===21)applyMasterFade()}
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
       const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
@@ -684,12 +697,12 @@ voronoi(
     ).rotate(() => Math.sin(time * (1 - deform()*.72))),
     () => (.42 + low()*.75) * (1 - deform()*.72) + deform()*.055
   )
-  .thresh(() => .82 - low()*.16 - deform()*.22)
+  .thresh(() => .80 - low()*.10 - deform()*.13)
   .modulateRotate(
     osc(() => 6.5 + mid()*5 - deform()*4.8),
     () => (.30 + mid()*.75) * (1 - deform()*.78)
   )
-  .thresh(() => .72 - mid()*.10 - deform()*.20)
+  .thresh(() => .70 - mid()*.07 - deform()*.12)
   .diff(
     src(o0).scale(() => 1.76 + low()*.16 - deform()*.72)
   )
@@ -759,12 +772,12 @@ render(o0)`;
 
     const genesisLandscape=`src(s0)
   .scale(() => 1 + param1()*.085)
-  .contrast(() => 1.22 + low() * .62 + param1()*.38)
+  .contrast(() => 1.28 + low() * .34 + param1()*.24)
   .brightness(() => -.16 + high() * .14 + param2()*.08)
   .color(0.22,1.0,0.08)
   .modulate(
-    noise(() => 1.05 + mid() * 2.2 + param1()*3.4, () => .035 + param2()*.07),
-    () => .010 + mid() * .06 + param1()*.075
+    noise(() => 1.05 + mid() * 1.5 + param1()*2.5, () => .025 + param2()*.04),
+    () => .007 + mid() * .035 + param1()*.045
   )
   .layer(
     src(s0)
@@ -776,10 +789,10 @@ render(o0)`;
   .layer(
     src(s0)
       .luma(() => .76 - high() * .12)
-      .color(1.0,.035,.0)
-      .brightness(() => -.42 + high() * .28)
+      .color(.22,1.0,.08)
+      .brightness(() => -.32 + high() * .16)
   )
-  .blend(src(o0).scale(() => 1.001 + low() * .002 + param2()*.018), () => .025 + low() * .035 + param2()*.24)
+  .blend(src(o0).scale(() => 1.001 + low() * .001 + param2()*.009), () => .018 + low() * .018 + param2()*.12)
   .layer(
     solid(1,.10,.72,1)
       .brightness(() => -.42 + genesisFlash() * .55)
@@ -790,8 +803,8 @@ render(o0)`;
       .luma(.035)
       .scale(() => 1 + low()*.10*audioReact() + mid()*.045)
       .modulate(
-        noise(() => 1.1 + mid()*3.8 + audioChaos()*4,.02),
-        () => .006 + high()*.065*audioReact() + audioChaos()*.075
+        noise(() => 1.1 + mid()*2.4 + audioChaos()*2.6,.02),
+        () => .004 + high()*.038*audioReact() + audioChaos()*.045
       )
   )
   // Re-layer the 3D world with the same live processing as the archive.
@@ -801,12 +814,12 @@ render(o0)`;
       .luma(.16)
       .modulate(
         noise(() => 1.3 + mid()*2.8 + param1()*4 + audioChaos()*3,.025),
-        () => .004 + param1()*.075 + high()*audioReact()*.04 + audioChaos()*.06
+        () => .004 + param1()*.048 + high()*audioReact()*.025 + audioChaos()*.04
       )
       .scale(() => 1 + low()*audioReact()*.015 + param2()*.035)
       .contrast(() => 1.08 + high()*.32 + param1()*.28)
       .brightness(() => -.08 + hit()*audioReact()*.11)
-      .color(() => .22 + param2()*.65,1,() => .08 + audioChaos()*.18)
+      .color(() => .22 + param2()*.16,1,() => .08 + audioChaos()*.07)
   )
   .out(o0)
 
