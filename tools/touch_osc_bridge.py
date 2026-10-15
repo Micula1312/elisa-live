@@ -16,7 +16,7 @@ PORT = int(os.getenv("ELISA_BRIDGE_PORT", "8765"))
 OSC_HOST = os.getenv("ELISA_OSC_HOST", "127.0.0.1")
 OSC_PORT = int(os.getenv("ELISA_OSC_PORT", "9000"))
 ALLOWED = {"glitch", "feedback", "pixel", "blur", "displace", "audio",
-           "blend", "master", "fx_select", "pixelate_uv", "displace_pinlight", "pixelare", "vhs", "recolor_edge", "freeze", "invert", "bypass", "blackout", "strobe"}
+           "blend", "master", "fx_select", "fx_amount", "source_mix", "pixelate_uv", "displace_pinlight", "pixelare", "vhs", "recolor_edge", "freeze", "invert", "bypass", "blackout", "strobe"}
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 events = []
 event_lock = threading.Lock()
