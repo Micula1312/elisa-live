@@ -53,7 +53,7 @@
   </section>
   <div id="capital-counter"><div class="money" id="money-count">$000000</div><div class="tears" id="tear-count">💧 000</div></div>
   <div id="scene-tag">HYDRA · CUSTOM 01</div>
-  <button id="editor-toggle" type="button">EDITOR · CTRL+E</button>
+  <button id="editor-toggle" type="button">EDITOR · CTRL+E</button><button id="hydra-fullscreen" type="button" style="position:fixed;right:12px;top:12px;z-index:50;background:#080808;color:#39ff14;border:1px solid #39ff14;padding:10px 14px;cursor:pointer">⛶ FULLSCREEN</button>
   <div id="midi-monitor" class="off">MIDI · CONNECTING…<br><b>move a knob / pad</b></div>
 
   <script is:inline>window.global=window;</script>
@@ -976,8 +976,13 @@ render(o0)`;
       }
     }
 
+    const fullscreenButton=document.getElementById('hydra-fullscreen');
+    function updateFullscreenButton(){fullscreenButton.textContent=document.fullscreenElement?'⛶ EXIT FULLSCREEN':'⛶ FULLSCREEN'}
+    fullscreenButton.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();updateFullscreenButton()}catch(err){status.textContent='FULLSCREEN · '+err.message}};
+    document.addEventListener('fullscreenchange',updateFullscreenButton);
     const handleRegia=m=>{
       m=m||{};
+      if(m.type==='hydra-fullscreen'){fullscreenButton.style.display='block';fullscreenButton.focus();status.textContent='FULLSCREEN · CLICK ⛶ ON HYDRA (BROWSER REQUIRES LOCAL CLICK)'}
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
       if(m.type==='hydra-farewell-credits'){farewellCreditsInner.textContent=String(m.text||'').trim()||'BLIVET'}
