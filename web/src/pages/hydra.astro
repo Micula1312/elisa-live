@@ -19,6 +19,8 @@
     #code{flex:1;resize:none;border:0;outline:0;padding:16px;background:transparent;color:#fff;
       caret-color:#fff;font:15px/1.45 Consolas,monospace;white-space:pre;tab-size:2}
     #status{font:11px/1.2 Helvetica,Arial,sans-serif;padding:8px 12px;color:#aaa;border-top:1px solid rgba(255,255,255,.15)}#scene-tag{position:fixed;right:18px;bottom:16px;z-index:30;color:#aaa;font:11px Helvetica,Arial,sans-serif;letter-spacing:.12em;opacity:.75}#editor-toggle{position:fixed;left:16px;bottom:16px;z-index:40;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.75);color:#fff;padding:9px 12px;font:11px Helvetica,Arial,sans-serif;cursor:pointer}
+    /* Output-only view: no controls or diagnostic overlays on the projection. */
+    #dual-cam-controls,#hydra-fullscreen,#editor-toggle,#midi-monitor,#scene-tag{display:none!important}
     #status.error{color:#ff8b8b}
     #midi-monitor{position:fixed;left:16px;top:16px;z-index:45;min-width:260px;padding:10px 12px;border:1px solid rgba(57,255,20,.45);background:rgba(0,0,0,.78);color:#39ff14;font:11px/1.45 Helvetica,Arial,sans-serif;letter-spacing:.06em;pointer-events:none}
     #midi-monitor b{color:#fff;font-weight:400} #midi-monitor.off{border-color:#555;color:#777}
@@ -982,7 +984,7 @@ render(o0)`;
     document.addEventListener('fullscreenchange',updateFullscreenButton);
     const handleRegia=m=>{
       m=m||{};
-      if(m.type==='hydra-fullscreen'){fullscreenButton.style.display='block';fullscreenButton.focus();status.textContent='FULLSCREEN · CLICK ⛶ ON HYDRA (BROWSER REQUIRES LOCAL CLICK)'}
+      if(m.type==='hydra-fullscreen'){status.textContent='FULLSCREEN · USE F11 ON HYDRA WINDOW ONCE'}
       if(m.type==='hydra-scene')loadScene(m.scene);
       if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
       if(m.type==='hydra-farewell-credits'){farewellCreditsInner.textContent=String(m.text||'').trim()||'BLIVET'}
@@ -994,6 +996,8 @@ render(o0)`;
       if(m.type==='hydra-blackout')blackoutHydra();
       if(m.type==='hydra-back')back();
       if(m.type==='hydra-editor')toggleEditor()
+      if(m.type==='hydra-cam-local'){localCamOn=!!m.on;updateDualCams()}
+      if(m.type==='hydra-cam-remote'){remoteCamOn=!!m.on;updateDualCams()}
       if(m.type==='hydra-hud'){
         const visible=m.visible!==false;
         midiMonitor.style.display=visible?'':'none';
