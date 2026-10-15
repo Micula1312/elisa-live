@@ -1,45 +1,41 @@
 ---
-const title = 'ELISA · TOUCH CONTROL II';
+const title = 'ELISA · TOUCH CONTROL';
 ---
 <html lang="it"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/><title>{title}</title>
 <style>
-:root{font-family:Arial,Helvetica,sans-serif;background:#080908;color:#eee;color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:16px;touch-action:manipulation}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #444;padding-bottom:12px}h1{color:#39ff14;font-size:27px;margin:16px 0 3px}small,.hint{color:#aaa}#status{font-size:12px;color:#ff8e8e}#status.ok{color:#39ff14}.faders{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px 0}.control{background:#171917;border:1px solid #383d38;padding:16px 12px;border-radius:12px;min-width:0}.control label{display:block;font-size:11px;letter-spacing:.08em;min-height:30px}.value{color:#39ff14;font-size:22px;font-variant-numeric:tabular-nums;margin:12px 0}input[type=range]{width:100%;height:32px;accent-color:#39ff14;touch-action:none}.fx-select{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 18px}.fx-select button{min-height:60px;font-size:12px;padding:9px}.fx-select button:first-child{grid-column:1/-1}.fx-select button.active{background:#39ff14;color:#000;border-color:#39ff14}.fx-head{margin:20px 0 0;font-size:15px;color:#39ff14}.fx-note{font-size:11px;color:#999;margin:0 0 8px}.buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}button{min-height:72px;border-radius:12px;border:1px solid #555;background:#242724;color:#fff;font-size:14px;font-weight:bold;touch-action:none}button.active{background:#39ff14;color:#000}button.danger{border-color:#f44;color:#ff9999}button:active{transform:scale(.98)}.footer{margin-top:20px;font-size:11px;line-height:1.5;color:#aaa}#bridge{width:100%;background:#171917;color:#fff;border:1px solid #555;border-radius:8px;padding:12px;margin-top:12px}
+:root{font-family:Arial,Helvetica,sans-serif;background:#080908;color:#eee;color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:14px 14px 26px;touch-action:manipulation;max-width:720px;margin-inline:auto}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #444;padding-bottom:12px;font-size:12px;letter-spacing:.08em}h1{color:#39ff14;font-size:28px;margin:14px 0 2px;letter-spacing:-.05em}small,.hint{color:#aaa}#status{font-size:11px;color:#ff8e8e}#status.ok{color:#39ff14}h2{font-size:12px;letter-spacing:.1em;color:#aaa;margin:20px 0 10px}.fx-select{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.fx-select button{min-height:66px;padding:8px 4px;font-size:11px;line-height:1.4}.fx-select button.active{background:#39ff14;color:#000;border-color:#39ff14}.fx-select button span{display:block;font-size:17px;margin-bottom:3px}.control{background:#171917;border:1px solid #383d38;padding:16px;border-radius:10px;margin:10px 0}.control-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.control label{font-size:12px;letter-spacing:.07em}.value{color:#39ff14;font-size:26px;font-variant-numeric:tabular-nums}input[type=range]{width:100%;height:42px;accent-color:#39ff14;touch-action:none;margin:12px 0 2px}.ends{display:flex;justify-content:space-between;color:#999;font-size:10px;letter-spacing:.08em}.buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}button{min-height:66px;border-radius:9px;border:1px solid #555;background:#242724;color:#fff;font-size:13px;font-weight:bold;touch-action:manipulation}button.active{background:#39ff14;color:#000;border-color:#39ff14}button.danger{border-color:#f44;color:#ff9999}button:active{transform:scale(.98)}.footer{margin-top:22px;font-size:11px;line-height:1.5;color:#aaa}#bridge{width:100%;background:#171917;color:#fff;border:1px solid #555;border-radius:8px;padding:12px;margin-top:10px}.note{color:#999;font-size:11px;line-height:1.5}
 </style></head><body>
 <header><b>BLIVET / ELISA</b><span id="status">● CONNECTING</span></header>
-<h1>LIVE FX / II</h1><small>TOUCHDESIGNER · REMOTE PERFORMANCE</small>
-<h2 class="fx-head">FX · AUTO SWITCH</h2><p class="fx-note">Supera 1% per attivare · torna a 0% per CLEAN</p><div class="faders" id="faders"></div><h2 class="fx-head">GLOBAL CONTROLS</h2><div class="faders" id="globals"></div>
-<div class="buttons">
-<button data-toggle="freeze">FREEZE</button><button data-toggle="invert">INVERT</button>
-<button data-toggle="bypass">BYPASS FX</button><button data-moment="blackout" class="danger">BLACKOUT (HOLD)</button>
-<button data-moment="strobe">STROBE (HOLD)</button><button id="reset">RESET FX</button>
+<h1>TOUCH CONTROL_</h1><small>TOUCHDESIGNER · LIVE FX / OSC</small>
+<h2>01 / SELECT FX</h2>
+<div class="fx-select">
+<button data-fx="0" class="active"><span>00</span>CLEAN</button>
+<button data-fx="1"><span>01</span>PIXELATE UV</button>
+<button data-fx="2"><span>02</span>DISPLACE</button>
+<button data-fx="3"><span>03</span>PIXELARE</button>
+<button data-fx="4"><span>04</span>VHS</button>
+<button data-fx="5"><span>05</span>RECOLOR EDGE</button>
 </div>
-<div class="footer"><label for="bridge">BRIDGE URL · AUTO (porta 8765)</label><input id="bridge" spellcheck="false" placeholder="http://192.168.1.10:8765"/><p id="help">Telefono e PC sulla stessa rete. Avvia prima il bridge Python. Il controllo invia OSC a TouchDesigner; per vedere gli effetti devi collegare i canali OSC ai tuoi TOP.</p></div>
+<h2>02 / FX AMOUNT · CROSS TOP</h2>
+<div class="control"><div class="control-head"><label for="fxAmount">DRY / WET</label><strong class="value" id="fxAmountValue">0%</strong></div><input id="fxAmount" type="range" min="0" max="100" value="0"/><div class="ends"><span>ORIGINAL</span><span>FX</span></div></div>
+<h2>03 / VIDEO SOURCE · REC ↔ CLIP</h2>
+<div class="control"><div class="control-head"><label for="sourceMix">SOURCE MIX</label><strong class="value" id="sourceMixValue">0%</strong></div><input id="sourceMix" type="range" min="0" max="100" value="0"/><div class="ends"><span>REC / LIVE</span><span>CLIP / FILE</span></div></div>
+<h2>04 / MASTER</h2>
+<div class="buttons"><button data-toggle="invert">INVERT</button><button data-toggle="freeze">FREEZE</button><button data-toggle="blackout" class="danger">BLACKOUT</button><button id="reset">RESET ALL</button></div>
+<p class="note">FX AMOUNT → parametro Cross del Cross TOP. SOURCE MIX → secondo Cross TOP tra REC e CLIP. Configura i collegamenti in TouchDesigner.</p>
+<div class="footer"><label for="bridge">BRIDGE URL · AUTO (porta 8765)</label><input id="bridge" spellcheck="false" placeholder="http://192.168.137.1:8765"/><p>Telefono e PC sulla stessa rete. Il bridge inoltra OSC a TouchDesigner.</p></div>
 <script>
-const effects=[['pixelate_uv','PIXELATE UV RANDOM'],['displace_pinlight','DISPLACE PINLIGHT'],['pixelare','PIXELARE'],['vhs','VHS'],['recolor_edge','RECOLOR EDGE']];
-const globals=[['audio',0],['blend',100],['master',100]];
-const timers=new Map(),toggles={freeze:false,invert:false,bypass:false};
 const status=document.getElementById('status'),bridge=document.getElementById('bridge');
-bridge.value=(location.port==='8765'?location.origin:location.protocol+'//'+location.hostname+':8765');
+bridge.value=location.port==='8765'?location.origin:location.protocol+'//'+location.hostname+':8765';
 bridge.addEventListener('change',()=>{bridge.value=bridge.value.trim().replace(/\/$/,'')});
 async function send(name,value){try{const res=await fetch(bridge.value.trim().replace(/\/$/,'')+'/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,value}),signal:AbortSignal.timeout(1200)});if(!res.ok)throw Error('HTTP '+res.status);status.textContent='● CONNECTED';status.classList.add('ok')}catch(e){status.textContent='● BRIDGE OFFLINE';status.classList.remove('ok')}}
-function throttle(name,value){const prev=timers.get(name);if(prev)clearTimeout(prev);timers.set(name,setTimeout(()=>{timers.delete(name);send(name,value)},25))}
-function slider(parent,name,label,initial,oninput){const div=document.createElement('div');div.className='control';div.innerHTML='<label></label><div class="value"></div><input type="range" min="0" max="100" aria-label="'+label+'"/>';div.querySelector('label').textContent=label;const range=div.querySelector('input');range.value=initial;const display=div.querySelector('.value');display.textContent=initial+'%';range.addEventListener('input',()=>{display.textContent=range.value+'%';oninput(Number(range.value))});parent.appendChild(div);return {range,display,name}}
-let active=0;
-const fxSliders=effects.map(([name,label],i)=>slider(document.getElementById('faders'),name,(i+1)+' · '+label,0,v=>{
-  const index=i+1;
-  if(v>1){
-    if(active!==index){
-      fxSliders.forEach((item,j)=>{if(j!==i){item.range.value=0;item.display.textContent='0%';throttle(item.name,0)}});
-      active=index;
-      if(toggles.bypass){toggles.bypass=false;document.querySelector('[data-toggle="bypass"]').classList.remove('active');send('bypass',0)}
-      send('fx_select',index);
-    }
-  }else if(active===index){active=0;send('fx_select',0)}
-  throttle(name,v/100);
-}));
-const globalSliders=globals.map(([name,initial])=>slider(document.getElementById('globals'),name,name.toUpperCase(),initial,v=>throttle(name,v/100)));
-document.querySelectorAll('[data-toggle]').forEach(btn=>btn.addEventListener('click',()=>{const n=btn.dataset.toggle;toggles[n]=!toggles[n];btn.classList.toggle('active',toggles[n]);send(n,toggles[n]?1:0);if(n==='bypass')send('fx_select',toggles[n]?0:active)}));
-document.querySelectorAll('[data-moment]').forEach(btn=>{const n=btn.dataset.moment;const release=()=>{btn.classList.remove('active');send(n,0)};btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.setPointerCapture(e.pointerId);btn.classList.add('active');send(n,1)});btn.addEventListener('pointerup',release);btn.addEventListener('pointercancel',release);btn.addEventListener('lostpointercapture',release)});
-document.getElementById('reset').addEventListener('click',()=>{fxSliders.forEach(item=>{item.range.value=0;item.display.textContent='0%';send(item.name,0)});globalSliders.forEach((item,i)=>{item.range.value=globals[i][1];item.display.textContent=globals[i][1]+'%';send(item.name,globals[i][1]/100)});active=0;send('fx_select',0);Object.keys(toggles).forEach(n=>{toggles[n]=false;document.querySelector('[data-toggle="'+n+'"]').classList.remove('active');send(n,0)});send('blackout',0);send('strobe',0)});
+const timers=new Map();
+function throttle(name,value){if(timers.has(name))clearTimeout(timers.get(name));timers.set(name,setTimeout(()=>{timers.delete(name);send(name,value)},25))}
+let selected=0;const toggles={invert:false,freeze:false,blackout:false};
+function selectFx(index){selected=index;document.querySelectorAll('[data-fx]').forEach(b=>b.classList.toggle('active',Number(b.dataset.fx)===index));send('fx_select',index)}
+document.querySelectorAll('[data-fx]').forEach(b=>b.addEventListener('click',()=>selectFx(Number(b.dataset.fx))));
+for(const [id,channel] of [['fxAmount','fx_amount'],['sourceMix','source_mix']]){const slider=document.getElementById(id),value=document.getElementById(id+'Value');slider.addEventListener('input',()=>{value.textContent=slider.value+'%';throttle(channel,Number(slider.value)/100)});slider.addEventListener('change',()=>{if(timers.has(channel)){clearTimeout(timers.get(channel));timers.delete(channel)}send(channel,Number(slider.value)/100)})}
+document.querySelectorAll('[data-toggle]').forEach(btn=>btn.addEventListener('click',()=>{const n=btn.dataset.toggle;toggles[n]=!toggles[n];btn.classList.toggle('active',toggles[n]);send(n,toggles[n]?1:0)}));
+document.getElementById('reset').addEventListener('click',()=>{selectFx(0);for(const [id,channel] of [['fxAmount','fx_amount'],['sourceMix','source_mix']]){document.getElementById(id).value=0;document.getElementById(id+'Value').textContent='0%';if(timers.has(channel))clearTimeout(timers.get(channel));timers.delete(channel);send(channel,0)}for(const n of Object.keys(toggles)){toggles[n]=false;document.querySelector('[data-toggle="'+n+'"]').classList.remove('active');send(n,0)}send('bypass',0);send('strobe',0)});
 fetch(bridge.value+'/health',{signal:AbortSignal.timeout(1200)}).then(r=>{if(!r.ok)throw Error();status.textContent='● CONNECTED';status.classList.add('ok')}).catch(()=>{status.textContent='● BRIDGE OFFLINE'});
 </script></body></html>
