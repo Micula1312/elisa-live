@@ -199,7 +199,7 @@
       navigator.requestMIDIAccess().then(bindMidi).catch(err=>{midiMonitor.classList.add('off');midiMonitor.innerHTML='MIDI ERROR · '+err.message});
     }else midiMonitor.innerHTML='MIDI · WEB MIDI NOT SUPPORTED';
 
-    canvas.width=innerWidth; canvas.height=innerHeight;
+    canvas.width=Math.min(innerWidth,1280); canvas.height=Math.min(innerHeight,720);
 
     const {default:Hydra}=await import('hydra-synth');
     const THREE=await import('three');
@@ -210,7 +210,7 @@
     const hearts=[];let handDebug='HANDS · WAITING',handTrackError='';
     const motionCanvas=document.createElement('canvas'),motionCtx=motionCanvas.getContext('2d',{willReadFrequently:true});
     motionCanvas.width=160;motionCanvas.height=90;let motionPrev=null;
-    const hydra=new Hydra({canvas,detectAudio:false,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:Math.min(innerWidth,1280),height:Math.min(innerHeight,720)});
+    const hydra=new Hydra({canvas,detectAudio:false,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:canvas.width,height:canvas.height});
     // Shared browser audio authority. /regia publishes one normalized analysis stream;
     // Hydra consumes it instead of opening a second microphone/analyser.
     window.ELISA_SHARED_AUDIO={level:0,low:0,mid:0,high:0,transient:0,bell500:0,source:"none",updatedAt:0};
