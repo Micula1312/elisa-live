@@ -92,18 +92,17 @@
     // MIDI probe: browser reads the same USB controller independently from TouchDesigner.
     window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
-    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
-    const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'landscapeMotion',21:'archiveMotion'};
-    // Smooth all six existing MPD218 knobs: CC20/21 now control motion, not fades.
-    const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5};
+    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
+    const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'fadeWhite',21:'fadeBlack'};
+    // Ease CC16–19 between incoming 7-bit MIDI steps; fades CC20/21 remain immediate.
+    const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0};
     let smoothLast=performance.now();
     function smoothMidi(now){
       const dt=Math.min(.08,(now-smoothLast)/1000);smoothLast=now;
-      // Fast attack, slightly softer release: expressive without zipper noise.
-      const fastAlpha=1-Math.exp(-dt/.055),slowAlpha=1-Math.exp(-dt/.085);
+      const alpha=1-Math.exp(-dt/0.19);
       for(const key of Object.keys(smoothTargets)){
         const current=window.ELISA_CTRL[key],target=smoothTargets[key];
-        window.ELISA_CTRL[key]=Math.abs(target-current)<.0005?target:current+(target-current)*(target>current?fastAlpha:slowAlpha);
+        window.ELISA_CTRL[key]=Math.abs(target-current)<.0005?target:current+(target-current)*alpha;
       }
       requestAnimationFrame(smoothMidi);
     }
@@ -112,8 +111,6 @@
     window.param2=()=>window.ELISA_CTRL.param2;
     window.audioReact=()=>window.ELISA_CTRL.audioReact;
     window.audioChaos=()=>window.ELISA_CTRL.audioChaos;
-    window.landscapeMotion=()=>window.ELISA_CTRL.landscapeMotion;
-    window.archiveMotion=()=>window.ELISA_CTRL.archiveMotion;
     // Backwards-compatible aliases so older authored patches never break.
     window.deform=()=>param1();
     window.feedback=()=>param2();
@@ -167,7 +164,7 @@
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
-      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127}
+      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;if(d1===20||d1===21)applyMasterFade()}
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
       const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
@@ -199,7 +196,7 @@
       navigator.requestMIDIAccess().then(bindMidi).catch(err=>{midiMonitor.classList.add('off');midiMonitor.innerHTML='MIDI ERROR · '+err.message});
     }else midiMonitor.innerHTML='MIDI · WEB MIDI NOT SUPPORTED';
 
-    canvas.width=Math.min(innerWidth,1280); canvas.height=Math.min(innerHeight,720);
+    canvas.width=innerWidth; canvas.height=innerHeight;
 
     const {default:Hydra}=await import('hydra-synth');
     const THREE=await import('three');
@@ -210,7 +207,7 @@
     const hearts=[];let handDebug='HANDS · WAITING',handTrackError='';
     const motionCanvas=document.createElement('canvas'),motionCtx=motionCanvas.getContext('2d',{willReadFrequently:true});
     motionCanvas.width=160;motionCanvas.height=90;let motionPrev=null;
-    const hydra=new Hydra({canvas,detectAudio:false,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:canvas.width,height:canvas.height});
+    const hydra=new Hydra({canvas,detectAudio:false,enableStreamCapture:false,makeGlobal:true,autoLoop:true,width:innerWidth,height:innerHeight});
     // Shared browser audio authority. /regia publishes one normalized analysis stream;
     // Hydra consumes it instead of opening a second microphone/analyser.
     window.ELISA_SHARED_AUDIO={level:0,low:0,mid:0,high:0,transient:0,bell500:0,source:"none",updatedAt:0};
@@ -222,22 +219,18 @@
     window.rawHigh=()=>window.ELISA_SHARED_AUDIO.high||0;
     window.rawHit=()=>window.ELISA_SHARED_AUDIO.transient||0;
     window.rawLevel=()=>window.ELISA_SHARED_AUDIO.level||0;
-    // Protect shaders and 3D motion from sustained hot mixer levels.
-    // MIDI AUDIO REACT / CHAOS still shape the response, but cannot multiply
-    // the input into extreme values. Soft knee retains quieter dynamics.
-    const audioGain=()=>Math.min(1.65,Math.max(0,audioReact())*(1+Math.max(0,audioChaos())*.8));
-    const safeAudio=(raw,extra=1)=>{const v=Math.max(0,raw)*audioGain()*extra;return Math.min(.95,1-Math.exp(-v*1.25))};
-    window.low=()=>safeAudio(rawLow());
-    window.mid=()=>safeAudio(rawMid(),1+audioChaos()*.12);
-    window.high=()=>safeAudio(rawHigh(),1+audioChaos()*.22);
-    window.hit=()=>safeAudio(rawHit(),1+audioChaos()*.25);
-    window.level=()=>safeAudio(rawLevel());
+    const audioGain=()=>Math.max(0,audioReact())*(1+audioChaos()*1.65);
+    window.low=()=>Math.min(1.5,rawLow()*audioGain());
+    window.mid=()=>Math.min(1.5,rawMid()*audioGain()*(1+audioChaos()*.35));
+    window.high=()=>Math.min(1.8,rawHigh()*audioGain()*(1+audioChaos()*.9));
+    window.hit=()=>Math.min(2,rawHit()*audioGain()*(1+audioChaos()*1.8));
+    window.level=()=>Math.min(1.5,rawLevel()*audioGain());
     // GLOBAL HYDRA MIDI GRAMMAR — identical in every scene:
     // CC16 = PARAM 1 · CC17 = PARAM 2
     // CC18 = AUDIO REACT amount · CC19 = AUDIO CHAOS / peak violence
     // PAD 1/2/3/4 CH10 = archive single / burst / hero / rain
     // PAD 13 / MIDI CH10 = DROP
-    // CC20 = landscape motion · CC21 = archive motion (replaces white/black fades)
+    // CC20 = global WHITE fade · CC21 = global BLACK fade
 
     // THREE.JS landscape source -> Hydra s0. It keeps rendering in the background;
     // GENESIS decides when to expose/process it.
@@ -249,13 +242,13 @@
       objects:{orb:[],totem:[],swarm:[],tree:[],phone:[],diamond:[],cola:[],pistol:[]},
       nav:{x:0,z:0,yaw:0},flash:0
     };
-    landscape.renderer.setPixelRatio(1);
-    landscape.renderer.setSize(Math.min(innerWidth,1280),Math.min(innerHeight,720),false);
+    landscape.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+    landscape.renderer.setSize(innerWidth,innerHeight,false);
     landscape.renderer.setClearColor(0x000000,1);
     landscape.camera.position.set(0,4.6,10);
     landscape.camera.lookAt(0,-1,-18);
     {
-      const geo=new THREE.PlaneGeometry(38,90,52,82);geo.rotateX(-Math.PI/2);
+      const geo=new THREE.PlaneGeometry(38,90,90,150);geo.rotateX(-Math.PI/2);
       landscape.base=Float32Array.from(geo.attributes.position.array);
       landscape.mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:ACID,wireframe:true,transparent:true,opacity:.88}));
       landscape.mesh.position.z=-28;landscape.scene.add(landscape.mesh);
@@ -380,7 +373,7 @@
     s0.init({src:landscapeCanvas});
     typeCanvas.width=960;typeCanvas.height=540;s2.init({src:typeCanvas});
     heartCanvas.width=960;heartCanvas.height=540;s3.init({src:heartCanvas});
-    archiveCanvas.width=960;archiveCanvas.height=540;
+    archiveCanvas.width=1280;archiveCanvas.height=720;
     const archiveFloaters=[];
     let archiveFiles=[];
     fetch('/feed/manifest.json').then(r=>r.json()).then(files=>{
@@ -406,7 +399,7 @@
             phase:Math.random()*Math.PI*2,life:1,born:performance.now(),hero,
             scalePhase:Math.random()*Math.PI*2,baseW:hero?.62:.22+Math.random()*.30
           });
-          if(archiveFloaters.length>12)archiveFloaters.shift();
+          if(archiveFloaters.length>24)archiveFloaters.shift();
         }catch{}
       }
       status.textContent='ARCHIVE · '+mode.toUpperCase()+' · '+archiveFloaters.length;
@@ -414,17 +407,14 @@
     function archiveDrop(){
       archiveFloaters.forEach((p,i)=>{p.vx+=(Math.random()-.5)*.006;p.vy+=(Math.random()-.5)*.006;p.life-=.12});
     }
-    let archiveLastFrame=0;
-    function drawArchiveFloaters(now=0){
+    function drawArchiveFloaters(){
       requestAnimationFrame(drawArchiveFloaters);
-      if(now-archiveLastFrame<33)return;
-      archiveLastFrame=now;
       archiveCtx.clearRect(0,0,archiveCanvas.width,archiveCanvas.height);
       const lo=low(),mi=mid(),hi=high(),t=performance.now()*.001;
       for(let i=archiveFloaters.length-1;i>=0;i--){
         const p=archiveFloaters[i],age=(performance.now()-p.born)/1000;
-        p.x+=p.vx*(.2+archiveMotion()*1.8)*(1+mi*4)+Math.sin(t*.55+p.phase)*.00012*(1+mi*2)*archiveMotion();
-        p.y+=p.vy*(.2+archiveMotion()*1.8)*(1+mi*3)+Math.cos(t*.43+p.phase)*.00009*archiveMotion();
+        p.x+=p.vx*(1+mi*4)+Math.sin(t*.55+p.phase)*.00012*(1+mi*2);
+        p.y+=p.vy*(1+mi*3)+Math.cos(t*.43+p.phase)*.00009;
         if(!p.hero&&age>14)p.life-=.0015+hi*.002;
         if(p.x<-.25)p.x=1.2;if(p.x>1.25)p.x=-.2;if(p.y<-.3)p.y=1.2;if(p.y>1.3)p.y=-.2;
         if(p.life<=0){archiveFloaters.splice(i,1);continue}
@@ -434,8 +424,7 @@
         const react=Math.max(.15,audioReact()),chaos=audioChaos();
         const breathing=Math.sin(t*(.72+mi*1.8)+p.scalePhase);
         const sizeDrive=1+lo*(.55*react)+mi*(.24*react)+breathing*(.12+.22*mi*react);
-        const motion=archiveMotion();
-        const chaosSize=1+chaos*motion*(Math.sin(t*(2.1+hi*5)+p.phase)*.34+hi*.38);
+        const chaosSize=1+chaos*(Math.sin(t*(2.1+hi*5)+p.phase)*.34+hi*.38);
         const breath=Math.max(.38,sizeDrive*chaosSize);
         const w=archiveCanvas.width*p.w*breath,h=w*ratio;
         archiveCtx.save();archiveCtx.globalAlpha=Math.min(1,age*2)*Math.max(0,p.life);
@@ -608,13 +597,9 @@
     }
     let activeScene='custom01';
     let landscapeT=0;
-    let landscapeLastFrame=0;
-    function renderLandscape(now=0){
+    function renderLandscape(){
       requestAnimationFrame(renderLandscape);
-      if(currentScene!=='genesis'&&currentScene!=='farewell')return;
-      if(now-landscapeLastFrame<33)return;
-      landscapeLastFrame=now;
-      landscapeT+=.012;
+      landscapeT+=.006;
       const pos=landscape.mesh.geometry.attributes.position;
       const base=landscape.base;
       const lo=low(),mi=mid(),hi=high();
@@ -622,11 +607,11 @@
       for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
         const farewellDance=activeScene==='farewell'?(audioReact()*.85+audioChaos()*1.9):0;
-        const danceSpeed=1+farewellDance*(.8+hi*2.4)*(.2+landscapeMotion()*1.6);
+        const danceSpeed=1+farewellDance*(.8+hi*2.4);
         const ridge=Math.sin(x*.28+landscapeT*.45*danceSpeed)*1.05+Math.sin(z*.12-landscapeT*.7*danceSpeed)*.72;
         const detail=Math.sin(x*.92+z*.19+landscapeT*(1.7+farewellDance*3.2))*(.12+hi*(.55+farewellDance*1.45));
-        const swell=Math.sin(z*.055+landscapeT*(.35+farewellDance*.9))*(.55+lo*(2.8+farewellDance*5.8))*(.35+landscapeMotion()*1.3);
-        const beatDance=Math.sin(x*.42+z*.14+landscapeT*(1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*farewellDance)*(.2+landscapeMotion()*1.6);
+        const swell=Math.sin(z*.055+landscapeT*(.35+farewellDance*.9))*(.55+lo*(2.8+farewellDance*5.8));
+        const beatDance=Math.sin(x*.42+z*.14+landscapeT*(1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*farewellDance);
         pos.setY(i,-1.45+ridge*.52+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*(.9+farewellDance*1.8)+beatDance);
       }
       pos.needsUpdate=true;
@@ -1119,9 +1104,9 @@ render(o0)`;
     });
     window.addEventListener('keyup',(e)=>{if(e.code==='Space'&&currentScene==='hypnosis')hypnosisDrop=0});
     addEventListener('resize',()=>{
-      hydra.synth.setResolution(Math.min(innerWidth,1280),Math.min(innerHeight,720));
+      hydra.synth.setResolution(innerWidth,innerHeight);
       landscape.camera.aspect=innerWidth/innerHeight;landscape.camera.updateProjectionMatrix();
-      landscape.renderer.setSize(Math.min(innerWidth,1280),Math.min(innerHeight,720),false);
+      landscape.renderer.setSize(innerWidth,innerHeight,false);
     });
   </script>
 </body>
