@@ -1,7 +1,7 @@
 const state={
   level:0,low:0,mid:0,high:0,transient:0,bell500:0,
   lowRaw:0,midRaw:0,highRaw:0,
-  running:false,deviceId:"",sensitivity:1.6,source:"none",
+  running:false,deviceId:"",sensitivity:0.7,source:"none",
   sampleRate:0,updatedAt:0
 };
 window.ELISA_AUDIO=state;
@@ -36,19 +36,21 @@ function loop(){
   analyser.getByteFrequencyData(data);
   const nyquist=ctx.sampleRate/2,hzPerBin=nyquist/data.length;
   const bin=hz=>Math.max(0,Math.min(data.length-1,Math.floor(hz/hzPerBin)));
+  // Soft-knee compression: keep dynamics while avoiding prolonged 1.00 saturation.
   const sens=state.sensitivity;
+  const compress=v=>clamp01((1-Math.exp(-1.5*Math.max(0,v)))/(1-Math.exp(-1.5)));
 
-  const levelRaw=clamp01(avg(data,bin(40),bin(12000))*sens);
-  state.lowRaw=clamp01(avg(data,bin(40),bin(180))*sens);
-  state.midRaw=clamp01(avg(data,bin(180),bin(2200))*sens);
-  state.highRaw=clamp01(avg(data,bin(2200),bin(12000))*sens);
+  const levelRaw=compress(avg(data,bin(40),bin(12000))*sens);
+  state.lowRaw=compress(avg(data,bin(40),bin(180))*sens);
+  state.midRaw=compress(avg(data,bin(180),bin(2200))*sens);
+  state.highRaw=compress(avg(data,bin(2200),bin(12000))*sens);
 
   state.level=smooth(state.level,levelRaw,.32,.10);
   state.low=smooth(state.low,state.lowRaw,.30,.075);
   state.mid=smooth(state.mid,state.midRaw,.25,.085);
   state.high=smooth(state.high,state.highRaw,.22,.10);
   // Narrow midrange bell detector centered around 500 Hz, independent of broad MID.
-  const bellRaw=clamp01(avg(data,bin(420),bin(620))*sens*2.5);
+  const bellRaw=compress(avg(data,bin(420),bin(620))*sens*2.5);
   state.bell500=smooth(state.bell500,bellRaw,.48,.16);
 
   const rise=Math.max(0,levelRaw-prevLevel);
