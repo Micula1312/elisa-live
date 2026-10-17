@@ -232,7 +232,7 @@ footer {
 <div class="meterrow"><span>MID</span><div class="meter"><i id="mMid"></i></div><span id="vMid">0.00</span></div>
 <div class="meterrow"><span>HIGH</span><div class="meter"><i id="mHigh"></i></div><span id="vHigh">0.00</span></div>
 <div class="meterrow hit"><span>HIT</span><div class="meter"><i id="mHit"></i></div><span id="vHit">0.00</span></div>
-<label class="sens"><span>SENSITIVITY</span><input id="sensitivity" type="range" min=".2" max="5" step=".1" value="1.6"><span id="sensVal">1.6</span></label>
+<label class="sens"><span>SENSITIVITY</span><input id="sensitivity" type="range" min=".2" max="5" step=".1" value=".7"><span id="sensVal">0.7</span></label>
 </section>
 <section class="panel">
 <h2>MASTER TRACK / PERFORMANCE CLOCK</h2>
@@ -353,7 +353,7 @@ const showLiveState=(mode)=>{
  armButton.textContent=mode==="arming"?"ARMING…":mode==="armed"?"● LIVE ARMED":"ARM LIVE";
 };
 const armLive=async()=>{
- if(window.ELISA_AUDIO?.source==="input"&&window.ELISA_AUDIO.running){showLiveState("armed");state.textContent="LIVE INPUT";return}
+ if(window.ELISA_AUDIO?.source==="input"&&window.ELISA_AUDIO.running&&window.ELISA_AUDIO.deviceId===device.value){showLiveState("armed");state.textContent="LIVE INPUT";return}
  showLiveState("arming");state.textContent="REQUESTING…";
  try{await startAudio(device.value);localStorage.setItem("elisa-audio-device",device.value);state.textContent="LIVE INPUT";soul.textContent="ONLINE";showLiveState("armed");await populate()}
  catch(e){showLiveState("idle");state.textContent=e.name||"AUDIO ERROR"}
