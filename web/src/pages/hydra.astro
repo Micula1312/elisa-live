@@ -914,13 +914,10 @@ render(o0)`;
   .contrast(() => 1.16 + low()*.18 + audioChaos()*.6 + param1()*.9)
   .brightness(() => -.18 + param2()*.25)
   .color(.22,1,.08)
-  .scale(() => 1 + param2()*.35 + landscapeMotion()*.28)
-  .rotate(() => Math.sin(time*.4)*archiveMotion()*.25)
   .modulate(
     noise(() => .8 + mid()*(.7+audioChaos()*3.2),.015),
-    () => .004 + low()*.008 + audioReact()*mid()*.018 + audioChaos()*(.08+high()*.07+hit()*.045) + param1()*.085
+    () => .004 + low()*.008 + audioReact()*mid()*.018 + audioChaos()*(.04+high()*.035+hit()*.025) + param1()*.035
   )
-  .layer(src(s0).luma(.22).color(.22,1,.08).brightness(-.12))
   .out(o0)
 render(o0)`;
 
