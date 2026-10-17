@@ -92,14 +92,14 @@
     // MIDI probe: browser reads the same USB controller independently from TouchDesigner.
     window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
-    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
-    const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'fadeWhite',21:'fadeBlack'};
+    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
+    const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'landscapeMotion',21:'archiveMotion'};
     // Ease CC16–19 between incoming 7-bit MIDI steps; fades CC20/21 remain immediate.
-    const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0};
+    const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5};
     let smoothLast=performance.now();
     function smoothMidi(now){
       const dt=Math.min(.08,(now-smoothLast)/1000);smoothLast=now;
-      const alpha=1-Math.exp(-dt/0.19);
+      const alpha=1-Math.exp(-dt/0.075);
       for(const key of Object.keys(smoothTargets)){
         const current=window.ELISA_CTRL[key],target=smoothTargets[key];
         window.ELISA_CTRL[key]=Math.abs(target-current)<.0005?target:current+(target-current)*alpha;
@@ -111,6 +111,8 @@
     window.param2=()=>window.ELISA_CTRL.param2;
     window.audioReact=()=>window.ELISA_CTRL.audioReact;
     window.audioChaos=()=>window.ELISA_CTRL.audioChaos;
+    window.landscapeMotion=()=>window.ELISA_CTRL.landscapeMotion;
+    window.archiveMotion=()=>window.ELISA_CTRL.archiveMotion;
     // Backwards-compatible aliases so older authored patches never break.
     window.deform=()=>param1();
     window.feedback=()=>param2();
@@ -164,7 +166,7 @@
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
-      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;if(d1===20||d1===21)applyMasterFade()}
+      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;}
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
       const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
@@ -413,8 +415,8 @@
       const lo=low(),mi=mid(),hi=high(),t=performance.now()*.001;
       for(let i=archiveFloaters.length-1;i>=0;i--){
         const p=archiveFloaters[i],age=(performance.now()-p.born)/1000;
-        p.x+=p.vx*(1+mi*4)+Math.sin(t*.55+p.phase)*.00012*(1+mi*2);
-        p.y+=p.vy*(1+mi*3)+Math.cos(t*.43+p.phase)*.00009;
+        p.x+=p.vx*(.25+archiveMotion()*1.5)*(1+mi*4)+Math.sin(t*.55+p.phase)*.00012*(1+mi*2)*archiveMotion();
+        p.y+=p.vy*(.25+archiveMotion()*1.5)*(1+mi*3)+Math.cos(t*.43+p.phase)*.00009*archiveMotion();
         if(!p.hero&&age>14)p.life-=.0015+hi*.002;
         if(p.x<-.25)p.x=1.2;if(p.x>1.25)p.x=-.2;if(p.y<-.3)p.y=1.2;if(p.y>1.3)p.y=-.2;
         if(p.life<=0){archiveFloaters.splice(i,1);continue}
@@ -607,10 +609,10 @@
       for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
         const farewellDance=activeScene==='farewell'?(audioReact()*.85+audioChaos()*1.9):0;
-        const danceSpeed=1+farewellDance*(.8+hi*2.4);
+        const danceSpeed=1+farewellDance*(.8+hi*2.4)*(.4+landscapeMotion()*1.2);
         const ridge=Math.sin(x*.28+landscapeT*.45*danceSpeed)*1.05+Math.sin(z*.12-landscapeT*.7*danceSpeed)*.72;
         const detail=Math.sin(x*.92+z*.19+landscapeT*(1.7+farewellDance*3.2))*(.12+hi*(.55+farewellDance*1.45));
-        const swell=Math.sin(z*.055+landscapeT*(.35+farewellDance*.9))*(.55+lo*(2.8+farewellDance*5.8));
+        const swell=Math.sin(z*.055+landscapeT*(.35+farewellDance*.9))*(.55+lo*(2.8+farewellDance*5.8))*(.4+landscapeMotion()*1.2);
         const beatDance=Math.sin(x*.42+z*.14+landscapeT*(1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*farewellDance);
         pos.setY(i,-1.45+ridge*.52+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*(.9+farewellDance*1.8)+beatDance);
       }
