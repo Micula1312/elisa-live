@@ -93,8 +93,8 @@
     window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
     window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
-    const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'fadeWhite',21:'fadeBlack',22:'landscapeMotion',23:'archiveMotion'};
-    // Ease CC16–19 between incoming 7-bit MIDI steps; fades CC20/21 remain immediate.
+    const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'landscapeMotion',21:'archiveMotion'};
+    // Smooth all six existing MPD218 knobs: CC20/21 now control motion, not fades.
     const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5};
     let smoothLast=performance.now();
     function smoothMidi(now){
@@ -167,7 +167,7 @@
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
-      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;if(d1===20||d1===21)applyMasterFade()}
+      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127}
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
       const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
@@ -237,7 +237,7 @@
     // CC18 = AUDIO REACT amount · CC19 = AUDIO CHAOS / peak violence
     // PAD 1/2/3/4 CH10 = archive single / burst / hero / rain
     // PAD 13 / MIDI CH10 = DROP
-    // CC20 = global WHITE fade · CC21 = global BLACK fade
+    // CC20 = landscape motion · CC21 = archive motion (replaces white/black fades)
 
     // THREE.JS landscape source -> Hydra s0. It keeps rendering in the background;
     // GENESIS decides when to expose/process it.
