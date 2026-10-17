@@ -342,6 +342,8 @@
       farewellStars.length=0;bellWasHigh=false;lastBell=0;
     }
     function startFarewell(){
+      // Dispose any previous sun even when the scene is reselected rapidly.
+      if(farewellSun3D){landscape.scene.remove(farewellSun3D);farewellSun3D.geometry?.dispose();farewellSun3D.material?.dispose();farewellSun3D=null}
       clearFarewellStars();
       clearLandscapeObjects();landscape.nav.x=0;landscape.nav.z=0;landscape.nav.yaw=0;
       landscape.camera.position.set(0,4.6,10);landscape.camera.lookAt(0,-1,-18);
@@ -713,12 +715,12 @@ voronoi(
       () => .08 - deform() * .055,
       0
     ).rotate(() => Math.sin(time * (1 - deform()*.72))),
-    () => (.42 + low()*.75) * (1 - deform()*.72) + deform()*.34
+    () => (.42 + low()*.75) * (1 - deform()*.72) + deform()*.055
   )
   .thresh(() => .80 - low()*.10 - deform()*.13)
   .modulateRotate(
     osc(() => 6.5 + mid()*5 - deform()*4.8),
-    () => (.30 + mid()*.75) * (1 - deform()*.78) + deform()*.22
+    () => (.30 + mid()*.75) * (1 - deform()*.78)
   )
   .thresh(() => .70 - mid()*.07 - deform()*.12)
   .diff(
@@ -741,7 +743,7 @@ voronoi(
   )
   .diff(
     src(o0)
-      .scale(() => 1.002 + deform()*.045)
+      .scale(() => 1.002 + deform()*.012)
       .rotate(() => -.012 * (1-deform()))
       .scrollY(0, () => -1/199800 * (1-deform()))
   )
@@ -753,12 +755,7 @@ voronoi(
     () => 1 - feedback()*.92
   )
   // Keep the forest cue mostly monochrome until the second half of CC17.
-  .saturate(() => 1 + Math.pow(feedback(),1.7)*4.5)
-  .contrast(() => 1 + feedback()*.9)
-  .scale(() => 1 + landscapeMotion()*.26)
-  .rotate(() => Math.sin(time*.35)*landscapeMotion()*.25)
-  .scrollX(() => Math.sin(time*.6)*archiveMotion()*.14)
-  .scrollY(() => Math.cos(time*.45)*archiveMotion()*.10)
+  .saturate(() => 1 + Math.pow(feedback(),1.7)*2.15)
   .brightness(() => -.06 - high()*.12 + deform()*.035)
   .out(o0)
 
@@ -964,7 +961,8 @@ render(o0)`;
       if(id==='hypnosis'||id==='resonance'){
         // Camera access is optional: never block a scene transition from regia.
         // A missing/denied webcam simply leaves the source blank until available.
-        try{await ensureWebcam()}catch(err){console.warn('HYDRA CAMERA UNAVAILABLE',err)}
+        // Do not wait for browser camera permission before switching scenes.
+        void ensureWebcam().catch(err=>console.warn('HYDRA CAMERA UNAVAILABLE',err));
       }
       if(id==='farewell')startFarewell(); else hideFarewell();
       capitalCounter.style.display=id==='genesis'?'block':'none';
