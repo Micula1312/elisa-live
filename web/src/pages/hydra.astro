@@ -430,7 +430,23 @@
         archiveCtx.save();archiveCtx.globalAlpha=Math.min(1,age*2)*Math.max(0,p.life);
         archiveCtx.translate(p.x*archiveCanvas.width,p.y*archiveCanvas.height);
         archiveCtx.rotate(Math.sin(t*(.23+hi*1.7)+p.phase)*(.025+hi*.12*react+chaos*.08));
-        archiveCtx.drawImage(p.img,-w/2,-h/2,w,h);archiveCtx.restore();
+        // Acid archive treatment is applied at draw time, leaving original files untouched.
+        // Saturated green, harsh contrast and a slight chromatic offset make each
+        // image arrive already manipulated in GENESIS / FAREWELL.
+        const acidOn=currentScene==='genesis'||currentScene==='farewell';
+        if(acidOn){
+          archiveCtx.filter='grayscale(1) contrast(2.2) brightness(.88)';
+          archiveCtx.drawImage(p.img,-w/2,-h/2,w,h);
+          archiveCtx.globalCompositeOperation='screen';
+          archiveCtx.globalAlpha*=.66;
+          archiveCtx.filter='grayscale(1) sepia(1) saturate(8) hue-rotate(55deg) contrast(1.8)';
+          archiveCtx.drawImage(p.img,-w/2-3,-h/2+2,w,h);
+          archiveCtx.globalCompositeOperation='source-over';
+          archiveCtx.filter='none';
+        }else{
+          archiveCtx.drawImage(p.img,-w/2,-h/2,w,h);
+        }
+        archiveCtx.restore();
       }
     }
     drawArchiveFloaters();
