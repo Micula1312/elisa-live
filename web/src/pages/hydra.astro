@@ -219,12 +219,16 @@
     window.rawHigh=()=>window.ELISA_SHARED_AUDIO.high||0;
     window.rawHit=()=>window.ELISA_SHARED_AUDIO.transient||0;
     window.rawLevel=()=>window.ELISA_SHARED_AUDIO.level||0;
-    const audioGain=()=>Math.max(0,audioReact())*(1+audioChaos()*1.65);
-    window.low=()=>Math.min(1.5,rawLow()*audioGain());
-    window.mid=()=>Math.min(1.5,rawMid()*audioGain()*(1+audioChaos()*.35));
-    window.high=()=>Math.min(1.8,rawHigh()*audioGain()*(1+audioChaos()*.9));
-    window.hit=()=>Math.min(2,rawHit()*audioGain()*(1+audioChaos()*1.8));
-    window.level=()=>Math.min(1.5,rawLevel()*audioGain());
+    // Protect shaders and 3D motion from sustained hot mixer levels.
+    // MIDI AUDIO REACT / CHAOS still shape the response, but cannot multiply
+    // the input into extreme values. Soft knee retains quieter dynamics.
+    const audioGain=()=>Math.min(1.65,Math.max(0,audioReact())*(1+Math.max(0,audioChaos())*.8));
+    const safeAudio=(raw,extra=1)=>{const v=Math.max(0,raw)*audioGain()*extra;return Math.min(.95,1-Math.exp(-v*1.25))};
+    window.low=()=>safeAudio(rawLow());
+    window.mid=()=>safeAudio(rawMid(),1+audioChaos()*.12);
+    window.high=()=>safeAudio(rawHigh(),1+audioChaos()*.22);
+    window.hit=()=>safeAudio(rawHit(),1+audioChaos()*.25);
+    window.level=()=>safeAudio(rawLevel());
     // GLOBAL HYDRA MIDI GRAMMAR — identical in every scene:
     // CC16 = PARAM 1 · CC17 = PARAM 2
     // CC18 = AUDIO REACT amount · CC19 = AUDIO CHAOS / peak violence
