@@ -958,24 +958,28 @@ render(o0)`;
     async function loadScene(id){
       const scene=scenes[id];
       if(!scene)return;
-      currentScene=id;activeScene=id;
       if(id!=='resonance'){resonanceInvert=false;applyInvert()}
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
       if(id==='genesis'||id==='farewell'){
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
-      if((id==='hypnosis'||id==='resonance')&&!(await ensureWebcam()))return;
+      if(id==='hypnosis'||id==='resonance'){
+        // Camera access is optional: never block a scene transition from regia.
+        // A missing/denied webcam simply leaves the source blank until available.
+        try{await ensureWebcam()}catch(err){console.warn('HYDRA CAMERA UNAVAILABLE',err)}
+      }
       if(id==='farewell')startFarewell(); else hideFarewell();
       capitalCounter.style.display=id==='genesis'?'block':'none';
       if(id!=='hypnosis'){hearts.length=0;heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height)}
+      currentScene=id;activeScene=id;
+      updateDualCams();
       sceneTag.textContent='HYDRA · '+scene.label;
       if(!scene.code){
         status.textContent=scene.label+' · EMPTY SLOT';
         status.classList.remove('error');
         return;
       }
-      if(scene.code!==lastRun){history.push(lastRun);if(history.length>50)history.shift()}
       code.value=scene.code;
       run();
     }
