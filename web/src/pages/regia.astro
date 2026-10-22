@@ -223,10 +223,10 @@ footer {
 <header><div class="title">AICHA / ELISA REGIA</div><div class="soul">MEDIA SOUL: <span id="soul">STANDBY</span></div></header>
 <div class="grid">
 <section class="panel">
-<h2>AUDIO MASTER / LIVE INPUT</h2>
+<h2>AUDIO INPUT / MICROPHONE</h2>
 <div class="state">SOURCE â€” <b id="audioState">OFF</b></div>
-<div class="device"><select id="audioDevice"><option value="">Default audio input</option></select><button id="refresh">REFRESH</button></div>
-<div class="actions"><button id="arm">ARM LIVE</button><button id="trackSource">USE TRACK</button></div>
+<div class="device"><select id="audioDevice"><option value="">Microfono predefinito</option></select><button id="refresh">REFRESH</button></div>
+<div class="actions"><button id="arm">ATTIVA MICROFONO</button><button id="trackSource">USE TRACK</button></div>
 <div class="meterrow"><span>LEVEL</span><div class="meter"><i id="mLevel"></i></div><span id="vLevel">0.00</span></div>
 <div class="meterrow"><span>LOW</span><div class="meter"><i id="mLow"></i></div><span id="vLow">0.00</span></div>
 <div class="meterrow"><span>MID</span><div class="meter"><i id="mMid"></i></div><span id="vMid">0.00</span></div>
@@ -338,9 +338,9 @@ cues.forEach(([t,label,major])=>{const m=document.createElement("i");m.className
 function syncCue(t){const upcoming=cues.find(([ct])=>ct>t+.5);[...markers.children].forEach(m=>m.classList.toggle("next",upcoming&&Number(m.dataset.time)===upcoming[0]));nextCue.textContent=upcoming?"NEXT â€” "+fmt(upcoming[0])+" "+upcoming[1]:"END OF SHOW"}
 async function populate(){
  try{
-  const saved=localStorage.getItem("elisa-audio-device")||"",inputs=await listAudioInputs();
-  device.innerHTML='<option value="">Default audio input</option>';
-  inputs.forEach((d,i)=>{const o=document.createElement("option");o.value=d.deviceId;o.textContent=d.label||("Audio input "+(i+1));device.appendChild(o)});
+  const saved=device.value||localStorage.getItem("elisa-audio-device")||"",inputs=await listAudioInputs();
+  device.innerHTML='<option value="">Microfono predefinito</option>';
+  inputs.forEach((d,i)=>{const o=document.createElement("option");o.value=d.deviceId;o.textContent=d.label||("Microfono / input "+(i+1));device.appendChild(o)});
   if([...device.options].some(o=>o.value===saved))device.value=saved;
  }catch(e){state.textContent="DEVICE ERROR"}
 }
@@ -350,13 +350,13 @@ const armButton=q("#arm");
 const showLiveState=(mode)=>{
  armButton.classList.toggle("arming",mode==="arming");
  armButton.classList.toggle("armed",mode==="armed");
- armButton.textContent=mode==="arming"?"ARMING…":mode==="armed"?"● LIVE ARMED":"ARM LIVE";
+ armButton.textContent=mode==="arming"?"ATTIVAZIONE MIC…":mode==="armed"?"● MICROFONO ATTIVO":"ATTIVA MICROFONO";
 };
 const armLive=async()=>{
- if(window.ELISA_AUDIO?.source==="input"&&window.ELISA_AUDIO.running&&window.ELISA_AUDIO.deviceId===device.value){showLiveState("armed");state.textContent="LIVE INPUT";return}
- showLiveState("arming");state.textContent="REQUESTING…";
- try{await startAudio(device.value);localStorage.setItem("elisa-audio-device",device.value);state.textContent="LIVE INPUT";soul.textContent="ONLINE";showLiveState("armed");await populate()}
- catch(e){showLiveState("idle");state.textContent=e.name||"AUDIO ERROR"}
+ if(window.ELISA_AUDIO?.source==="input"&&window.ELISA_AUDIO.running&&window.ELISA_AUDIO.deviceId===device.value){showLiveState("armed");state.textContent="MICROFONO · LIVE";return}
+ showLiveState("arming");state.textContent="PERMESSO MICROFONO…";
+ try{await startAudio(device.value);localStorage.setItem("elisa-audio-device",device.value);state.textContent="MICROFONO · LIVE";soul.textContent="ONLINE";showLiveState("armed");await populate()}
+ catch(e){showLiveState("idle");state.textContent=e.name==="NotAllowedError"?"MICROFONO NON AUTORIZZATO":e.name==="NotFoundError"?"MICROFONO NON TROVATO":e.name||"AUDIO ERROR"}
 };
 armButton.onclick=armLive;
 q("#trackSource").onclick=async()=>{try{showLiveState("idle");await startTrack(master);state.textContent="MASTER TRACK";soul.textContent="ONLINE";q("#play").textContent="âšâš PAUSE MASTER"}catch(e){state.textContent=e.name||"TRACK ERROR"}};
