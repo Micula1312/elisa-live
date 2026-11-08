@@ -262,11 +262,17 @@ footer {
 <button data-hydra="resonance">03<br><strong>RESONANCE</strong></button>
 <button data-hydra="hypnosis">04<br><strong>HYPNOSIS</strong></button>
 <button data-hydra="farewell">05<br><strong>FINAL TREE</strong></button>
-<button data-hydra="body">06<br><strong>BODY LANDSCAPE</strong></button>
+<button data-hydra="body">06<br><strong>FACE / MOUTH</strong></button>
 </div>
-<div class="video-note">06 BODY · middle mouse + drag: orbit · wheel: zoom · focus the Hydra window · ↑/↓ move · ←/→ turn · Q/E rise/lower · R/F look up/down · HOME reset view</div>
+<div class="video-note">06 FACE · middle mouse + drag: orbit · wheel: zoom · focus the Hydra window · ↑/↓ move · ←/→ turn · Q/E rise/lower · R/F look up/down · HOME reset view</div>
 <div class="hydra-subpanel">
-  <div class="hydra-scene-label">GENESIS + BODY / OBJECTS</div>
+  <div class="hydra-scene-label">06 FACE / MOUTH REVEAL</div>
+  <div class="hydra-tools"><button id="faceIntroPlay">▶ INTRO BOCCA</button><button id="faceIntroStop">STOP / FREE CAMERA</button><button id="faceIntroReset">RESET / INSIDE MOUTH</button></div>
+  <label class="vrow"><span>DURATION</span><input id="faceIntroDuration" type="range" min="5" max="180" step="1" value="30" /><span id="faceIntroDurationValue">30 s</span></label>
+  <div class="video-note">Scene 06 starts inside the mouth and pulls back automatically. Mouse/keys take over immediately. HOME shows the full face. Trigger objects when ready.</div>
+</div>
+<div class="hydra-subpanel">
+  <div class="hydra-scene-label">GENESIS + FACE / OBJECTS</div>
   <div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST ×6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
 </div>
 <div class="hydra-subpanel">
@@ -403,6 +409,12 @@ document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:
 document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra})});
 document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{send({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
 q("#forestBurst").onclick=()=>send({type:"hydra-forest-burst",count:6});
+const faceIntroDuration=q("#faceIntroDuration");
+const faceIntroCommand=action=>send({type:"hydra-face-intro",action,duration:Number(faceIntroDuration.value)});
+q("#faceIntroPlay").onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.toggle("live",b.dataset.hydra==="body"));faceIntroCommand("play")};
+q("#faceIntroStop").onclick=()=>faceIntroCommand("stop");
+q("#faceIntroReset").onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.toggle("live",b.dataset.hydra==="body"));faceIntroCommand("reset")};
+faceIntroDuration.oninput=()=>{q("#faceIntroDurationValue").textContent=faceIntroDuration.value+" s";faceIntroCommand("duration")};
 document.querySelectorAll("[data-hypnosis-word]").forEach(btn=>btn.onclick=()=>{q("#hypnosisText").value=btn.dataset.hypnosisWord;send({type:"hydra-hypnosis-word",word:btn.dataset.hypnosisWord})});
 const sendHypnosisText=()=>{const word=q("#hypnosisText").value.trim();if(word)send({type:"hydra-hypnosis-word",word})};
 q("#hypnosisSend").onclick=sendHypnosisText;
@@ -415,7 +427,7 @@ const captureSetup=()=>({
   version:1,name:q("#setupName").value.trim()||"ELISA LIVE",savedAt:new Date().toISOString(),
   audio:{sensitivity:Number(q("#sensitivity").value),volume:Number(q("#volume").value)},
   web:{fxAmount:Number(q("#fxAmount").value),fxReact:Number(q("#fxReact").value),fx:[...document.querySelectorAll("[data-fx]")].filter(b=>b.classList.contains("on")).map(b=>b.dataset.fx),subtitles:q("#subtitles").classList.contains("on")},
-  hydra:{scene:document.querySelector("[data-hydra].live")?.dataset.hydra||null,hypnosisText:q("#hypnosisText").value,credits:q("#farewellCreditsText").value}
+  hydra:{faceIntroDuration:Number(faceIntroDuration.value),scene:document.querySelector("[data-hydra].live")?.dataset.hydra||null,hypnosisText:q("#hypnosisText").value,credits:q("#farewellCreditsText").value}
 });
 q("#setupSave").onclick=()=>{
   const data=captureSetup(),blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");
@@ -435,6 +447,7 @@ setupFile.onchange=async()=>{
     const sub=!!w.subtitles;q("#subtitles").classList.toggle("on",sub);q("#subtitles").textContent="SUBTITLES "+(sub?"ON":"OFF");send({type:"subtitles",on:sub});
     if(typeof h.hypnosisText==="string")q("#hypnosisText").value=h.hypnosisText;
     if(typeof h.credits==="string"){q("#farewellCreditsText").value=h.credits;send({type:"hydra-farewell-credits",text:h.credits})}
+    if(Number.isFinite(h.faceIntroDuration)){faceIntroDuration.value=String(Math.max(5,Math.min(180,h.faceIntroDuration)));faceIntroDuration.oninput()}
     if(h.scene){const b=document.querySelector('[data-hydra="'+h.scene+'"]');if(b){document.querySelectorAll("[data-hydra]").forEach(x=>x.classList.remove("live"));b.classList.add("live");send({type:"hydra-scene",scene:h.scene})}}
     q("#setupName").value=data.name||file.name.replace(/\.json$/i,"");setupStatus.textContent="LOADED · "+(data.name||file.name);
   }catch(err){setupStatus.textContent="JSON ERROR · "+err.message}
