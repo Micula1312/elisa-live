@@ -259,6 +259,7 @@
     let bodyLandscape=null,bodyLoad=null;
     const bodyHome={y:18,z:35,pitch:-.42};
     const bodyNav={x:0,y:0,z:0,yaw:0,pitch:-.42};
+    const bodyOrbitTarget=new THREE.Vector3(0,0,-28);
     async function ensureBodyLandscape(){
       if(bodyLandscape)return bodyLandscape;
       if(!bodyLoad)bodyLoad=(async()=>{
@@ -279,6 +280,7 @@
         const sphere=worldBounds.getBoundingSphere(new THREE.Sphere());
         const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(landscape.camera.fov/2))*Math.min(1,landscape.camera.aspect));
         const distance=sphere.radius/Math.sin(halfFov)*1.1;
+        bodyOrbitTarget.copy(sphere.center);
         bodyHome.y=sphere.center.y+Math.sin(.42)*distance;
         bodyHome.z=sphere.center.z+Math.cos(.42)*distance;
         const wire=new THREE.MeshBasicMaterial({color:ACID,wireframe:true,side:THREE.DoubleSide});
@@ -310,6 +312,54 @@
       if(key==='f')bodyNav.pitch=Math.max(-1.45,bodyNav.pitch-.06);
       updateBodyCamera();
     }
+    // Mouse orbit updates the same navigation state used by the render loop and keys.
+    // This avoids a second camera controller fighting updateBodyCamera every frame.
+    let bodyDrag=null;
+    function setBodyOrbit(radius,theta,phi){
+      const offset=new THREE.Vector3().setFromSphericalCoords(radius,phi,theta);
+      const position=bodyOrbitTarget.clone().add(offset);
+      const direction=offset.clone().negate().normalize();
+      bodyNav.x=position.x;
+      bodyNav.y=position.y-bodyHome.y;
+      bodyNav.z=position.z-bodyHome.z;
+      bodyNav.yaw=Math.atan2(-direction.x,-direction.z);
+      bodyNav.pitch=Math.asin(THREE.MathUtils.clamp(direction.y,-1,1));
+      updateBodyCamera();
+    }
+    function endBodyDrag(){
+      if(bodyDrag&&canvas.hasPointerCapture(bodyDrag.pointer))canvas.releasePointerCapture(bodyDrag.pointer);
+      bodyDrag=null;canvas.style.cursor='';
+    }
+    canvas.addEventListener('pointerdown',e=>{
+      if(currentScene!=='body'||e.button!==1)return;
+      e.preventDefault();updateBodyCamera();
+      const orbit=new THREE.Spherical().setFromVector3(landscape.camera.position.clone().sub(bodyOrbitTarget));
+      bodyDrag={pointer:e.pointerId,x:e.clientX,y:e.clientY,radius:orbit.radius,theta:orbit.theta,phi:orbit.phi};
+      canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';
+    });
+    canvas.addEventListener('pointermove',e=>{
+      if(!bodyDrag||bodyDrag.pointer!==e.pointerId)return;
+      if(currentScene!=='body'||!(e.buttons&4)){endBodyDrag();return}
+      e.preventDefault();
+      const theta=bodyDrag.theta-(e.clientX-bodyDrag.x)*.006;
+      const phi=THREE.MathUtils.clamp(bodyDrag.phi-(e.clientY-bodyDrag.y)*.006,.03,Math.PI-.03);
+      setBodyOrbit(bodyDrag.radius,theta,phi);
+    });
+    canvas.addEventListener('pointerup',endBodyDrag);
+    canvas.addEventListener('pointercancel',endBodyDrag);
+    canvas.addEventListener('lostpointercapture',()=>{bodyDrag=null;canvas.style.cursor=''});
+    window.addEventListener('blur',endBodyDrag);
+    // Suppress the browser's middle-click autoscroll on the performance canvas.
+    canvas.addEventListener('mousedown',e=>{if(currentScene==='body'&&e.button===1)e.preventDefault()});
+    canvas.addEventListener('auxclick',e=>{if(currentScene==='body'&&e.button===1)e.preventDefault()});
+    canvas.addEventListener('wheel',e=>{
+      if(currentScene!=='body'||e.ctrlKey||e.metaKey)return;
+      e.preventDefault();endBodyDrag();updateBodyCamera();
+      const orbit=new THREE.Spherical().setFromVector3(landscape.camera.position.clone().sub(bodyOrbitTarget));
+      const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?innerHeight:1);
+      const radius=THREE.MathUtils.clamp(orbit.radius*Math.exp(THREE.MathUtils.clamp(delta,-200,200)*.0015),.5,170);
+      setBodyOrbit(radius,orbit.theta,orbit.phi);
+    },{passive:false});
     function addGenesisObject(id){
       const n=landscape.objects[id].length,seed=n+1;
       let obj;
@@ -1019,6 +1069,7 @@ render(o0)`;
       const scene=scenes[id];
       if(!scene)return;
       const request=++sceneRequest;
+      endBodyDrag();
       if(id==='body'){
         status.textContent='LOADING · BODY LANDSCAPE';
         try{await ensureBodyLandscape()}
