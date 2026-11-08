@@ -258,9 +258,9 @@
     // The scan is loaded only on first entry; other live scenes do not wait for it.
     let bodyLandscape=null,selectedBodyModel='A';
     const bodyModels={
-      A:{label:'A · FACE',url:'/models/face-landscape.glb',rotationX:0,mouth:[-.008,.505,.18]},
-      B:{label:'B · BODY',url:'/models/body-landscape.glb',rotationX:-Math.PI/2,mouth:null},
-      C:{label:'C · PENDING',url:null,rotationX:0,mouth:null}
+      A:{label:'A · FACE 01',url:'/models/face-landscape.glb',rotationX:0,mouth:[-.008,.505,.18]},
+      B:{label:'B · FACE 02',url:'/models/face-b-landscape.glb',rotationY:Math.PI/2,mouth:null},
+      C:{label:'C · FACE 03',url:'/models/face-c-landscape.glb',rotationY:-Math.PI/2,mouth:null}
     };
     const bodyModelCache=new Map(),bodyModelLoads=new Map();
     const bodyHome={y:18,z:35,pitch:0};
@@ -314,17 +314,17 @@
         const {GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js');
         const gltf=await new GLTFLoader().loadAsync(config.url);
         const model=gltf.scene;
-        model.rotation.x=config.rotationX;model.updateMatrixWorld(true);
+        model.rotation.set(config.rotationX||0,config.rotationY||0,0);model.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(model);
         const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
-        const scale=72/(id==='A'?size.y:Math.max(size.x,size.z));
+        const scale=72/size.y;
         model.scale.setScalar(scale);
         model.position.set(-center.x*scale,-1.45-bounds.min.y*scale,-28-center.z*scale);
         model.updateMatrixWorld(true);
         const sphere=new THREE.Box3().setFromObject(model).getBoundingSphere(new THREE.Sphere());
         const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(landscape.camera.fov/2))*Math.min(1,landscape.camera.aspect));
         const distance=sphere.radius/Math.sin(halfFov)*1.1;
-        const pitch=config.mouth?0:-.42;
+        const pitch=0;
         const home={y:sphere.center.y-Math.sin(pitch)*distance,z:sphere.center.z+Math.cos(pitch)*distance,pitch};
         const mouth=config.mouth?model.localToWorld(new THREE.Vector3(...config.mouth)):null;
         const wire=new THREE.MeshBasicMaterial({color:ACID,wireframe:true,side:THREE.DoubleSide});
