@@ -416,41 +416,46 @@
       stopBodyMidi();updateBodyCamera();
       const orbit=captureBodyOrbit();
       Object.assign(bodyMidi,{active:true,input,radius:orbit.radius,theta:orbit.theta,phi:orbit.phi,
-        targetRadius:orbit.radius,targetTheta:orbit.theta,targetPhi:orbit.phi,lastTime:performance.now()});
+        targetRadius:orbit.radius,targetTheta:orbit.theta,targetPhi:orbit.phi,lastTime:performance.now(),
+        focus:landscape.camera.position.clone().addScaledVector(landscape.camera.getWorldDirection(new THREE.Vector3()),orbit.radius)});
     }
     function driveBodyMidi(cc,value,previous){
       if(!bodyLandscape)return;
       stopBodyIntro();endBodyDrag();beginBodyMotion('midi');
       const centered=(value-63.5)/63.5,amount=Math.max(0,(Math.abs(centered)-.1)/.9);
       const drive=Math.sign(centered)*amount*amount*amount;
-      if(cc===19)bodyMidi.zoomTarget=drive*.18;
-      if(cc===20)bodyMidi.yawTarget=-drive*.22;
-      if(cc===21)bodyMidi.pitchTarget=-drive*.18;
+      if(cc===19){bodyMidi.zoomTarget=drive*.18;if(drive===0)bodyMidi.zoomSpeed=0}
+      if(cc===20){bodyMidi.yawTarget=-drive*.22;if(drive===0)bodyMidi.yawSpeed=0}
+      if(cc===21){bodyMidi.pitchTarget=-drive*.18;if(drive===0)bodyMidi.pitchSpeed=0}
     }
     function tickBodyMidi(now){
       if(!bodyMidi.active)return;
       const dt=Math.min(.08,Math.max(0,(now-bodyMidi.lastTime)/1000));bodyMidi.lastTime=now;
-      const alpha=1-Math.exp(-dt/.32);
-      bodyMidi.zoomSpeed+=(bodyMidi.zoomTarget-bodyMidi.zoomSpeed)*alpha;
-      bodyMidi.yawSpeed+=(bodyMidi.yawTarget-bodyMidi.yawSpeed)*alpha;
-      bodyMidi.pitchSpeed+=(bodyMidi.pitchTarget-bodyMidi.pitchSpeed)*alpha;
-      bodyMidi.targetTheta+=bodyMidi.yawSpeed*dt;
-      bodyMidi.targetPhi+=bodyMidi.pitchSpeed*dt;
-      bodyMidi.targetRadius=scaleBodyRadius(bodyMidi.targetRadius,-bodyMidi.zoomSpeed*dt);
-      // Logarithmic distance gives fine control close to the surface and inside the face.
-      bodyMidi.radius=Math.exp(Math.log(bodyMidi.radius)+(Math.log(bodyMidi.targetRadius)-Math.log(bodyMidi.radius))*alpha);
-      bodyMidi.theta+=(bodyMidi.targetTheta-bodyMidi.theta)*alpha;
-      bodyMidi.phi+=(bodyMidi.targetPhi-bodyMidi.phi)*alpha;
-      const previousRotation=landscape.camera.quaternion.clone();
+      const alpha=1-Math.exp(-dt/.14);
+      if(bodyMidi.input==='midi'){
+        // One velocity filter, then direct integration: no queued pose chasing behind it.
+        bodyMidi.zoomSpeed+=(bodyMidi.zoomTarget-bodyMidi.zoomSpeed)*alpha;
+        bodyMidi.yawSpeed+=(bodyMidi.yawTarget-bodyMidi.yawSpeed)*alpha;
+        bodyMidi.pitchSpeed+=(bodyMidi.pitchTarget-bodyMidi.pitchSpeed)*alpha;
+        bodyMidi.radius=scaleBodyRadius(bodyMidi.radius,-bodyMidi.zoomSpeed*dt);
+        bodyMidi.theta+=bodyMidi.yawSpeed*dt;
+        bodyMidi.phi+=bodyMidi.pitchSpeed*dt;
+        bodyMidi.targetRadius=bodyMidi.radius;bodyMidi.targetTheta=bodyMidi.theta;bodyMidi.targetPhi=bodyMidi.phi;
+      }else{
+        // Mouse gestures get a single monotonic interpolation with no spring/overshoot.
+        bodyMidi.radius=Math.exp(Math.log(bodyMidi.radius)+(Math.log(bodyMidi.targetRadius)-Math.log(bodyMidi.radius))*alpha);
+        bodyMidi.theta+=(bodyMidi.targetTheta-bodyMidi.theta)*alpha;
+        bodyMidi.phi+=(bodyMidi.targetPhi-bodyMidi.phi)*alpha;
+      }
+      const moving=bodyMidi.input==='mouse'||bodyMidi.zoomTarget!==0||bodyMidi.yawTarget!==0||bodyMidi.pitchTarget!==0;
+      if(moving)bodyMidi.focus.lerp(bodyOrbitTarget,alpha);
       setBodyOrbit(bodyMidi.radius,bodyMidi.theta,bodyMidi.phi);
-      const targetRotation=landscape.camera.quaternion.clone();
-      landscape.camera.quaternion.copy(previousRotation).slerp(targetRotation,alpha);
-      bodyCameraUp.set(0,1,0).applyQuaternion(landscape.camera.quaternion);
-      const direction=landscape.camera.getWorldDirection(new THREE.Vector3());
-      bodyNav.yaw=Math.atan2(-direction.x,-direction.z);
-      bodyNav.pitch=Math.asin(THREE.MathUtils.clamp(direction.y,-1,1));
+      // A world-space focus transition replaces the quaternion feedback loop.
+      setBodyCameraPose(landscape.camera.position.clone(),bodyMidi.focus);
     }
+
     function endBodyDrag(){
+      if(bodyDrag&&bodyMidi.active&&bodyMidi.input==='mouse'){bodyMidi.targetTheta=bodyMidi.theta;bodyMidi.targetPhi=bodyMidi.phi}
       if(bodyDrag&&canvas.hasPointerCapture(bodyDrag.pointer))canvas.releasePointerCapture(bodyDrag.pointer);
       bodyDrag=null;canvas.style.cursor='';
     }
