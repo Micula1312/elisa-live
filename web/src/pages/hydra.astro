@@ -94,6 +94,8 @@
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
     window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
     const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'landscapeMotion',21:'archiveMotion'};
+    const BODY_MIDI_LABELS={19:'ZOOM SPEED · CENTER STOP',20:'ORBIT SPEED · CENTER STOP',21:'VERTICAL ORBIT SPEED · CENTER STOP'};
+    const lastMidiCC=new Map();
     // Ease CC16–19 between incoming 7-bit MIDI steps; fades CC20/21 remain immediate.
     const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5};
     let smoothLast=performance.now();
@@ -156,8 +158,9 @@
     midiRouteBus.onmessage=e=>{
       if(e.data?.type!=='midi-target')return;
       midiTarget=e.data.target==='td'?'td':'hydra';
+      lastMidiCC.clear();
       localStorage.setItem('elisa-midi-target',midiTarget);
-      if(midiTarget==='td'){setDrop(false);setInvert(false);resonanceInvert=false;applyInvert();midiMonitor.innerHTML='MIDI · TOUCHDESIGNER ACTIVE<br><b>HYDRA CONTROLS MUTED</b>'}
+      if(midiTarget==='td'){stopBodyMidi();setDrop(false);setInvert(false);resonanceInvert=false;applyInvert();midiMonitor.innerHTML='MIDI · TOUCHDESIGNER ACTIVE<br><b>HYDRA CONTROLS MUTED</b>'}
       else midiMonitor.innerHTML='MIDI · HYDRA ACTIVE<br><b>move a knob / pad</b>';
     };
     function showMidi(input,data){
@@ -166,7 +169,12 @@
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
-      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;}
+      const ccKey=(input.id||input.name||'MIDI')+':'+channel+':'+d1;
+      const previousCC=lastMidiCC.get(ccKey);
+      const bodyCameraCC=isCC&&currentScene==='body'&&Object.prototype.hasOwnProperty.call(BODY_MIDI_LABELS,d1);
+      if(isCC)lastMidiCC.set(ccKey,value);
+      if(bodyCameraCC)driveBodyMidi(d1,value,previousCC);
+      if(isCC&&!bodyCameraCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;}
       if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
       // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
       const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
@@ -183,7 +191,7 @@
         }else if(currentScene==='hypnosis')setDrop(false);
       }
       midiMonitor.classList.remove('off');
-      const macro=isCC&&MIDI_MACROS[d1]?' · <b>'+MIDI_MACROS[d1].toUpperCase()+'</b>':'';
+      const macro=bodyCameraCC?' · <b>'+BODY_MIDI_LABELS[d1]+'</b>':isCC&&MIDI_MACROS[d1]?' · <b>'+MIDI_MACROS[d1].toUpperCase()+'</b>':'';
       midiMonitor.innerHTML='MIDI · <b>'+window.ELISA_MIDI.device+'</b><br>'+type+' · CH '+channel+' · '+(isCC?'CC ':'NOTE ')+d1+' · VALUE <b>'+value+'</b>'+macro+'<br>P1 '+param1().toFixed(2)+' · P2 '+param2().toFixed(2)+' · AUDIO '+audioReact().toFixed(2)+' · CHAOS '+audioChaos().toFixed(2);
     }
     function bindMidi(access){
@@ -256,50 +264,112 @@
       landscape.mesh.position.z=-28;landscape.scene.add(landscape.mesh);
     }
     // The scan is loaded only on first entry; other live scenes do not wait for it.
-    let bodyLandscape=null,bodyLoad=null;
-    const bodyHome={y:18,z:35,pitch:-.42};
-    const bodyNav={x:0,y:0,z:0,yaw:0,pitch:-.42};
-    async function ensureBodyLandscape(){
-      if(bodyLandscape)return bodyLandscape;
-      if(!bodyLoad)bodyLoad=(async()=>{
+    let bodyLandscape=null,selectedBodyModel='A';
+    const bodyModels={
+      A:{label:'A · FACE 01',url:'/models/face-landscape.glb',rotationX:0,mouth:[-.008,.505,.18]},
+      B:{label:'B · FACE 02',url:'/models/face-b-landscape.glb',rotationY:Math.PI/2,mouth:null},
+      C:{label:'C · FACE 03',url:'/models/face-c-landscape.glb',rotationY:-Math.PI/2,mouth:null}
+    };
+    const bodyModelCache=new Map(),bodyModelLoads=new Map();
+    const bodyHome={y:18,z:35,pitch:0};
+    const bodyNav={x:0,y:0,z:0,yaw:0,pitch:0};
+    const bodyOrbitTarget=new THREE.Vector3(0,0,-28);
+    const bodyCameraUp=new THREE.Vector3(0,1,0);
+    const bodyIntro={running:false,duration:30,playDuration:30,startedAt:0,
+      mouth:new THREE.Vector3(),end:new THREE.Vector3()};
+    function setBodyCameraPose(position,target){
+      const direction=target.clone().sub(position).normalize();
+      bodyNav.x=position.x;bodyNav.y=position.y-bodyHome.y;bodyNav.z=position.z-bodyHome.z;
+      bodyNav.yaw=Math.atan2(-direction.x,-direction.z);
+      bodyNav.pitch=Math.asin(THREE.MathUtils.clamp(direction.y,-1,1));
+      updateBodyCamera();
+    }
+    function applyBodyIntro(progress){
+      const t=THREE.MathUtils.clamp(progress,0,1),ease=t*t*(3-2*t);
+      const position=bodyIntro.mouth.clone().lerp(bodyIntro.end,ease);
+      const target=bodyIntro.mouth.clone().add(new THREE.Vector3(0,0,-8)).lerp(bodyOrbitTarget,ease);
+      setBodyCameraPose(position,target);
+    }
+    function stopBodyIntro(){bodyIntro.running=false}
+    function startBodyIntro(){
+      if(!bodyLandscape||!bodyModels[selectedBodyModel].mouth)return;
+      endBodyDrag();stopBodyMidi();bodyCameraUp.set(0,1,0);
+      // The reveal starts clean. Objects triggered afterwards remain available live.
+      Object.values(landscape.objects).forEach(list=>list.forEach(obj=>obj.visible=false));
+      bodyIntro.playDuration=bodyIntro.duration;
+      bodyIntro.startedAt=performance.now();bodyIntro.running=true;
+      applyBodyIntro(0);
+    }
+    function tickBodyIntro(){
+      if(!bodyIntro.running)return;
+      const progress=(performance.now()-bodyIntro.startedAt)/(bodyIntro.playDuration*1000);
+      applyBodyIntro(progress);
+      if(progress>=1)stopBodyIntro();
+    }
+    async function controlBodyIntro(action,duration){
+      if(Number.isFinite(duration))bodyIntro.duration=THREE.MathUtils.clamp(duration,5,180);
+      if(action==='duration')return;
+      if(action==='stop'){stopBodyIntro();return}
+      if(currentScene!=='body')await loadScene('body');
+      if(currentScene!=='body'||!bodyLandscape)return;
+      if(action==='play')startBodyIntro();
+      if(action==='reset'){startBodyIntro();stopBodyIntro()}
+    }
+    async function ensureBodyLandscape(id=selectedBodyModel){
+      const config=bodyModels[id];
+      if(!config?.url)throw Error('MODEL '+id+' · NOT AVAILABLE YET');
+      if(bodyModelCache.has(id))return bodyModelCache.get(id);
+      if(!bodyModelLoads.has(id))bodyModelLoads.set(id,(async()=>{
         const {GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js');
-        const gltf=await new GLTFLoader().loadAsync('/models/body-landscape.glb');
+        const gltf=await new GLTFLoader().loadAsync(config.url);
         const model=gltf.scene;
-        // Polycam's long Y axis becomes the horizontal direction of travel.
-        model.rotation.x=-Math.PI/2;
-        model.updateMatrixWorld(true);
+        model.rotation.set(config.rotationX||0,config.rotationY||0,0);model.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(model);
-        const center=bounds.getCenter(new THREE.Vector3());
-        const size=bounds.getSize(new THREE.Vector3());
-        const scale=72/Math.max(size.x,size.z);
+        const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
+        const scale=72/size.y;
         model.scale.setScalar(scale);
         model.position.set(-center.x*scale,-1.45-bounds.min.y*scale,-28-center.z*scale);
         model.updateMatrixWorld(true);
-        const worldBounds=new THREE.Box3().setFromObject(model);
-        const sphere=worldBounds.getBoundingSphere(new THREE.Sphere());
+        const sphere=new THREE.Box3().setFromObject(model).getBoundingSphere(new THREE.Sphere());
         const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(landscape.camera.fov/2))*Math.min(1,landscape.camera.aspect));
         const distance=sphere.radius/Math.sin(halfFov)*1.1;
-        bodyHome.y=sphere.center.y+Math.sin(.42)*distance;
-        bodyHome.z=sphere.center.z+Math.cos(.42)*distance;
+        const pitch=0;
+        const home={y:sphere.center.y-Math.sin(pitch)*distance,z:sphere.center.z+Math.cos(pitch)*distance,pitch};
+        const mouth=config.mouth?model.localToWorld(new THREE.Vector3(...config.mouth)):null;
         const wire=new THREE.MeshBasicMaterial({color:ACID,wireframe:true,side:THREE.DoubleSide});
         model.traverse(child=>{if(child.isMesh)child.material=wire});
-        model.visible=false;
-        landscape.scene.add(model);
-        bodyLandscape=model;
-        return model;
-      })().catch(err=>{bodyLoad=null;throw err});
-      return bodyLoad;
+        model.visible=false;landscape.scene.add(model);
+        const entry={model,home,center:sphere.center,mouth};
+        bodyModelCache.set(id,entry);return entry;
+      })().catch(err=>{bodyModelLoads.delete(id);throw err}));
+      return bodyModelLoads.get(id);
+    }
+    function activateBodyModel(id,entry){
+      bodyModelCache.forEach(item=>item.model.visible=false);
+      selectedBodyModel=id;bodyLandscape=entry.model;
+      Object.assign(bodyHome,entry.home);bodyOrbitTarget.copy(entry.center);
+      bodyIntro.end.set(0,bodyHome.y,bodyHome.z);
+      bodyIntro.mouth.copy(entry.mouth||entry.center);
     }
     function updateBodyCamera(){
+      landscape.camera.up.copy(bodyCameraUp);
       landscape.camera.position.set(bodyNav.x,bodyHome.y+bodyNav.y,bodyHome.z+bodyNav.z);
+      // Follow navigation distance so the old 220-unit clipping plane cannot cut off zoom-out.
+      const distance=landscape.camera.position.distanceTo(bodyOrbitTarget);
+      const near=Math.max(Number.EPSILON,Math.min(.1,distance*.001));
+      const far=Math.max(220,distance*4+200);
+      if(Math.abs(landscape.camera.near-near)>near*.02||Math.abs(landscape.camera.far-far)>far*.02){
+        landscape.camera.near=near;landscape.camera.far=far;landscape.camera.updateProjectionMatrix();
+      }
       const cp=Math.cos(bodyNav.pitch);
       landscape.camera.lookAt(bodyNav.x-Math.sin(bodyNav.yaw)*cp*24,
         landscape.camera.position.y+Math.sin(bodyNav.pitch)*24,
         landscape.camera.position.z-Math.cos(bodyNav.yaw)*cp*24);
     }
     function moveBodyCamera(key){
+      stopBodyIntro();stopBodyMidi();
       const step=1.5;
-      if(key==='Home')Object.assign(bodyNav,{x:0,y:0,z:0,yaw:0,pitch:-.42});
+      if(key==='Home'){bodyCameraUp.set(0,1,0);Object.assign(bodyNav,{x:0,y:0,z:0,yaw:0,pitch:bodyHome.pitch})}
       if(key==='ArrowLeft')bodyNav.yaw-=.09;
       if(key==='ArrowRight')bodyNav.yaw+=.09;
       if(key==='ArrowUp'){bodyNav.x-=Math.sin(bodyNav.yaw)*step;bodyNav.z-=Math.cos(bodyNav.yaw)*step}
@@ -310,6 +380,113 @@
       if(key==='f')bodyNav.pitch=Math.max(-1.45,bodyNav.pitch-.06);
       updateBodyCamera();
     }
+    // Mouse orbit updates the same navigation state used by the render loop and keys.
+    // This avoids a second camera controller fighting updateBodyCamera every frame.
+    let bodyDrag=null;
+    function setBodyOrbit(radius,theta,phi){
+      const offset=new THREE.Vector3().setFromSphericalCoords(radius,phi,theta);
+      // Track the orbital up-vector through the poles for continuous full vertical turns.
+      bodyCameraUp.set(-Math.cos(phi)*Math.sin(theta),Math.sin(phi),-Math.cos(phi)*Math.cos(theta));
+      const position=bodyOrbitTarget.clone().add(offset);
+      const direction=offset.clone().negate().normalize();
+      bodyNav.x=position.x;
+      bodyNav.y=position.y-bodyHome.y;
+      bodyNav.z=position.z-bodyHome.z;
+      bodyNav.yaw=Math.atan2(-direction.x,-direction.z);
+      bodyNav.pitch=Math.asin(THREE.MathUtils.clamp(direction.y,-1,1));
+      updateBodyCamera();
+    }
+    // Centered speed controls keep zoom and both orbit axes continuous.
+    // Small knob movements stay gentle; the camera never snaps to an absolute knob angle.
+    const bodyMidi={active:false,radius:1,theta:0,phi:Math.PI/2,
+      targetRadius:1,targetTheta:0,targetPhi:Math.PI/2,lastTime:0,zoomSpeed:0,zoomTarget:0,yawSpeed:0,yawTarget:0,pitchSpeed:0,pitchTarget:0};
+    function stopBodyMidi(){bodyMidi.active=false;bodyMidi.zoomSpeed=0;bodyMidi.zoomTarget=0;bodyMidi.yawSpeed=0;bodyMidi.yawTarget=0;bodyMidi.pitchSpeed=0;bodyMidi.pitchTarget=0}
+    function scaleBodyRadius(radius,exponent){
+      const next=radius*Math.exp(exponent);
+      return Number.isFinite(next)&&next>0?next:radius;
+    }
+    function captureBodyOrbit(){
+      const orbit=new THREE.Spherical().setFromVector3(landscape.camera.position.clone().sub(bodyOrbitTarget));
+      const up=new THREE.Vector3(-Math.cos(orbit.phi)*Math.sin(orbit.theta),Math.sin(orbit.phi),-Math.cos(orbit.phi)*Math.cos(orbit.theta));
+      if(bodyCameraUp.dot(up)<0){orbit.phi=-orbit.phi;orbit.theta+=Math.PI}
+      return orbit;
+    }
+    function beginBodyMotion(input){
+      if(bodyMidi.active&&bodyMidi.input===input)return;
+      stopBodyMidi();updateBodyCamera();
+      const orbit=captureBodyOrbit();
+      Object.assign(bodyMidi,{active:true,input,radius:orbit.radius,theta:orbit.theta,phi:orbit.phi,
+        targetRadius:orbit.radius,targetTheta:orbit.theta,targetPhi:orbit.phi,lastTime:performance.now(),
+        focus:landscape.camera.position.clone().addScaledVector(landscape.camera.getWorldDirection(new THREE.Vector3()),orbit.radius)});
+    }
+    function driveBodyMidi(cc,value,previous){
+      if(!bodyLandscape)return;
+      stopBodyIntro();endBodyDrag();beginBodyMotion('midi');
+      const centered=(value-63.5)/63.5,amount=Math.max(0,(Math.abs(centered)-.1)/.9);
+      const drive=Math.sign(centered)*amount*amount*amount;
+      if(cc===19){bodyMidi.zoomTarget=drive*.18;if(drive===0)bodyMidi.zoomSpeed=0}
+      if(cc===20){bodyMidi.yawTarget=-drive*.22;if(drive===0)bodyMidi.yawSpeed=0}
+      if(cc===21){bodyMidi.pitchTarget=-drive*.18;if(drive===0)bodyMidi.pitchSpeed=0}
+    }
+    function tickBodyMidi(now){
+      if(!bodyMidi.active)return;
+      const dt=Math.min(.08,Math.max(0,(now-bodyMidi.lastTime)/1000));bodyMidi.lastTime=now;
+      const alpha=1-Math.exp(-dt/.14);
+      if(bodyMidi.input==='midi'){
+        // One velocity filter, then direct integration: no queued pose chasing behind it.
+        bodyMidi.zoomSpeed+=(bodyMidi.zoomTarget-bodyMidi.zoomSpeed)*alpha;
+        bodyMidi.yawSpeed+=(bodyMidi.yawTarget-bodyMidi.yawSpeed)*alpha;
+        bodyMidi.pitchSpeed+=(bodyMidi.pitchTarget-bodyMidi.pitchSpeed)*alpha;
+        bodyMidi.radius=scaleBodyRadius(bodyMidi.radius,-bodyMidi.zoomSpeed*dt);
+        bodyMidi.theta+=bodyMidi.yawSpeed*dt;
+        bodyMidi.phi+=bodyMidi.pitchSpeed*dt;
+        bodyMidi.targetRadius=bodyMidi.radius;bodyMidi.targetTheta=bodyMidi.theta;bodyMidi.targetPhi=bodyMidi.phi;
+      }else{
+        // Mouse gestures get a single monotonic interpolation with no spring/overshoot.
+        bodyMidi.radius=Math.exp(Math.log(bodyMidi.radius)+(Math.log(bodyMidi.targetRadius)-Math.log(bodyMidi.radius))*alpha);
+        bodyMidi.theta+=(bodyMidi.targetTheta-bodyMidi.theta)*alpha;
+        bodyMidi.phi+=(bodyMidi.targetPhi-bodyMidi.phi)*alpha;
+      }
+      const moving=bodyMidi.input==='mouse'||bodyMidi.zoomTarget!==0||bodyMidi.yawTarget!==0||bodyMidi.pitchTarget!==0;
+      if(moving)bodyMidi.focus.lerp(bodyOrbitTarget,alpha);
+      setBodyOrbit(bodyMidi.radius,bodyMidi.theta,bodyMidi.phi);
+      // A world-space focus transition replaces the quaternion feedback loop.
+      setBodyCameraPose(landscape.camera.position.clone(),bodyMidi.focus);
+    }
+
+    function endBodyDrag(){
+      if(bodyDrag&&bodyMidi.active&&bodyMidi.input==='mouse'){bodyMidi.targetTheta=bodyMidi.theta;bodyMidi.targetPhi=bodyMidi.phi}
+      if(bodyDrag&&canvas.hasPointerCapture(bodyDrag.pointer))canvas.releasePointerCapture(bodyDrag.pointer);
+      bodyDrag=null;canvas.style.cursor='';
+    }
+    canvas.addEventListener('pointerdown',e=>{
+      if(currentScene!=='body'||e.button!==1)return;
+      e.preventDefault();stopBodyIntro();stopBodyMidi();beginBodyMotion('mouse');
+      const orbit=captureBodyOrbit();
+      bodyDrag={pointer:e.pointerId,x:e.clientX,y:e.clientY,radius:orbit.radius,theta:orbit.theta,phi:orbit.phi};
+      canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';
+    });
+    canvas.addEventListener('pointermove',e=>{
+      if(!bodyDrag||bodyDrag.pointer!==e.pointerId)return;
+      if(currentScene!=='body'||!(e.buttons&4)){endBodyDrag();return}
+      e.preventDefault();
+      const theta=bodyDrag.theta-(e.clientX-bodyDrag.x)*.0018;
+      const phi=bodyDrag.phi-(e.clientY-bodyDrag.y)*.0018;
+      bodyMidi.targetTheta=theta;bodyMidi.targetPhi=phi;
+    });
+    canvas.addEventListener('pointerup',endBodyDrag);
+    canvas.addEventListener('pointercancel',endBodyDrag);
+    canvas.addEventListener('lostpointercapture',()=>{bodyDrag=null;canvas.style.cursor=''});
+    window.addEventListener('blur',endBodyDrag);
+    // Suppress the browser's middle-click autoscroll on the performance canvas.
+    canvas.addEventListener('mousedown',e=>{if(currentScene==='body'&&e.button===1)e.preventDefault()});
+    canvas.addEventListener('auxclick',e=>{if(currentScene==='body'&&e.button===1)e.preventDefault()});
+    canvas.addEventListener('wheel',e=>{
+      if(currentScene!=='body'||e.ctrlKey||e.metaKey)return;
+      e.preventDefault();stopBodyIntro();endBodyDrag();beginBodyMotion('mouse');
+      const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?innerHeight:1);
+      bodyMidi.targetRadius=scaleBodyRadius(bodyMidi.targetRadius,THREE.MathUtils.clamp(delta,-200,200)*.00035);
+    },{passive:false});
     function addGenesisObject(id){
       const n=landscape.objects[id].length,seed=n+1;
       let obj;
@@ -356,6 +533,11 @@
         obj=new THREE.Points(geo,new THREE.PointsMaterial({color:ACID,size:.07,transparent:true,opacity:.78}));
         obj.position.set((n%5-2)*4,3+(n%3),-18-(n%5)*7);
       }else return;
+      if(activeScene==='body'&&bodyLandscape){
+        obj.position.set(bodyIntro.mouth.x+(Math.random()-.5)*38,
+          bodyIntro.mouth.y+(Math.random()-.5)*24,
+          bodyOrbitTarget.z+26+Math.random()*16);
+      }
       obj.userData={kind:id,seed,baseX:obj.position.x,baseY:obj.position.y,baseZ:obj.position.z,spawn:performance.now(),growth:id==='tree'?0:1};
       if(id==='tree')obj.scale.set(.015,.015,.015);
       if(['phone','diamond','cola','pistol'].includes(id)){
@@ -397,6 +579,8 @@
       farewellStars.length=0;bellWasHigh=false;lastBell=0;
     }
     function startFarewell(){
+      // Dispose any previous sun even when the scene is reselected rapidly.
+      if(farewellSun3D){landscape.scene.remove(farewellSun3D);farewellSun3D.geometry?.dispose();farewellSun3D.material?.dispose();farewellSun3D=null}
       clearFarewellStars();
       clearLandscapeObjects();landscape.nav.x=0;landscape.nav.z=0;landscape.nav.yaw=0;
       landscape.camera.position.set(0,4.6,10);landscape.camera.lookAt(0,-1,-18);
@@ -673,7 +857,7 @@
       }
       pos.needsUpdate=true;
       landscape.mesh.position.z=-28+(landscapeT*1.35%3.2);
-      if(activeScene==='body')updateBodyCamera();
+      if(activeScene==='body'){tickBodyIntro();tickBodyMidi(performance.now());updateBodyCamera();}
       else {
         landscape.camera.position.x=landscape.nav.x+Math.sin(landscapeT*.13)*.35;
         landscape.camera.position.z=10+landscape.nav.z;
@@ -771,12 +955,12 @@ voronoi(
       () => .08 - deform() * .055,
       0
     ).rotate(() => Math.sin(time * (1 - deform()*.72))),
-    () => (.42 + low()*.75) * (1 - deform()*.72) + deform()*.34
+    () => (.42 + low()*.75) * (1 - deform()*.72) + deform()*.055
   )
   .thresh(() => .80 - low()*.10 - deform()*.13)
   .modulateRotate(
     osc(() => 6.5 + mid()*5 - deform()*4.8),
-    () => (.30 + mid()*.75) * (1 - deform()*.78) + deform()*.22
+    () => (.30 + mid()*.75) * (1 - deform()*.78)
   )
   .thresh(() => .70 - mid()*.07 - deform()*.12)
   .diff(
@@ -799,7 +983,7 @@ voronoi(
   )
   .diff(
     src(o0)
-      .scale(() => 1.002 + deform()*.045)
+      .scale(() => 1.002 + deform()*.012)
       .rotate(() => -.012 * (1-deform()))
       .scrollY(0, () => -1/199800 * (1-deform()))
   )
@@ -811,12 +995,7 @@ voronoi(
     () => 1 - feedback()*.92
   )
   // Keep the forest cue mostly monochrome until the second half of CC17.
-  .saturate(() => 1 + Math.pow(feedback(),1.7)*4.5)
-  .contrast(() => 1 + feedback()*.9)
-  .scale(() => 1 + landscapeMotion()*.26)
-  .rotate(() => Math.sin(time*.35)*landscapeMotion()*.25)
-  .scrollX(() => Math.sin(time*.6)*archiveMotion()*.14)
-  .scrollY(() => Math.cos(time*.45)*archiveMotion()*.10)
+  .saturate(() => 1 + Math.pow(feedback(),1.7)*2.15)
   .brightness(() => -.06 - high()*.12 + deform()*.035)
   .out(o0)
 
@@ -978,13 +1157,10 @@ render(o0)`;
   .contrast(() => 1.16 + low()*.18 + audioChaos()*.6 + param1()*.9)
   .brightness(() => -.18 + param2()*.25)
   .color(.22,1,.08)
-  .scale(() => 1 + param2()*.35 + landscapeMotion()*.28)
-  .rotate(() => Math.sin(time*.4)*archiveMotion()*.25)
   .modulate(
     noise(() => .8 + mid()*(.7+audioChaos()*3.2),.015),
-    () => .004 + low()*.008 + audioReact()*mid()*.018 + audioChaos()*(.08+high()*.07+hit()*.045) + param1()*.085
+    () => .004 + low()*.008 + audioReact()*mid()*.018 + audioChaos()*(.04+high()*.035+hit()*.025) + param1()*.035
   )
-  .layer(src(s0).luma(.22).color(.22,1,.08).brightness(-.12))
   .out(o0)
 render(o0)`;
 
@@ -996,7 +1172,7 @@ render(o0)`;
       resonance:{label:'RESONANCE · PRE-HYPNOSIS / WEBCAM',code:resonanceGradient},
       hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
       farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
-      body:{label:'BODY · 3D LANDSCAPE',code:genesisLandscape},
+      body:{label:'MODELS · A / B / C',code:genesisLandscape},
      };
     let currentScene='custom01';
     code.value=scenes[currentScene].code;
@@ -1021,37 +1197,56 @@ render(o0)`;
     run();
 
     let sceneRequest=0;
-    async function loadScene(id){
+    async function loadScene(id,options={}){
       const scene=scenes[id];
       if(!scene)return;
       const request=++sceneRequest;
-      if(id==='body'){
-        status.textContent='LOADING · BODY LANDSCAPE';
-        try{await ensureBodyLandscape()}
-        catch(err){if(request===sceneRequest){status.textContent='BODY LOAD ERROR · '+err.message;status.classList.add('error')}return}
-        if(request!==sceneRequest)return;
+      lastMidiCC.clear();
+      endBodyDrag();stopBodyIntro();stopBodyMidi();
+      if(id!=='body'){
+        landscape.camera.up.set(0,1,0);
+        landscape.camera.near=.1;landscape.camera.far=220;landscape.camera.updateProjectionMatrix();
+        Object.values(landscape.objects).forEach(list=>list.forEach(obj=>obj.visible=true));
       }
-      currentScene=id;activeScene=id;
+      if(id==='body'){
+        const modelId=options.model||selectedBodyModel;
+        status.textContent='LOADING · MODEL '+modelId;
+        let entry;
+        try{entry=await ensureBodyLandscape(modelId)}
+        catch(err){if(request===sceneRequest){status.textContent='MODEL LOAD ERROR · '+err.message;status.classList.add('error');regiaChannel.postMessage({type:'hydra-model-state',model:selectedBodyModel,error:err.message})}return}
+        if(request!==sceneRequest)return;
+        activateBodyModel(modelId,entry);
+      }
       landscape.mesh.visible=id!=='body';
       if(bodyLandscape)bodyLandscape.visible=id==='body';
-      if(id==='body')updateBodyCamera();
+      if(id==='body'){
+        if(options.intro!==false&&bodyModels[selectedBodyModel].mouth)startBodyIntro();else moveBodyCamera('Home');
+        updateBodyCamera();
+        regiaChannel.postMessage({type:'hydra-model-state',model:selectedBodyModel});
+      }
       if(id!=='resonance'){resonanceInvert=false;applyInvert()}
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
       if(['genesis','body','farewell'].includes(id)){
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
-      if((id==='hypnosis'||id==='resonance')&&!(await ensureWebcam()))return;
+      if(id==='hypnosis'||id==='resonance'){
+        // Camera access is optional: never block a scene transition from regia.
+        // A missing/denied webcam simply leaves the source blank until available.
+        // Do not wait for browser camera permission before switching scenes.
+        void ensureWebcam().catch(err=>console.warn('HYDRA CAMERA UNAVAILABLE',err));
+      }
       if(id==='farewell')startFarewell(); else hideFarewell();
       capitalCounter.style.display=(id==='genesis'||id==='body')?'block':'none';
       if(id!=='hypnosis'){hearts.length=0;heartCtx.clearRect(0,0,heartCanvas.width,heartCanvas.height)}
+      currentScene=id;activeScene=id;
+      updateDualCams();
       sceneTag.textContent='HYDRA · '+scene.label;
       if(!scene.code){
         status.textContent=scene.label+' · EMPTY SLOT';
         status.classList.remove('error');
         return;
       }
-      if(scene.code!==lastRun){history.push(lastRun);if(history.length>50)history.shift()}
       code.value=scene.code;
       run();
     }
@@ -1099,7 +1294,9 @@ render(o0)`;
     const handleRegia=m=>{
       m=m||{};
       if(m.type==='hydra-fullscreen'){status.textContent='FULLSCREEN · USE F11 ON HYDRA WINDOW ONCE'}
-      if(m.type==='hydra-scene')loadScene(m.scene);
+      if(m.type==='hydra-scene')loadScene(m.scene,{model:m.model});
+      if(m.type==='hydra-model')loadScene('body',{model:m.model,intro:false});
+      if(m.type==='hydra-face-intro')void controlBodyIntro(m.action,m.duration);
       if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
       if(m.type==='hydra-farewell-credits'){farewellCreditsInner.textContent=String(m.text||'').trim()||'BLIVET'}
       if(m.type==='hydra-credits-play')showFarewellCredits(m.text||farewellCreditsInner.textContent)
