@@ -392,6 +392,11 @@ control.addEventListener("message",async e=>{
  }catch(err){state.textContent=err.name||"AUDIO ERROR"}
 });
 const send=message=>{control.postMessage(message);localStorage.setItem("elisa-regia-command",JSON.stringify({id:Date.now()+Math.random(),message}))};
+const sendMasterClock=()=>{
+ if(window.ELISA_AUDIO?.source==="track")send({type:"master-clock",time:master.currentTime,playing:!master.paused&&!master.ended});
+};
+["play","pause","seeked","timeupdate","ended"].forEach(event=>master.addEventListener(event,sendMasterClock));
+
 document.querySelectorAll("[data-fx]").forEach(btn=>btn.onclick=()=>{btn.classList.toggle("on");send({type:"fx",fx:btn.dataset.fx,on:btn.classList.contains("on")})});
 q("#fxClean").onclick=()=>{document.querySelectorAll("[data-fx]").forEach(b=>b.classList.remove("on"));send({type:"fx-clean"})};
 q("#subtitles").onclick=e=>{const on=e.currentTarget.classList.toggle("on");e.currentTarget.textContent="SUBTITLES "+(on?"ON":"OFF");send({type:"subtitles",on})};
