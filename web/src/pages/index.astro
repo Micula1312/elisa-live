@@ -450,6 +450,22 @@
     // Performance state is manual: no delayed cue is allowed to change keyboard state.
   });
 
+  // Manual strobe: one short white flash per background press; images keep focus.
+  const strobeLayer=document.createElement("div");
+  strobeLayer.setAttribute("aria-hidden","true");
+  Object.assign(strobeLayer.style,{position:"fixed",inset:"0",background:"#fff",opacity:"0",pointerEvents:"none",zIndex:"2147483100"});
+  document.body.appendChild(strobeLayer);
+  let strobeAnimation=null;
+  const flashBackground=()=>{
+    strobeAnimation?.cancel();
+    strobeAnimation=strobeLayer.animate([{opacity:1},{opacity:1,offset:.65},{opacity:0}],{duration:100,fill:"none"});
+  };
+  feed.addEventListener("pointerdown",e=>{
+    if(e.button!==0||spatialEnabled||!feed.classList.contains("break-start"))return;
+    if(e.target.closest(".post,.feed-header,button,a,input,select,textarea"))return;
+    flashBackground();
+  });
+
   // Keyboard is the visual instrument: every cue is reversible and legible.
   // B = pulse/rest (second press restores neutral tiles)
   // D = detach/re-attach, F = explode/float, G = depth.
@@ -537,11 +553,11 @@
     cyclone={renderer,scene,camera,group,planes,particles,particlePositions:positions,particleSeeds,raycaster,pointer};
     addEventListener("resize",()=>{if(!cyclone)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
     renderer.domElement.addEventListener("pointerdown",e=>{
-      if(!spatialEnabled)return;
+      if(!spatialEnabled||e.button!==0)return;
       const rect=renderer.domElement.getBoundingClientRect();
       pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
       raycaster.setFromCamera(pointer,camera);
-      const hitPlane=raycaster.intersectObjects(planes,false)[0]?.object;if(!hitPlane)return;
+      const hitPlane=raycaster.intersectObjects(planes,false).find(hit=>hit.object.material.map&&hit.object.material.opacity>.05)?.object;if(!hitPlane){flashBackground();return}
       focusedPlane=hitPlane;
       hitPlane.userData.focusUntil=performance.now()+FOCUS_HOLD;
       hitPlane.userData.focusStart=performance.now();
