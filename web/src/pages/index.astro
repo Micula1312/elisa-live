@@ -311,37 +311,29 @@
   const renderSubtitle=()=>{
     if(!subtitlesEnabled){subtitleLayer.classList.remove("on");return}
     if(voiceSubtitleRunning){
-      const local=(performance.now()-voiceSubtitleStarted)/1000;
-      const cue=(dialogues.voiceBody||[]).find(q=>local>=q.time&&local<q.end);
-      setSubtitle(cue,cue?"voiceBody:"+cue.time:"");
-      if(local>=85){voiceSubtitleRunning=false;setSubtitle(null,"")}
-      return
+      const t=voiceWindow.start+(performance.now()-voiceSubtitleStarted)/1000;
+      const cue=voiceTimeline.find(q=>t>=q.time&&t<q.end);
+      setSubtitle(cue,cue?"manual-voice:"+cue.time:"");
+      if(t>=voiceWindow.end)voiceSubtitleRunning=false;
+      return;
     }
-    if(performance.now()<subtitlePreviewUntil)return;
     const t=remoteTrackClock
       ?remoteTrackClock.time+(remoteTrackClock.playing?(performance.now()-remoteTrackClock.received)/1000:0)
       :(master.currentTime||0);
     const cue=voiceTimeline.find(q=>t>=q.time&&t<q.end);
     setSubtitle(cue,cue?"master-voice:"+cue.time:"");
   };
-  const previewSubtitle=()=>{
-    const cue=dialogues.intro?.[0];
-    if(!cue)return;
-    subtitlePreviewUntil=performance.now()+2600;
-    setSubtitle(cue,"preview");
-    setTimeout(()=>{subtitlePreviewUntil=0;renderSubtitle()},2650);
-  };
   subtitleToggle.addEventListener("click",()=>{
     subtitlesEnabled=!subtitlesEnabled;
     subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");
     subtitleToggle.classList.toggle("on",subtitlesEnabled);
-    if(subtitlesEnabled)previewSubtitle(); else setSubtitle(null,"");
+    if(subtitlesEnabled)renderSubtitle(); else setSubtitle(null,"");
   });
   master.addEventListener("timeupdate",renderSubtitle);
   master.addEventListener("seeked",renderSubtitle);
   master.addEventListener("play",renderSubtitle);
   // timeupdate can be sparse while the show is running; keep subtitle cue timing responsive.
-  setInterval(()=>{if(subtitlesEnabled&&(!master.paused||remoteTrackClock))renderSubtitle()},120);
+  setInterval(()=>{if(subtitlesEnabled)renderSubtitle()},120);
   // Dev/rehearsal source: /public/audio/elisa_master.wav. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
@@ -351,6 +343,7 @@
   let motionClock=0,lastAudioFrame=performance.now(),slipEnabled=false,floatEnabled=false,spatialEnabled=false,orbitEnabled=false,pixelEnabled=false,vortexEnabled=false,holeEnabled=false;
   let archiveLayout="";
   const layoutMix={"1":0,"2":0,"3":0};
+  let distanceMix=0;
   let spaceX=0,spaceY=0,spaceZ=0,spaceZoom=1;
   // Drop performance images in /web/public/feed/. Add/remove filenames here only.
   // Missing files gracefully fall back to the black/white/red placeholder.
@@ -596,6 +589,7 @@
       // p=0 is a true F clone. Width only recedes after the user actually scrolls into depth.
       const preZoom=1-THREE.MathUtils.smoothstep(p,.04,.58)*.48;
       const layoutTime=performance.now()*.00018;
+      distanceMix+=(Number(pixelEnabled&&!vortexEnabled&&!holeEnabled)-distanceMix)*.045;
       for(const key of Object.keys(layoutMix))layoutMix[key]+=(Number(archiveLayout===key)-layoutMix[key])*.045;
       planes.forEach((m,i)=>{
         // Start as a three-column vertical feed, then bend that SAME layout into Z.
@@ -644,6 +638,15 @@
         x=x*base+sx*shatter+cx*stars+Math.sin(ribbonAngle)*10*ribbon;
         y=y*base+sy*shatter+cy*stars+(Math.sin(ribbonAngle*.65)*2.6+((i%3)-1)*1.2)*ribbon;
         z=z*base+(-hash(5)*7)*shatter+(-hash(6)*32+Math.sin(layoutTime+i)*2)*stars+(-8+Math.cos(ribbonAngle)*7)*ribbon;
+        // J: three receding walls of images, visibly distinct from H's orbit.
+        const wall=Math.floor(i/40),col=i%8,wallRow=Math.floor((i%40)/8);
+        const distanceX=(col-3.5)*3.2+Math.sin(layoutTime*.6+wall)*.7;
+        const distanceY=(2-wallRow)*3.0;
+        const distanceZ=-wall*13-5-(Math.sin(layoutTime*.5)+1)*5;
+        const distanceBlend=distanceMix*Math.max(0,1-total);
+        x=THREE.MathUtils.lerp(x,distanceX,distanceBlend);
+        y=THREE.MathUtils.lerp(y,distanceY,distanceBlend);
+        z=THREE.MathUtils.lerp(z,distanceZ,distanceBlend);
         const focusLeft=Math.max(0,(m.userData.focusUntil||0)-performance.now());
         if(focusLeft>0){
           const age=performance.now()-(m.userData.focusStart||performance.now());
@@ -665,6 +668,7 @@
         if(vortexEnabled)stageScale*=.44;
         if(holeEnabled)stageScale*=.20;
         stageScale=stageScale*Math.max(0,1-total)+(1.1+hash(7)*1.7)*shatter+(.22+hash(8)*.65)*stars+.65*ribbon;
+        stageScale=THREE.MathUtils.lerp(stageScale,1.05*audioScale,distanceBlend);
         m.scale.setScalar(stageScale*(m.userData.focusScale||1));
         m.quaternion.copy(camera.quaternion);
         if(m.material.map)m.material.opacity=(.98-high*.08)*(1-particleMix*.82)*(1-holeMix*.75);
@@ -826,10 +830,11 @@
     if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1);applyVideoFx()}
     if(m.type==="voice-subtitles-play"){voiceSubtitleStarted=performance.now();voiceSubtitleRunning=true;subtitlesEnabled=true;subtitleToggle.textContent="SUBTITLES ON";subtitleToggle.classList.add("on");renderSubtitle();return}
     if(m.type==="voice-subtitles-stop"){voiceSubtitleRunning=false;setSubtitle(null,"");return}
-    if(m.type==="subtitles"){subtitlesEnabled=!!m.on;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);if(subtitlesEnabled){subtitlePreviewUntil=0;renderSubtitle();if(!master.currentTime)previewSubtitle()}else setSubtitle(null,"")}
+    if(m.type==="subtitles"){subtitlesEnabled=!!m.on;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);if(subtitlesEnabled){subtitlePreviewUntil=0;renderSubtitle()}else setSubtitle(null,"")}
   };
   const regiaChannel=new BroadcastChannel("elisa-regia");
   regiaChannel.onmessage=e=>handleRegiaMessage(e.data);
+  regiaChannel.postMessage({type:"master-clock-request"});
   addEventListener("storage",e=>{if(e.key==="elisa-master-clock"){restoreMasterClock();renderSubtitle();return}if(e.key==="elisa-regia-command"&&e.newValue){try{handleRegiaMessage(JSON.parse(e.newValue).message)}catch{}}});
   const moveSpace=(dx,dy,dz=0)=>{spaceX+=dx;spaceY+=dy;spaceZ+=dz;syncCueMonitor()};
   const zoomSpace=(delta)=>{spaceZoom=Math.max(.35,Math.min(3,spaceZoom+delta));syncCueMonitor()};
