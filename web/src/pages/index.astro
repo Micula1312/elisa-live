@@ -167,7 +167,7 @@
   <div id="cueHud">S SCROLL · B BREATH I · D BREATH II · 1 SHATTER · F FLOAT · 2 CONSTELLATION · G DEPTH · H 2D→3D · J ORBIT · 3 RIBBON · K DISSOLVE · L HOLE</div>
   <aside id="videoPanel">
     <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
-    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button data-fx="blur">BLUR</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
+    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button data-fx="blur">BLUR</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle" class="on">SUBTITLES ON</button></div>
     <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
@@ -303,7 +303,7 @@
   const setSubtitle=(cue,key)=>{
     if(!cue){subtitleLayer.classList.remove("on");lastSubtitleKey="";return}
     if(key!==lastSubtitleKey){
-      subtitleLayer.innerHTML='<span class="subtitle-speaker">'+(cue.speaker||"aicha")+'</span>'+cue.text.replace(/\n/g,"<br>");
+      subtitleLayer.textContent=cue.text;
       lastSubtitleKey=key;
     }
     subtitleLayer.classList.add("on");
