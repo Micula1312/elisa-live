@@ -26,7 +26,7 @@
   },
   "timeline": {
     "clock": "master-track",
-    "audio": "/audio/elisa_master.mp3",
+    "audio": "/audio/elisa_master.wav",
     "autoplay": false,
     "macroAutomation": false,
     "reactiveSource": "ELISA_AUDIO"
