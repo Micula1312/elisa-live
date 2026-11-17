@@ -184,7 +184,7 @@
     <select id="audioDevice"><option value="">Default audio input</option></select>
     <div class="ap-actions"><button id="audioRefresh">REFRESH</button><button id="audioArm">ARM LIVE IN</button></div>
     <div class="ap-actions"><button id="trackPlay">PLAY MASTER</button><button id="trackReset">↺ 0:00</button></div>
-    <audio id="masterTrack" src="/audio/elisa_master.mp3" preload="metadata"></audio>
+    <audio id="masterTrack" src="/audio/elisa_master.wav" preload="metadata"></audio>
     <div class="meter-row"><span>TIME</span><input id="audioSeek" type="range" min="0" max="1000" step="1" value="0" style="width:100%"><span id="vTime">0:00</span></div>
     <div class="meter-row"><span>LVL</span><div class="meter"><i id="mLevel"></i></div><span id="vLevel">0.00</span></div>
     <div class="meter-row"><span>LOW</span><div class="meter"><i id="mLow"></i></div><span id="vLow">0.00</span></div>
@@ -327,7 +327,7 @@
   master.addEventListener("play",renderSubtitle);
   // timeupdate can be sparse while the show is running; keep subtitle cue timing responsive.
   setInterval(()=>{if(subtitlesEnabled&&!master.paused)renderSubtitle()},120);
-  // Dev/rehearsal source: /public/audio/elisa_master.mp3. Live source remains the selected hardware audio input.
+  // Dev/rehearsal source: /public/audio/elisa_master.wav. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
   const feed=document.querySelector("#feedScene"), grid=document.querySelector(".grid"), archiveHole=document.querySelector("#archiveHole");
