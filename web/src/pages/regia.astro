@@ -398,7 +398,8 @@ const sendMasterClock=()=>{
  send(message);
 };
 ["play","pause","seeked","timeupdate","ended"].forEach(event=>master.addEventListener(event,sendMasterClock));
-setInterval(()=>{if(!master.paused)sendMasterClock()},250);
+setInterval(()=>{if(!master.paused||master.currentTime>0)sendMasterClock()},250);
+control.addEventListener("message",e=>{if(e.data?.type==="master-clock-request")sendMasterClock()});
 
 document.querySelectorAll("[data-fx]").forEach(btn=>btn.onclick=()=>{btn.classList.toggle("on");send({type:"fx",fx:btn.dataset.fx,on:btn.classList.contains("on")})});
 q("#fxClean").onclick=()=>{document.querySelectorAll("[data-fx]").forEach(b=>b.classList.remove("on"));send({type:"fx-clean"})};
