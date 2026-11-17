@@ -278,11 +278,19 @@
 
   let subtitlesEnabled=true,lastSubtitleKey="",subtitlePreviewUntil=0,voiceSubtitleStarted=0,voiceSubtitleRunning=false;
   subtitleToggle.textContent="SUBTITLES ON";subtitleToggle.classList.add("on");
-  // Master-track absolute starts from the current regia backup.
-  const dialogueScenes=[
-    {start:0,module:"intro"},{start:120,module:"genesis"},{start:680,module:"hypnosis"},
-    {start:1460,module:"resonance"},{start:1840,module:"farewell"}
-  ];
+  // Estimated reading times for rehearsal; refine against the recording.
+  const voiceWindow={start:495,end:660};
+  const voiceBlocks=["intro","genesis","hypnosis","resonance","crossing","farewell"];
+  const voiceLines=voiceBlocks.flatMap(module=>(dialogues[module]||[]).map(cue=>({...cue,module})));
+  const voiceWeights=voiceLines.map(cue=>Math.max(3,cue.text.split(/\s+/).length)+2);
+  const voiceTotal=voiceWeights.reduce((sum,n)=>sum+n,0);
+  let voiceCursor=voiceWindow.start;
+  const voiceTimeline=voiceLines.map((cue,i)=>{
+    const time=voiceCursor;
+    voiceCursor+=(voiceWindow.end-voiceWindow.start)*voiceWeights[i]/voiceTotal;
+    return {...cue,time,end:i===voiceLines.length-1?voiceWindow.end:voiceCursor};
+  });
+  let remoteTrackClock=null;
   const setSubtitle=(cue,key)=>{
     if(!cue){subtitleLayer.classList.remove("on");lastSubtitleKey="";return}
     if(key!==lastSubtitleKey){
@@ -301,13 +309,11 @@
       return
     }
     if(performance.now()<subtitlePreviewUntil)return;
-    const t=master.currentTime||0;
-    let scene=null;
-    for(const s of dialogueScenes)if(t>=s.start)scene=s;
-    if(!scene){setSubtitle(null,"");return}
-    const local=t-scene.start;
-    const cue=(dialogues[scene.module]||[]).find(q=>local>=q.time&&local<q.end);
-    setSubtitle(cue,cue?scene.module+":"+cue.time:"");
+    const t=remoteTrackClock
+      ?remoteTrackClock.time+(remoteTrackClock.playing?(performance.now()-remoteTrackClock.received)/1000:0)
+      :(master.currentTime||0);
+    const cue=voiceTimeline.find(q=>t>=q.time&&t<q.end);
+    setSubtitle(cue,cue?"master-voice:"+cue.time:"");
   };
   const previewSubtitle=()=>{
     const cue=dialogues.intro?.[0];
@@ -326,7 +332,7 @@
   master.addEventListener("seeked",renderSubtitle);
   master.addEventListener("play",renderSubtitle);
   // timeupdate can be sparse while the show is running; keep subtitle cue timing responsive.
-  setInterval(()=>{if(subtitlesEnabled&&!master.paused)renderSubtitle()},120);
+  setInterval(()=>{if(subtitlesEnabled&&(!master.paused||remoteTrackClock))renderSubtitle()},120);
   // Dev/rehearsal source: /public/audio/elisa_master.wav. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
@@ -797,6 +803,10 @@
   };
   const handleRegiaMessage=m=>{
     m=m||{};
+    if(m.type==="master-clock"&&Number.isFinite(m.time)){
+      remoteTrackClock={time:m.time,playing:!!m.playing,received:performance.now()};
+      subtitlePreviewUntil=0;renderSubtitle();return;
+    }
     if(m.type==="cue"){
       if(m.key==="s"){setAutoScroll(true);return}
       if(["1","2","3","b","d","f","g","h","j","k","l"].includes(m.key))toggleCue(m.key);
