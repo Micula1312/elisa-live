@@ -393,9 +393,12 @@ control.addEventListener("message",async e=>{
 });
 const send=message=>{control.postMessage(message);localStorage.setItem("elisa-regia-command",JSON.stringify({id:Date.now()+Math.random(),message}))};
 const sendMasterClock=()=>{
- if(window.ELISA_AUDIO?.source==="track")send({type:"master-clock",time:master.currentTime,playing:!master.paused&&!master.ended});
+ const message={type:"master-clock",time:master.currentTime,playing:!master.paused&&!master.ended,sentAt:Date.now()};
+ localStorage.setItem("elisa-master-clock",JSON.stringify(message));
+ send(message);
 };
 ["play","pause","seeked","timeupdate","ended"].forEach(event=>master.addEventListener(event,sendMasterClock));
+setInterval(()=>{if(!master.paused)sendMasterClock()},250);
 
 document.querySelectorAll("[data-fx]").forEach(btn=>btn.onclick=()=>{btn.classList.toggle("on");send({type:"fx",fx:btn.dataset.fx,on:btn.classList.contains("on")})});
 q("#fxClean").onclick=()=>{document.querySelectorAll("[data-fx]").forEach(b=>b.classList.remove("on"));send({type:"fx-clean"})};
