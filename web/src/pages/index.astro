@@ -164,7 +164,7 @@
   <div id="cycloneScene"><div id="slashLight"></div></div>
   <div id="archiveHole"></div>
   <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
-  <div id="cueHud">S SCROLL · B BREATH I · D BREATH II · F FLOAT · G DEPTH · H 2D→3D · J ORBIT · K DISSOLVE · L HOLE</div>
+  <div id="cueHud">S SCROLL · B BREATH I · D BREATH II · 1 SHATTER · F FLOAT · 2 CONSTELLATION · G DEPTH · H 2D→3D · J ORBIT · 3 RIBBON · K DISSOLVE · L HOLE</div>
   <aside id="videoPanel">
     <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
     <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button data-fx="blur">BLUR</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle">SUBTITLES OFF</button></div>
@@ -172,9 +172,9 @@
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
       <button class="cue-led" data-cue="b"><b>B</b><small>BREATH I</small></button><button class="cue-led" data-cue="d"><b>D</b><small>BREATH II</small></button>
-      <button class="cue-led" data-cue="f"><b>F</b><small>ZOOM DRIFT</small></button><button class="cue-led" data-cue="g"><b>G</b><small>ENTER 3D</small></button>
+      <button class="cue-led" data-cue="1"><b>1</b><small>SHATTER</small></button><button class="cue-led" data-cue="f"><b>F</b><small>ZOOM DRIFT</small></button><button class="cue-led" data-cue="2"><b>2</b><small>CONSTELLATION</small></button><button class="cue-led" data-cue="g"><b>G</b><small>ENTER 3D</small></button>
       <button class="cue-led" data-cue="h"><b>H</b><small>ORBIT 3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>DISTANCE</small></button>
-      <button class="cue-led" data-cue="k"><b>K</b><small>POINT FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>IMPLODE</small></button>
+      <button class="cue-led" data-cue="3"><b>3</b><small>RIBBON</small></button><button class="cue-led" data-cue="k"><b>K</b><small>POINT FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>IMPLODE</small></button>
     </div>
     <div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div><div class="space-readout" id="media3dState">3D MEDIA — waiting</div></div>
     <div class="vp-hint">V = show/hide · S starts persistent autoscroll · G enters matched 3D · wheel/arrows navigate</div>
@@ -334,6 +334,8 @@
   const seed=[...grid.querySelectorAll(".post")].map((el,i)=>({html:el.innerHTML,index:i}));
   let batch=1, feedStartedAt=0, breathEnabled=false, lastLow=0, lastMid=0, lastHigh=0;
   let motionClock=0,lastAudioFrame=performance.now(),slipEnabled=false,floatEnabled=false,spatialEnabled=false,orbitEnabled=false,pixelEnabled=false,vortexEnabled=false,holeEnabled=false;
+  let archiveLayout="";
+  const layoutMix={"1":0,"2":0,"3":0};
   let spaceX=0,spaceY=0,spaceZ=0,spaceZoom=1;
   // Drop performance images in /web/public/feed/. Add/remove filenames here only.
   // Missing files gracefully fall back to the black/white/red placeholder.
@@ -462,7 +464,7 @@
     archiveHole.classList.remove("on");archiveHole.style.setProperty("--hole-scale","0");
   };
   const syncCueMonitor=()=>{
-    const states={b:breathEnabled,d:slipEnabled,f:floatEnabled,g:spatialEnabled,h:orbitEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled};
+    const states={"1":archiveLayout==="1","2":archiveLayout==="2","3":archiveLayout==="3",b:breathEnabled,d:slipEnabled,f:floatEnabled,g:spatialEnabled,h:orbitEnabled,j:pixelEnabled,k:vortexEnabled,l:holeEnabled};
     videoPanel.querySelectorAll(".cue-led").forEach(el=>el.classList.toggle("on",!!states[el.dataset.cue]));
     const r=document.querySelector("#spaceReadout");if(r)r.textContent=`SPACE x ${Math.round(spaceX)} · y ${Math.round(spaceY)} · z ${Math.round(spaceZ)} · zoom ${spaceZoom.toFixed(2)}`;
   };
@@ -514,7 +516,7 @@
       const u=urls[i];
       const mat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,side:THREE.DoubleSide});
       const mesh=new THREE.Mesh(planeGeometry,mat);
-      mesh.userData={index:i,row:Math.floor(i/3),lane:(i%3)-1,seed:((i*73)%101)/101,url:u};group.add(mesh);planes.push(mesh);
+      mesh.userData={index:i,row:Math.floor(i/3),lane:(i%3)-1,seed:((i*73)%101)/101,layoutSeeds:Array.from({length:9},(_,n)=>((Math.sin(i*127.1+n*311.7)*43758.5453)%1+1)%1),url:u};group.add(mesh);planes.push(mesh);
       cycloneTexture(u,tex=>{
         mat.map=tex;mat.opacity=1;mat.needsUpdate=true;loaded++;
         if(media3dState)media3dState.textContent="3D MEDIA — "+loaded+"/"+count+(failed?" · "+failed+" failed":"");
@@ -562,13 +564,15 @@
       // G must inherit the visual width of F: begin broad, then only recede once depth develops.
       // p=0 is a true F clone. Width only recedes after the user actually scrolls into depth.
       const preZoom=1-THREE.MathUtils.smoothstep(p,.04,.58)*.48;
+      const layoutTime=performance.now()*.00018;
+      for(const key of Object.keys(layoutMix))layoutMix[key]+=(Number(archiveLayout===key)-layoutMix[key])*.045;
       planes.forEach((m,i)=>{
         // Start as a three-column vertical feed, then bend that SAME layout into Z.
         const row=m.userData.row,lane=m.userData.lane;
         let feedY=5.6-row*3.15+morphScroll*2.2;
         while(feedY < -18)feedY+=38;while(feedY>20)feedY-=38;
         const travel=(5.6-feedY)/23;
-        const z=-tunnel*(2+travel*cycloneCfg.depth);
+        let z=-tunnel*(2+travel*cycloneCfg.depth);
         const spread=2.32*preZoom*(1-tunnel*.22);
         const baseX=lane*spread;
         // Only the last part begins the horizontal-axis vortex: angle grows from vertical travel.
@@ -595,6 +599,20 @@
           const pull=.055+hit*.08+holeMix*.22;
           x*=Math.max(.02,1-pull-holeMix*.72);y*=Math.max(.02,1-pull-holeMix*.72);
         }
+        // Three alternate arrangements share the same mesh/texture pool and navigation.
+        // Blend targets, rather than replacing the scene, to preserve live continuity.
+        const hash=n=>m.userData.layoutSeeds[n];
+        const shatter=layoutMix["1"],stars=layoutMix["2"],ribbon=layoutMix["3"];
+        const viewAspect=innerWidth/innerHeight;
+        const total=shatter+stars+ribbon,base=Math.max(0,1-total);
+        const ribbonAngle=(i/planes.length-.5)*Math.PI*3+layoutTime+morphScroll*.22;
+        const sx=(hash(1)-.5)*17*viewAspect+Math.sin(layoutTime+i)*.65;
+        const sy=(hash(2)-.5)*17+Math.cos(layoutTime*.7+i)*.55;
+        const cx=(hash(3)-.5)*27*viewAspect+Math.sin(layoutTime*.5+i)*.8;
+        const cy=(hash(4)-.5)*27+Math.cos(layoutTime*.4+i)*.6;
+        x=x*base+sx*shatter+cx*stars+Math.sin(ribbonAngle)*10*ribbon;
+        y=y*base+sy*shatter+cy*stars+(Math.sin(ribbonAngle*.65)*2.6+((i%3)-1)*1.2)*ribbon;
+        z=z*base+(-hash(5)*7)*shatter+(-hash(6)*32+Math.sin(layoutTime+i)*2)*stars+(-8+Math.cos(ribbonAngle)*7)*ribbon;
         const focusLeft=Math.max(0,(m.userData.focusUntil||0)-performance.now());
         if(focusLeft>0){
           const age=performance.now()-(m.userData.focusStart||performance.now());
@@ -614,6 +632,7 @@
         if(pixelEnabled)stageScale*=.16;
         if(vortexEnabled)stageScale*=.10;
         if(holeEnabled)stageScale*=.055;
+        stageScale=stageScale*Math.max(0,1-total)+(1.1+hash(7)*1.7)*shatter+(.22+hash(8)*.65)*stars+.65*ribbon;
         m.scale.setScalar(stageScale*(m.userData.focusScale||1));
         m.quaternion.copy(camera.quaternion);
         if(m.material.map)m.material.opacity=(.98-high*.08)*(1-particleMix*.82)*(1-holeMix*.75);
@@ -714,6 +733,7 @@
   };
   const leave3D=()=>{
     if(!spatialEnabled)return;
+    archiveLayout="";
     clearTimeout(handoffTimer);orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false;particleMix=0;holeMix=0;slashLight?.classList.remove("on");morphTarget=0;
     // Restore the live DOM feed BEFORE removing the 3D canvas: never expose the white scene underneath.
     feed.style.display="block";feed.style.visibility="visible";feed.style.pointerEvents="auto";feed.style.transition="none";feed.style.opacity="1";feed.style.transform="";
@@ -738,6 +758,13 @@
     syncCueMonitor();
   };
   const toggleCue=(key)=>{
+    if(["1","2","3"].includes(key)){
+      if(!spatialEnabled)enter3D();
+      archiveLayout=key;
+      orbitEnabled=false;pixelEnabled=false;vortexEnabled=false;holeEnabled=false;
+      morphTarget=1;syncCueMonitor();return;
+    }
+    archiveLayout="";
     if(["b","d","f"].includes(key)){setFeedCue(key);return}
     if(key==="g"){spatialEnabled?leave3D():enter3D();return}
     if(key==="h"){if(!spatialEnabled)enter3D();orbitEnabled=!orbitEnabled;morphTarget=orbitEnabled?1:.52;syncCueMonitor();return}
@@ -750,7 +777,7 @@
     m=m||{};
     if(m.type==="cue"){
       if(m.key==="s"){setAutoScroll(true);return}
-      if(["b","d","f","g","h","j","k","l"].includes(m.key))toggleCue(m.key);
+      if(["1","2","3","b","d","f","g","h","j","k","l"].includes(m.key))toggleCue(m.key);
     }
     if(m.type==="fx"&&m.fx in videoFx){videoFx[m.fx]=!!m.on;syncVideoFx()}
     if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
@@ -772,7 +799,7 @@
     if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;
     const key=e.key.toLowerCase();
     if(key==="s"){setAutoScroll(true);return}
-    if(["b","d","f","g","h","j","k","l"].includes(key)){toggleCue(key);return}
+    if(["1","2","3","b","d","f","g","h","j","k","l"].includes(key)){toggleCue(key);return}
     if(e.key==="ArrowLeft"){e.preventDefault();moveSpace(-55,0);return}
     if(e.key==="ArrowRight"){e.preventDefault();moveSpace(55,0);return}
     if(e.key==="ArrowUp"){e.preventDefault();moveSpace(0,-55);return}
