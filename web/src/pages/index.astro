@@ -629,9 +629,10 @@
         const handScale=m.userData.handoff?.scale||1.30;
         // Exact F width at p=0; shrinking begins only with depth scroll.
         stageScale*=THREE.MathUtils.lerp(handScale,1,THREE.MathUtils.smoothstep(p,.04,.58));
-        if(pixelEnabled)stageScale*=.16;
-        if(vortexEnabled)stageScale*=.10;
-        if(holeEnabled)stageScale*=.055;
+        // Keep distant image cards legible before the particle and collapse stages.
+        if(pixelEnabled)stageScale*=.55;
+        if(vortexEnabled)stageScale*=.44;
+        if(holeEnabled)stageScale*=.20;
         stageScale=stageScale*Math.max(0,1-total)+(1.1+hash(7)*1.7)*shatter+(.22+hash(8)*.65)*stars+.65*ribbon;
         m.scale.setScalar(stageScale*(m.userData.focusScale||1));
         m.quaternion.copy(camera.quaternion);
@@ -766,11 +767,16 @@
     }
     archiveLayout="";
     if(["b","d","f"].includes(key)){setFeedCue(key);return}
-    if(key==="g"){spatialEnabled?leave3D():enter3D();return}
-    if(key==="h"){if(!spatialEnabled)enter3D();orbitEnabled=!orbitEnabled;morphTarget=orbitEnabled?1:.52;syncCueMonitor();return}
-    if(key==="j"){if(!spatialEnabled)enter3D();pixelEnabled=!pixelEnabled}
-    if(key==="k"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=!vortexEnabled}
-    if(key==="l"){if(!spatialEnabled)enter3D();pixelEnabled=true;vortexEnabled=true;holeEnabled=!holeEnabled}
+    if(["g","h","j","k","l"].includes(key)){
+      if(!spatialEnabled)enter3D();
+      // Cues select a complete state: returning from L to K releases collapse.
+      orbitEnabled=key!=="g";
+      pixelEnabled=["j","k","l"].includes(key);
+      vortexEnabled=["k","l"].includes(key);
+      holeEnabled=key==="l";
+      morphTarget=key==="g"?0:1;
+      if(!holeEnabled)slashLight?.classList.remove("on");
+    }
     syncCueMonitor();
   };
   const handleRegiaMessage=m=>{
