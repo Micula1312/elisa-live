@@ -227,6 +227,9 @@ footer {
 .cue-utilities,.landscape-files{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
 .landscape-files label{display:grid;gap:4px;font-size:12px}
 #hydraCueStatus,#backupStatus{font-size:11px;color:#aaa}
+.mouse-pad{width:min(100%,320px);height:120px;border:1px solid #55774b;background:#131b11;position:relative;touch-action:none;cursor:crosshair;margin:8px 0}
+.mouse-pad::before{content:"";position:absolute;left:var(--x,0%);top:var(--y,100%);width:10px;height:10px;border-radius:50%;background:#39ff14;transform:translate(-50%,-50%);pointer-events:none}
+.mouse-ranges{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.mouse-ranges label{display:grid;gap:3px;font-size:11px}
 </style>
 </head>
 <body>
@@ -290,6 +293,20 @@ footer {
 <button data-hydra="dissolve">06<br><strong>BODY DISSOLVE</strong></button>
 <button data-hydra="fusion">07<br><strong>FLUID FUSION</strong></button>
 <button data-hydra="farewell">08<br><strong>FINAL TREE</strong></button>
+</div>
+<div class="hydra-subpanel">
+  <div class="hydra-scene-label">MOUSE / INTERAZIONI HYDRA</div>
+  <div id="mouseAxes" class="video-note">X · PARAM 1 / Y · PARAM 2</div>
+  <div id="hydraMousePad" class="mouse-pad" aria-hidden="true"></div>
+  <div class="mouse-ranges">
+    <label>X <input aria-label="Asse X Hydra" type="range" min="0" max="1" step=".01" value="0" data-hydra-macro="param1"></label>
+    <label>Y <input aria-label="Asse Y Hydra" type="range" min="0" max="1" step=".01" value="0" data-hydra-macro="param2"></label>
+    <label>Audio React <input type="range" min="0" max="1" step=".01" value="1" data-hydra-macro="audioReact"></label>
+    <label>Chaos <input type="range" min="0" max="1" step=".01" value="0" data-hydra-macro="audioChaos"></label>
+    <label>Movimento 3D <input type="range" min="0" max="1" step=".01" value=".5" data-hydra-macro="landscapeMotion"></label>
+    <label>Movimento post <input type="range" min="0" max="1" step=".01" value=".5" data-hydra-macro="archiveMotion"></label>
+  </div>
+  <div id="hydraMouseActions" class="hydra-tools" role="group" aria-label="Azioni della scena"></div>
 </div>
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">VIDEO PAESAGGIO</div>
@@ -458,6 +475,54 @@ q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).to
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
 const hydraCues = [...document.querySelectorAll("[data-hydra]")];
 const videoClips = {};
+const mouseSceneControls = {
+  custom01: ["X · Glitch → flusso / Y · Bianco e nero → verde acido", [["Invert", "invert"], ["Drop", "drop"]]],
+  genesis: ["X · Deformazione / Y · Scala", [["Post", "single"], ["Raffica", "burst"], ["Post grande", "hero"], ["Pioggia", "rain"], ["Drop", "drop"]]],
+  resonance: ["X · Interferenza / Y · Scala e distorsione", [["Invert", "invert"], ["Flash", "punch"]]],
+  hypnosis: ["X · Scala e deformazione / Y · Dispersione", [["Disintegra", "drop"], ["Invert", "invert"]]],
+  body: ["X · Deformazione / Y · Scala", [["←", "ArrowLeft"], ["→", "ArrowRight"], ["Avanti", "ArrowUp"], ["Indietro", "ArrowDown"], ["Sali", "q"], ["Scendi", "e"], ["Guarda su", "r"], ["Guarda giù", "f"], ["Home", "Home"], ["Post", "single"], ["Raffica", "burst"], ["Post grande", "hero"], ["Pioggia", "rain"], ["Drop", "drop"]]],
+  dissolve: ["X · Distorsione / Y · Zoom paesaggio", [["Post", "single"], ["Raffica", "burst"], ["Nota", "note"], ["Drop", "drop"]]],
+  fusion: ["X · Distorsione / Y · Zoom paesaggio", [["Post", "single"], ["Pioggia", "rain"], ["Nota", "note"], ["Drop", "drop"]]],
+  farewell: ["X · Contrasto e distorsione / Y · Luminosità", [["Stelle", "stars"], ["Invert", "invert"]]],
+};
+function showMouseActions(scene) {
+  const [axes, actions] = mouseSceneControls[scene];
+  q("#mouseAxes").textContent = axes;
+  q("#hydraMouseActions").replaceChildren(...actions.map(([label, action]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.onclick = () => control.postMessage({type:"hydra-mouse-action", scene, action});
+    return button;
+  }));
+}
+const mousePad = q("#hydraMousePad");
+const mouseMacros = [...document.querySelectorAll("[data-hydra-macro]")];
+function showMousePosition() {
+  mousePad.style.setProperty("--x", Number(mouseMacros[0].value) * 100 + "%");
+  mousePad.style.setProperty("--y", (1 - Number(mouseMacros[1].value)) * 100 + "%");
+}
+mouseMacros.forEach(input => input.addEventListener("input", () => {
+  control.postMessage({type:"hydra-mouse-macros", values:{[input.dataset.hydraMacro]:Number(input.value)}});
+  showMousePosition();
+}));
+function moveMousePad(event) {
+  const rect = mousePad.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  mouseMacros[0].value = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  mouseMacros[1].value = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height));
+  control.postMessage({type:"hydra-mouse-macros", values:{param1:Number(mouseMacros[0].value), param2:Number(mouseMacros[1].value)}});
+  showMousePosition();
+}
+mousePad.addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  mousePad.setPointerCapture(event.pointerId);
+  moveMousePad(event);
+});
+mousePad.addEventListener("pointermove", event => {
+  if (mousePad.hasPointerCapture(event.pointerId)) moveMousePad(event);
+});
+showMouseActions("custom01");
 const sendHydraCue = (scene, clip) => send({type:"hydra-scene", scene, clip, cueId:Date.now() + Math.random()});
 async function touchControl(name, value) {
   const response = await fetch(location.protocol + "//" + location.hostname + ":8765/control", {
@@ -472,6 +537,7 @@ function launchHydraCue(button) {
     cue.setAttribute("aria-pressed", String(cue === button));
   });
   const scene = button.dataset.hydra;
+  showMouseActions(scene);
   const label = button.querySelector("strong").textContent;
   q("#hydraCueStatus").textContent = label;
   sendHydraCue(scene, videoClips[scene] || "");

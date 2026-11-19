@@ -152,7 +152,7 @@
       window.ELISA_CTRL.drop=on?1:0;
       if(on)archiveDrop();
       if(currentScene==='hypnosis')hypnosisDrop=on?1:0;
-      status.textContent=on?'DROP · MIDI 13':'DROP · RELEASE';
+      status.textContent=on?'DROP · ON':'DROP · RELEASE';
     }
     let midiTarget=localStorage.getItem('elisa-midi-target')==='td'?'td':'hydra';
     const midiRouteBus=new BroadcastChannel('elisa-midi-route');
@@ -163,14 +163,20 @@
       if(midiTarget==='td'){setDrop(false);setInvert(false);resonanceInvert=false;applyInvert();midiMonitor.innerHTML='MIDI · TOUCHDESIGNER ACTIVE<br><b>HYDRA CONTROLS MUTED</b>'}
       else midiMonitor.innerHTML='MIDI · HYDRA ACTIVE<br><b>move a knob / pad</b>';
     };
+    function setHydraMacro(key, value) {
+      if (!Object.hasOwn(smoothTargets,key) || !Number.isFinite(value)) return;
+      smoothTargets[key] = Math.max(0, Math.min(1, value));
+      if (key === 'audioChaos' && currentScene === 'resonance') {
+        window.ELISA_CTRL.resonanceCam = smoothTargets[key];
+      }
+    }
     function showMidi(input,data){
       if(midiTarget!=='hydra')return;
       const [statusByte,d1,d2]=data,kind=statusByte&0xf0,channel=(statusByte&0x0f)+1;
       const type=kind===0xb0?'CC':kind===0x90?'NOTE ON':kind===0x80?'NOTE OFF':'MIDI';
       const isCC=kind===0xb0,value=d2??0;
       Object.assign(window.ELISA_MIDI,{device:input.name||'MIDI',type,channel,cc:isCC?d1:null,note:isCC?null:d1,value,norm:value/127});
-      if(isCC&&MIDI_MACROS[d1]){const key=MIDI_MACROS[d1];if(Object.prototype.hasOwnProperty.call(smoothTargets,key))smoothTargets[key]=value/127;else window.ELISA_CTRL[key]=value/127;}
-      if(isCC&&d1===19&&currentScene==='resonance')window.ELISA_CTRL.resonanceCam=value/127;
+      if(isCC&&MIDI_MACROS[d1])setHydraMacro(MIDI_MACROS[d1],value/127);
       // MPD218 CH10 note numbers are fixed; velocity changes with pressure.
       const noteEvent=kind===0x90||kind===0x80,pressed=kind===0x90&&value>0;
       if(channel===10&&noteEvent){
@@ -1070,7 +1076,8 @@ render(o0)`;
 
     const bodyDissolve = `src(s2)
   .saturate(.7)
-  .modulate(noise(3,.035), () => .009 + mid()*.04)
+  .scale(() => 1 + param2()*.35)
+  .modulate(noise(3,.035), () => .009 + mid()*.04 + param1()*.09)
   .layer(src(s0).luma(.09,.12))
   .layer(src(s3))
   .out(o0)
@@ -1078,7 +1085,8 @@ render(o0)`;
 
     const fluidFusion = `src(s2)
   .saturate(1.3)
-  .modulate(noise(2,.025), () => .012 + low()*.045)
+  .scale(() => 1 + param2()*.35)
+  .modulate(noise(2,.025), () => .012 + low()*.045 + param1()*.09)
   .layer(src(s0).luma(.08,.10))
   .layer(src(s3).modulate(noise(2,.03), () => high()*.06))
   .out(o0)
@@ -1204,9 +1212,32 @@ render(o0)`;
     function updateFullscreenButton(){fullscreenButton.textContent=document.fullscreenElement?'⛶ EXIT FULLSCREEN':'⛶ FULLSCREEN'}
     fullscreenButton.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();updateFullscreenButton()}catch(err){status.textContent='FULLSCREEN · '+err.message}};
     document.addEventListener('fullscreenchange',updateFullscreenButton);
+    let mouseDropTimer;
+    let mouseNote = 0;
+    function handleMouseAction(scene, action) {
+      if (scene !== currentScene) return;
+      if (action === 'invert') setInvert(true);
+      else if (action === 'punch') {
+        resonancePadPunchUntil = performance.now() + 130;
+        applyInvert();
+      } else if (action === 'drop') {
+        clearTimeout(mouseDropTimer);
+        setDrop(true);
+        mouseDropTimer = setTimeout(() => setDrop(false), 240);
+      } else if (action === 'stars' && scene === 'farewell') spawnFarewellStars();
+      else if (action === 'note' && transitionLive) {
+        const notes = transitionNotes[scene];
+        showTransitionNote(notes[mouseNote++ % notes.length], performance.now());
+      } else if (['single','burst','hero','rain'].includes(action)) void spawnArchiveImage(action);
+      else if (scene === 'body' && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','q','e','r','f','Home'].includes(action)) moveBodyCamera(action);
+    }
     let lastRegiaCue;
     const handleRegia=m=>{
       m=m||{};
+      if(m.type==='hydra-mouse-macros'){
+        for (const [key, value] of Object.entries(m.values || {})) setHydraMacro(key, value);
+      }
+      if(m.type==='hydra-mouse-action')handleMouseAction(m.scene,m.action);
       if(m.type==='hydra-fullscreen'){status.textContent='FULLSCREEN · USE F11 ON HYDRA WINDOW ONCE'}
       if(m.type==='hydra-scene' && (!m.cueId || m.cueId !== lastRegiaCue)){
         lastRegiaCue = m.cueId;
