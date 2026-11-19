@@ -9,6 +9,7 @@ import threading
 import os
 import socket
 import struct
+from ipaddress import IPv4Address
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HOST = os.getenv("ELISA_BRIDGE_HOST", "0.0.0.0")
@@ -21,6 +22,19 @@ udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 events = []
 event_lock = threading.Lock()
 
+
+
+def phone_url():
+    address = os.getenv("ELISA_HOTSPOT_IP") or "192.168.137.1"
+    try:
+        ip = IPv4Address(address)
+        if ip.is_loopback or ip.is_unspecified or ip.is_multicast:
+            return None
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.bind((str(ip), 0))
+    except (ValueError, OSError):
+        return None
+    return f"http://{ip}:4321/touch-control"
 
 
 def osc_string(value):
@@ -54,6 +68,9 @@ class Handler(BaseHTTPRequestHandler):
                 pending = [e for e in events if e["id"] > since]
             self.send_response_headers()
             self.wfile.write(json.dumps({"events": pending}).encode())
+        elif self.path == "/phone-url":
+            self.send_response_headers()
+            self.wfile.write(json.dumps({"url": phone_url()}).encode())
         elif self.path == "/health":
             self.send_response_headers()
             self.wfile.write(b'{"ok":true}')
