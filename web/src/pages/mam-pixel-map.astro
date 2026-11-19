@@ -1,207 +1,3 @@
----
-const width = undefined;
-const height = undefined;
-// Atlas coordinates from touchdesigner/mam_layout_builder.py.
-const surfaces = [
-  [
-    "Floor",
-    [
-      [
-        1100,
-        1200
-      ],
-      [
-        4326,
-        1200
-      ],
-      [
-        5960,
-        2108
-      ],
-      [
-        6838,
-        2108
-      ],
-      [
-        6838,
-        4598
-      ],
-      [
-        1100,
-        4598
-      ]
-    ],
-    1
-  ],
-  [
-    "Nord",
-    [
-      [
-        6838,
-        2108
-      ],
-      [
-        8038,
-        2108
-      ],
-      [
-        8038,
-        4598
-      ],
-      [
-        6838,
-        4598
-      ]
-    ],
-    1
-  ],
-  [
-    "Sud",
-    [
-      [
-        0,
-        1200
-      ],
-      [
-        1100,
-        1200
-      ],
-      [
-        1100,
-        4598
-      ],
-      [
-        0,
-        4598
-      ]
-    ],
-    3
-  ],
-  [
-    "West 1",
-    [
-      [
-        1100,
-        100
-      ],
-      [
-        4326,
-        0
-      ],
-      [
-        4326,
-        1200
-      ],
-      [
-        1100,
-        1200
-      ]
-    ],
-    0
-  ],
-  [
-    "West 2",
-    [
-      [
-        4326,
-        0
-      ],
-      [
-        6192,
-        0
-      ],
-      [
-        6192,
-        1200
-      ],
-      [
-        4326,
-        1200
-      ]
-    ],
-    0
-  ],
-  [
-    "West 3",
-    [
-      [
-        6192,
-        0
-      ],
-      [
-        7072,
-        0
-      ],
-      [
-        7072,
-        1200
-      ],
-      [
-        6192,
-        1200
-      ]
-    ],
-    0
-  ],
-  [
-    "Est 2",
-    [
-      [
-        1100,
-        4598
-      ],
-      [
-        4326,
-        4598
-      ],
-      [
-        4326,
-        5798
-      ],
-      [
-        1100,
-        5698
-      ]
-    ],
-    2
-  ],
-  [
-    "Est 1",
-    [
-      [
-        4326,
-        4598
-      ],
-      [
-        6838,
-        4598
-      ],
-      [
-        6838,
-        5798
-      ],
-      [
-        4326,
-        5798
-      ]
-    ],
-    2
-  ]
-];
-const shapes = surfaces.map(([name, points, turn]) => {
-  const xs = points.map(([x]) => x);
-  const ys = points.map(([, y]) => y);
-  const left = Math.min(...xs);
-  const top = Math.min(...ys);
-  const w = Math.max(...xs) - left;
-  const h = Math.max(...ys) - top;
-  return {
-    name, turn, left, top, w, h,
-    points: points.map(([x,y]) => x + "," + y).join(" "),
-    cx: left + w / 2, cy: top + h / 2,
-  };
-});
----
 <!doctype html>
 <html lang="it">
 <head>
@@ -219,7 +15,7 @@ const shapes = surfaces.map(([name, points, turn]) => {
     </div>
   </header>
   <p id="mode-info" aria-live="polite">Un unico frame attraverso le superfici. Il bordo TOP punta verso Wall Nord.</p>
-  <svg id="atlas" data-mode="full" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="map-title">
+  <svg id="atlas" data-mode="full" viewBox="0 0 8038 5798" role="img" aria-labelledby="map-title">
     <title id="map-title">Mappa MAM, con Wall Nord a destra e senza Wall Stage</title>
     <defs>
       <pattern id="grid" width="200" height="200" patternUnits="userSpaceOnUse">
@@ -230,27 +26,95 @@ const shapes = surfaces.map(([name, points, turn]) => {
         <stop offset=".62" stop-color="#224750" />
         <stop offset="1" stop-color="#376645" />
       </linearGradient>
-      <clipPath id="room-mask">{shapes.map(s => <polygon points={s.points} />)}</clipPath>
+      <clipPath id="room-mask"><polygon points="1100,1200 4326,1200 5960,2108 6838,2108 6838,4598 1100,4598" />
+        <polygon points="6838,2108 8038,2108 8038,4598 6838,4598" />
+        <polygon points="0,1200 1100,1200 1100,4598 0,4598" />
+        <polygon points="1100,100 4326,0 4326,1200 1100,1200" />
+        <polygon points="4326,0 6192,0 6192,1200 4326,1200" />
+        <polygon points="6192,0 7072,0 7072,1200 6192,1200" />
+        <polygon points="1100,4598 4326,4598 4326,5798 1100,5698" />
+        <polygon points="4326,4598 6838,4598 6838,5798 4326,5798" /></clipPath>
       <path id="arrow" d="M -105 40 L 0 -90 L 105 40 Z" />
     </defs>
-    <rect width={width} height={height} fill="#080a09" />
+    <rect width="8038" height="5798" fill="#080a09" />
     <g class="full" clip-path="url(#room-mask)">
-      <rect width={width} height={height} fill="url(#full-frame)" />
-      <rect width={width} height={height} fill="url(#grid)" />
+      <rect width="8038" height="5798" fill="url(#full-frame)" />
+      <rect width="8038" height="5798" fill="url(#grid)" />
       <path d="M 6980 0 V 5798" stroke="#b9ff88" stroke-width="36" />
     </g>
-    {shapes.map((s, i) => (
-      <g>
-        <polygon class="surface" points={s.points} style={`--fill:${["#264b42","#355e3e","#323a66","#4c3764","#503654","#365161","#4a4632","#374655"][i]}`} />
-        <clipPath id={`wall-${i}`}><polygon points={s.points} /></clipPath>
-        <rect class="split" x={s.left} y={s.top} width={s.w} height={s.h} fill="url(#grid)" clip-path={`url(#wall-${i})`} />
-        <g transform={`translate(${s.cx} ${s.cy + (s.name === "Floor" ? 290 : 0)})`}>
-          <text>{s.name === "Floor" ? "PAVIMENTO" : `WALL ${s.name.toUpperCase()}`}</text>
-          {s.name === "Nord" && <text class="dimension" y="150">1200 × 2490</text>}
-          <use class="split" href="#arrow" x="0" y="-210" transform={`translate(0 -210) rotate(${s.turn * 90}) translate(0 210)`} />
-        </g>
+    <g>
+      <polygon class="surface" points="1100,1200 4326,1200 5960,2108 6838,2108 6838,4598 1100,4598" style="--fill:#264b42" />
+      <clipPath id="wall-0"><polygon points="1100,1200 4326,1200 5960,2108 6838,2108 6838,4598 1100,4598" /></clipPath>
+      <rect class="split" x="1100" y="1200" width="5738" height="3398" fill="url(#grid)" clip-path="url(#wall-0)" />
+      <g transform="translate(3969 3189)">
+        <text>PAVIMENTO</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(90)" />
       </g>
-    ))}
+    </g>
+    <g>
+      <polygon class="surface" points="6838,2108 8038,2108 8038,4598 6838,4598" style="--fill:#355e3e" />
+      <clipPath id="wall-1"><polygon points="6838,2108 8038,2108 8038,4598 6838,4598" /></clipPath>
+      <rect class="split" x="6838" y="2108" width="1200" height="2490" fill="url(#grid)" clip-path="url(#wall-1)" />
+      <g transform="translate(7438 3353)">
+        <text>WALL NORD</text>
+        <text class="dimension" y="150">1200 × 2490</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(90)" />
+      </g>
+    </g>
+    <g>
+      <polygon class="surface" points="0,1200 1100,1200 1100,4598 0,4598" style="--fill:#323a66" />
+      <clipPath id="wall-2"><polygon points="0,1200 1100,1200 1100,4598 0,4598" /></clipPath>
+      <rect class="split" x="0" y="1200" width="1100" height="3398" fill="url(#grid)" clip-path="url(#wall-2)" />
+      <g transform="translate(550 2899)">
+        <text>WALL SUD</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(270)" />
+      </g>
+    </g>
+    <g>
+      <polygon class="surface" points="1100,100 4326,0 4326,1200 1100,1200" style="--fill:#4c3764" />
+      <clipPath id="wall-3"><polygon points="1100,100 4326,0 4326,1200 1100,1200" /></clipPath>
+      <rect class="split" x="1100" y="0" width="3226" height="1200" fill="url(#grid)" clip-path="url(#wall-3)" />
+      <g transform="translate(2713 600)">
+        <text>WALL WEST 1</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(0)" />
+      </g>
+    </g>
+    <g>
+      <polygon class="surface" points="4326,0 6192,0 6192,1200 4326,1200" style="--fill:#503654" />
+      <clipPath id="wall-4"><polygon points="4326,0 6192,0 6192,1200 4326,1200" /></clipPath>
+      <rect class="split" x="4326" y="0" width="1866" height="1200" fill="url(#grid)" clip-path="url(#wall-4)" />
+      <g transform="translate(5259 600)">
+        <text>WALL WEST 2</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(0)" />
+      </g>
+    </g>
+    <g>
+      <polygon class="surface" points="6192,0 7072,0 7072,1200 6192,1200" style="--fill:#365161" />
+      <clipPath id="wall-5"><polygon points="6192,0 7072,0 7072,1200 6192,1200" /></clipPath>
+      <rect class="split" x="6192" y="0" width="880" height="1200" fill="url(#grid)" clip-path="url(#wall-5)" />
+      <g transform="translate(6632 600)">
+        <text>WALL WEST 3</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(0)" />
+      </g>
+    </g>
+    <g>
+      <polygon class="surface" points="1100,4598 4326,4598 4326,5798 1100,5698" style="--fill:#4a4632" />
+      <clipPath id="wall-6"><polygon points="1100,4598 4326,4598 4326,5798 1100,5698" /></clipPath>
+      <rect class="split" x="1100" y="4598" width="3226" height="1200" fill="url(#grid)" clip-path="url(#wall-6)" />
+      <g transform="translate(2713 5198)">
+        <text>WALL EST 2</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(180)" />
+      </g>
+    </g>
+    <g>
+      <polygon class="surface" points="4326,4598 6838,4598 6838,5798 4326,5798" style="--fill:#374655" />
+      <clipPath id="wall-7"><polygon points="4326,4598 6838,4598 6838,5798 4326,5798" /></clipPath>
+      <rect class="split" x="4326" y="4598" width="2512" height="1200" fill="url(#grid)" clip-path="url(#wall-7)" />
+      <g transform="translate(5582 5198)">
+        <text>WALL EST 1</text>
+        <use class="split" href="#arrow" transform="translate(0 -210) rotate(180)" />
+      </g>
+    </g>
     <g class="full" transform="translate(7440 4100)">
       <text x="-130" class="dimension">TOP</text>
       <use href="#arrow" x="210" y="-48" transform="rotate(90 210 -48)" />
@@ -258,10 +122,10 @@ const shapes = surfaces.map(([name, points, turn]) => {
   </svg>
   <footer>Geometria del builder TouchDesigner, ricavata dalla tavola annotata. Il posizionamento va verificato sulle slice in Resolume.</footer>
 </main>
-<script>
-  const map = document.querySelector<SVGSVGElement>("#atlas");
+<script is:inline>
+  const map = document.querySelector("#atlas");
   const info = document.querySelector("#mode-info");
-  const buttons = document.querySelectorAll<HTMLButtonElement>("[data-mode][type=button]");
+  const buttons = document.querySelectorAll("[data-mode][type=button]");
   buttons.forEach(button => button.addEventListener("click", () => {
     if (!map || !info) return;
     const split = button.dataset.mode === "split";
