@@ -755,15 +755,15 @@
       const base=landscape.base;
       const lo=low(),mi=mid(),hi=high();
       landscape.flash*=.88;
+      const terrainDance = ['genesis','farewell'].includes(activeScene) ? audioReact()*.85 + audioChaos()*1.9 : 0;
       if(landscape.mesh.visible)for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
-        const farewellDance=activeScene==='farewell'?(audioReact()*.85+audioChaos()*1.9):0;
-        const danceSpeed=1+farewellDance*(.8+hi*2.4)*(.4+landscapeMotion()*1.2);
+        const danceSpeed=1+terrainDance*(.8+hi*2.4)*(.4+landscapeMotion()*1.2);
         const ridge=Math.sin(x*.28+landscapeT*.45*danceSpeed)*1.05+Math.sin(z*.12-landscapeT*.7*danceSpeed)*.72;
-        const detail=Math.sin(x*.92+z*.19+landscapeT*(1.7+farewellDance*3.2))*(.12+hi*(.55+farewellDance*1.45)+landscapeMotion()*2.2);
-        const swell=Math.sin(z*.055+landscapeT*(.35+farewellDance*.9))*(.55+lo*(2.8+farewellDance*5.8))*(.4+landscapeMotion()*1.2);
-        const beatDance=Math.sin(x*.42+z*.14+landscapeT*(1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*farewellDance);
-        pos.setY(i,-1.45+ridge*(.52+landscapeMotion()*1.5)+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*(.9+farewellDance*1.8)+beatDance);
+        const detail=Math.sin(x*.92+z*.19+landscapeT*(1.7+terrainDance*3.2))*(.12+hi*(.55+terrainDance*1.45)+landscapeMotion()*2.2);
+        const swell=Math.sin(z*.055+landscapeT*(.35+terrainDance*.9))*(.55+lo*(2.8+terrainDance*5.8))*(.4+landscapeMotion()*1.2);
+        const beatDance=Math.sin(x*.42+z*.14+landscapeT*(1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*terrainDance);
+        pos.setY(i,-1.45+ridge*(.52+landscapeMotion()*1.5)+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*(.9+terrainDance*1.8)+beatDance);
       }
       pos.needsUpdate=true;
       landscape.mesh.position.z=-28+(landscapeT*1.35%3.2);
@@ -940,7 +940,11 @@ render(o0)`;
   .out(o0)
 render(o0)`;
 
-    const genesisLandscape=`src(s0)
+    const terrainAudioModulation=`  .modulate(
+    noise(() => .8 + mid()*(.7+audioChaos()*3.2),.015),
+    () => .004 + low()*.008 + audioReact()*mid()*.018 + audioChaos()*(.04+high()*.035+hit()*.025) + param1()*.035
+  )`;
+    const genesisLandscape=(audioModulation = "") => `src(s0)
   .scale(() => 1 + param1()*.085)
   .contrast(() => 1.28 + low() * .34 + param1()*.24)
   .brightness(() => -.16 + high() * .14 + param2()*.08)
@@ -991,6 +995,7 @@ render(o0)`;
       .brightness(() => -.08 + hit()*audioReact()*.11 + param2()*.15)
       .color(() => .22 + param2()*.16,1,() => .08 + audioChaos()*.07)
   )
+  ${audioModulation}
   .out(o0)
 
 render(o0)`;
@@ -1067,10 +1072,7 @@ render(o0)`;
   .contrast(() => 1.16 + low()*.18 + audioChaos()*.6 + param1()*.9)
   .brightness(() => -.18 + param2()*.25)
   .color(.22,1,.08)
-  .modulate(
-    noise(() => .8 + mid()*(.7+audioChaos()*3.2),.015),
-    () => .004 + low()*.008 + audioReact()*mid()*.018 + audioChaos()*(.04+high()*.035+hit()*.025) + param1()*.035
-  )
+${terrainAudioModulation}
   .out(o0)
 render(o0)`;
 
@@ -1093,10 +1095,10 @@ render(o0)`;
 render(o0)`;
     const scenes={
       custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
-      genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
+      genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape(terrainAudioModulation)},
       resonance:{label:'RESONANCE · PRE-HYPNOSIS / WEBCAM',code:resonanceGradient},
       hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
-      body:{label:'BODY · 3D LANDSCAPE',code:genesisLandscape},
+      body:{label:'BODY · 3D LANDSCAPE',code:genesisLandscape()},
       dissolve:{label:'BODY DISSOLVE',code:bodyDissolve},
       fusion:{label:'FLUID FUSION',code:fluidFusion},
       farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
