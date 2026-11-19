@@ -614,10 +614,9 @@
           x=THREE.MathUtils.lerp(m.userData.handoff.x,x,hand);
           y=THREE.MathUtils.lerp(m.userData.handoff.y,y,hand);
         }
-        if(pixelEnabled&&vortexEnabled){
-          const j=.78;
-          x*=1.15+j*.35;y*=1.15+j*.35;
-        }
+        // Restore the original wide orbit for J and retain it through K/L.
+        const orbitSpread=THREE.MathUtils.lerp(1,1.15+.78*.35,vortexEnabled?1:distanceMix);
+        x*=orbitSpread;y*=orbitSpread;
         if(vortexEnabled){
           const flow=morphScroll*.75+i*.13;
           x+=Math.sin(flow+i)*1.8;y+=Math.cos(flow*.73+i*.4)*1.2;
@@ -661,8 +660,8 @@
         const handScale=m.userData.handoff?.scale||1.30;
         // Exact F width at p=0; shrinking begins only with depth scroll.
         stageScale*=THREE.MathUtils.lerp(handScale,1,THREE.MathUtils.smoothstep(p,.04,.58));
-        // Keep distant image cards legible before the particle and collapse stages.
-        if(pixelEnabled&&vortexEnabled)stageScale*=.55;
+        // J brings back the original tiny cards between Orbit and Dissolve.
+        stageScale*=vortexEnabled?.55:THREE.MathUtils.lerp(1,.16,distanceMix);
         if(vortexEnabled)stageScale*=.44;
         if(holeEnabled)stageScale*=.20;
         stageScale=stageScale*Math.max(0,1-total)+(1.1+hash(7)*1.7)*shatter+(.22+hash(8)*.65)*stars+.65*ribbon;
@@ -699,8 +698,7 @@
       if(holeEnabled&&holeMix>.92){sceneDark+=(0-sceneDark)*(.018+hit*.08);}
             group.position.set(spaceX/120,-spaceY/120,spaceZ/120);
       wheelDepth+=(wheelDepthTarget-wheelDepth)*.09;
-      // Distance keeps the orbit geometry; only the viewing distance changes.
-      camera.position.z=Math.max(2,18/spaceZoom+distanceMix*24+wheelDepth);
+      camera.position.z=Math.max(2,18/spaceZoom+wheelDepth);
       // Same live VIDEO FX controls also process the Three.js canvas.
       const fxAmount=Number(videoAmount?.value||0),fxReact=Number(videoReact?.value||1);
       const fxEnergy=Math.min(1,(low*.35+mid*.45+high*.2+hit*.35)*fxReact);
