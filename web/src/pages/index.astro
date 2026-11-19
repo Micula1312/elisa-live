@@ -632,13 +632,20 @@
         const viewAspect=innerWidth/innerHeight;
         const total=shatter+stars+ribbon,base=Math.max(0,1-total);
         const ribbonAngle=(i/planes.length-.5)*Math.PI*3+layoutTime+morphScroll*.22;
-        const sx=(hash(1)-.5)*17*viewAspect+Math.sin(layoutTime+i)*.65;
-        const sy=(hash(2)-.5)*17+Math.cos(layoutTime*.7+i)*.55;
-        const cx=(hash(3)-.5)*27*viewAspect+Math.sin(layoutTime*.5+i)*.8;
-        const cy=(hash(4)-.5)*27+Math.cos(layoutTime*.4+i)*.6;
+        // Shatter kicks outwards on hits; Constellation breathes with the bass.
+        const shatterSpread=1+low*.09+hit*.16;
+        const shatterDrift=1+mid*1.2+high*.7;
+        const starSpread=1+low*.065;
+        const starDrift=1+mid*.6+high*.4;
+        const sx=(hash(1)-.5)*17*viewAspect*shatterSpread+Math.sin(layoutTime+i)*.65*shatterDrift;
+        const sy=(hash(2)-.5)*17*shatterSpread+Math.cos(layoutTime*.7+i)*.55*shatterDrift;
+        const cx=(hash(3)-.5)*27*viewAspect*starSpread+Math.sin(layoutTime*.5+i)*.8*starDrift;
+        const cy=(hash(4)-.5)*27*starSpread+Math.cos(layoutTime*.4+i)*.6*starDrift;
+        const shatterZ=-hash(5)*7-hit*(.7+hash(5)*2.3);
+        const starZ=-hash(6)*32+Math.sin(layoutTime+i)*2*starDrift-low*(.5+hash(6)*2);
         x=x*base+sx*shatter+cx*stars+Math.sin(ribbonAngle)*10*ribbon;
         y=y*base+sy*shatter+cy*stars+(Math.sin(ribbonAngle*.65)*2.6+((i%3)-1)*1.2)*ribbon;
-        z=z*base+(-hash(5)*7)*shatter+(-hash(6)*32+Math.sin(layoutTime+i)*2)*stars+(-8+Math.cos(ribbonAngle)*7)*ribbon;
+        z=z*base+shatterZ*shatter+starZ*stars+(-8+Math.cos(ribbonAngle)*7)*ribbon;
         const focusLeft=Math.max(0,(m.userData.focusUntil||0)-performance.now());
         let focusEdge=0;
         if(focusLeft>0){
@@ -664,7 +671,7 @@
         stageScale*=vortexEnabled?.55:THREE.MathUtils.lerp(1,.16,distanceMix);
         if(vortexEnabled)stageScale*=.44;
         if(holeEnabled)stageScale*=.20;
-        stageScale=stageScale*Math.max(0,1-total)+(1.1+hash(7)*1.7)*shatter+(.22+hash(8)*.65)*stars+.65*ribbon;
+        stageScale=stageScale*Math.max(0,1-total)+(1.1+hash(7)*1.7)*(1+mid*.12+hit*.14)*shatter+(.22+hash(8)*.65)*(1+low*.16+high*.08)*stars+.65*ribbon;
         const focusSize=2*Math.tan(THREE.MathUtils.degToRad(camera.fov)*.5)*6;
         const focusScale=Math.min(focusSize*.74/2.15,focusSize*camera.aspect*.78/1.72);
         m.scale.setScalar(THREE.MathUtils.lerp(stageScale,focusScale,focusEdge));
