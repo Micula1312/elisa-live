@@ -115,7 +115,7 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             name = payload["name"]
             value = float(payload["value"])
-            if name not in ALLOWED or not (0 <= value <= (6 if name == "fx_select" else 2 if name == "clip_select" else 1)) or (name in ("fx_select", "clip_select", "mam_layout") and not value.is_integer()):
+            if name not in ALLOWED or not (0 <= value <= (6 if name == "fx_select" else 2 if name in ("clip_select", "mam_layout") else 1)) or (name in ("fx_select", "clip_select", "mam_layout") and not value.is_integer()):
                 raise ValueError("invalid control")
             send_osc(name, value)
             self.send_response_headers()

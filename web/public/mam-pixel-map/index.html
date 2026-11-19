@@ -17,7 +17,9 @@
   svg { display: block; width: 100%; border: 1px solid #637360; color: #ffffff30 }
   .surface { fill: transparent; stroke: #e9f0e8; stroke-width: 12 }
   svg[data-mode=split] .surface { fill: var(--fill) }
-  svg[data-mode=full] .split, svg[data-mode=split] .full { display: none }
+  svg[data-mode=walls] .surface { fill: var(--fill) }
+  svg[data-mode=walls] #floor { display: none }
+  svg[data-mode=full] .split, svg[data-mode=split] .full, svg[data-mode=walls] .full { display: none }
   text { text-anchor: middle; fill: #f6faf3; font-size: 142px; font-weight: 700 }
   .dimension { font: 112px monospace }
   use { fill: #b9ff88 }
@@ -31,6 +33,7 @@
     <div class="controls" role="group" aria-label="Preset di uscita">
       <button type="button" data-mode="full" aria-pressed="true">Full Room</button>
       <button type="button" data-mode="split" aria-pressed="false">Superfici</button>
+      <button type="button" data-mode="walls" aria-pressed="false">Solo pareti</button>
     </div>
   </header>
   <p id="mode-info" aria-live="polite">Un unico frame attraverso le superfici. Il bordo TOP punta verso Wall Nord.</p>
@@ -61,7 +64,7 @@
       <rect width="8038" height="5798" fill="url(#grid)" />
       <path d="M 6980 0 V 5798" stroke="#b9ff88" stroke-width="36" />
     </g>
-    <g>
+    <g id="floor">
       <polygon class="surface" points="1100,1200 4326,1200 5960,2108 6838,2108 6838,4598 1100,4598" style="--fill:#264b42" />
       <clipPath id="wall-0"><polygon points="1100,1200 4326,1200 5960,2108 6838,2108 6838,4598 1100,4598" /></clipPath>
       <rect class="split" x="1100" y="1200" width="5738" height="3398" fill="url(#grid)" clip-path="url(#wall-0)" />
@@ -147,9 +150,11 @@
   const buttons = document.querySelectorAll("[data-mode][type=button]");
   buttons.forEach(button => button.addEventListener("click", () => {
     if (!map || !info) return;
-    const split = button.dataset.mode === "split";
-    map.dataset.mode = split ? "split" : "full";
-    info.textContent = split
+    const mode = button.dataset.mode;
+    map.dataset.mode = mode;
+    info.textContent = mode === "walls"
+      ? "Solo pareti, con il pavimento nero."
+      : mode === "split"
       ? "Un ritaglio per superficie. Le frecce indicano dove punta il bordo TOP di ciascun ritaglio."
       : "Un unico frame attraverso le superfici. Il bordo TOP punta verso Wall Nord.";
     buttons.forEach(item => item.setAttribute("aria-pressed", String(item === button)));

@@ -1,6 +1,6 @@
 """Run once in TouchDesigner Textport with exec(open(...).read()).
 
-Builds two MAM presets from the pre-resize source of res1. Preview geometry is
+Builds three MAM presets from the pre-resize source of res1. Preview geometry is
 derived from the annotated map; confirm its seams against the venue's slices.
 The existing level3 -> ndiout1 route and the previous layout remain available.
 """
@@ -50,12 +50,14 @@ def vec(point):
     return "vec2(%.1f, %.1f)" % point
 
 
-def fragment(split):
+def fragment(split, walls_only=False):
     canvas = vec((WIDTH, HEIGHT))
     lines = [SHADER, "void main() {",
              f"    vec2 p = vec2(vUV.x, 1.0 - vUV.y) * {canvas};",
              "    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);"]
     for name, points, turn in SURFACES:
+        if walls_only and name == "Floor":
+            continue
         edges = zip(points, points[1:] + points[:1])
         mask = " && ".join(f"edge(p, {vec(a)}, {vec(b)}) >= 0.0" for a, b in edges)
         if name == "Floor":
@@ -76,36 +78,47 @@ def connect_layout_osc(project, selector):
         print("MAM OSC: /project1/oscin1 not found. Index remains manual.")
         return
     index = selector.par.index
-    fallback = int(index.eval()) if index.mode == ParMode.CONSTANT else 0
-    if index.mode != ParMode.CONSTANT:
-        if "elisa/fx/mam_layout" in index.expr:
-            print("MAM OSC already connected.")
-        else:
-            print("MAM OSC: Index already has a driver. Existing driver kept.")
+    if index.mode != ParMode.CONSTANT and (
+        index.mode != ParMode.EXPRESSION or "elisa/fx/mam_layout" not in index.expr
+    ):
+        print("MAM OSC: Index already has a driver. Existing driver kept.")
         return
+    fallback = int(index.eval())
     index.expr = (
-        "next((int(chan.eval() >= 0.5) for chan in op('/project1/oscin1').chans() "
+        "next((max(0, min(2, round(chan.eval()))) for chan in op('/project1/oscin1').chans() "
         "if chan.name.lstrip('/') == 'elisa/fx/mam_layout'), "
         f"{fallback})"
     )
     index.mode = ParMode.EXPRESSION
-    print("MAM OSC ready: /elisa/fx/mam_layout (0 = Full Room, 1 = Superfici).")
+    print("MAM OSC ready: /elisa/fx/mam_layout (0 = Full Room, 1 = Superfici, 2 = Solo pareti).")
+
+
+def add_preset(make, selector, source, index, name):
+    shader = make(textDAT, name + "_shader")
+    shader.text = fragment(split=index != 0, walls_only=index == 2)
+    top = make(glslTOP, name)
+    top.nodeX, top.nodeY = selector.nodeX - 180, selector.nodeY - index * 130
+    shader.nodeX, shader.nodeY = top.nodeX - 145, top.nodeY
+    top.par.pixeldat = shader.path
+    top.par.outputresolution = "custom"
+    top.par.resolutionw = WIDTH
+    top.par.resolutionh = HEIGHT
+    top.par.resmult = False
+    top.inputConnectors[0].connect(source)
+    top.cook(force=True)
+    if top.errors() or (top.width, top.height) != (WIDTH, HEIGHT):
+        raise RuntimeError(f"{top.path}: {top.errors()} ({top.width} x {top.height})")
+    top.outputConnectors[0].connect(selector)
 
 
 def build():
     project = op("/project1")
     existing = project.op("mam_layout")
-    if existing is not None:
-        connect_layout_osc(project, existing)
-        return
     res = project.op("res1")
     level = project.op("level3")
     ndi = project.op("ndiout1")
-    if not res or not level or not ndi or not res.inputs or not level.inputs:
+    if not level or not ndi or not level.inputs:
         raise RuntimeError("Expected /project1/res1, level3 and ndiout1.")
-    previous = level.inputs[0]
-    if previous != res and (not previous.inputs or previous.inputs[0] != res):
-        raise RuntimeError("Expected res1 directly or as input 0 of the switch before level3.")
     if not ndi.inputs or ndi.inputs[0] != level:
         raise RuntimeError("Expected level3 to feed ndiout1.")
 
@@ -118,25 +131,32 @@ def build():
         created.append(node)
         return node
 
+    if existing is not None:
+        inputs = existing.inputs
+        if len(inputs) == 2 and inputs[1].name == "mam_surfaces" and inputs[1].inputs:
+            try:
+                add_preset(make, existing, inputs[1].inputs[0], 2, "mam_walls")
+            except Exception:
+                for node in reversed(created):
+                    node.destroy()
+                raise
+        elif len(inputs) != 3 or inputs[2].name != "mam_walls":
+            raise RuntimeError("Expected two original MAM inputs or mam_walls at Index 2.")
+        connect_layout_osc(project, existing)
+        print("MAM ready: Index 2 = Solo pareti.")
+        return
+
+    if not res or not res.inputs:
+        raise RuntimeError("Expected res1 with a video input for a new MAM layout.")
+    previous = level.inputs[0]
+    if previous != res and (not previous.inputs or previous.inputs[0] != res):
+        raise RuntimeError("Expected res1 directly or as input 0 of the switch before level3.")
+
     try:
         selector = make(switchTOP, "mam_layout")
         selector.nodeX, selector.nodeY = level.nodeX - 160, level.nodeY - 250
-        for index, name in enumerate(("mam_full_room", "mam_surfaces")):
-            shader = make(textDAT, name + "_shader")
-            shader.text = fragment(split=index == 1)
-            top = make(glslTOP, name)
-            top.nodeX, top.nodeY = selector.nodeX - 180, selector.nodeY - index * 130
-            shader.nodeX, shader.nodeY = top.nodeX - 145, top.nodeY
-            top.par.pixeldat = shader.path
-            top.par.outputresolution = "custom"
-            top.par.resolutionw = WIDTH
-            top.par.resolutionh = HEIGHT
-            top.par.resmult = False
-            top.inputConnectors[0].connect(res.inputs[0])
-            top.cook(force=True)
-            if top.errors() or (top.width, top.height) != (WIDTH, HEIGHT):
-                raise RuntimeError(f"{top.path}: {top.errors()} ({top.width} x {top.height})")
-            top.outputConnectors[0].connect(selector)
+        for index, name in enumerate(("mam_full_room", "mam_surfaces", "mam_walls")):
+            add_preset(make, selector, res.inputs[0], index, name)
 
         selector.par.index = 0
         level.inputConnectors[0].connect(selector)
@@ -147,7 +167,7 @@ def build():
             node.destroy()
         raise
     connect_layout_osc(project, selector)
-    print(f"MAM ready: mam_layout Index 0 = Full Room, 1 = Surfaces. Previous feed: {previous.path}")
+    print(f"MAM ready: mam_layout Index 0 = Full Room, 1 = Surfaces, 2 = Walls only. Previous feed: {previous.path}")
 
 
 if __name__ == "__main__":
