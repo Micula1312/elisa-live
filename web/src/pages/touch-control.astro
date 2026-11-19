@@ -7,6 +7,11 @@ const title = 'ELISA · TOUCH CONTROL';
 </style></head><body>
 <header><b>BLIVET / ELISA</b><span id="status">● CONNECTING</span></header>
 <h1>TOUCH CONTROL_</h1><small>TOUCHDESIGNER · LIVE FX / OSC</small>
+<h2>USCITA IMMERSIVA / MAM</h2>
+<div class="buttons" role="group" aria-label="Layout immersivo MAM">
+  <button type="button" data-mam-layout="0">FULL ROOM</button>
+  <button type="button" data-mam-layout="1">SUPERFICI</button>
+</div>
 <h2>01 / SELECT FX</h2>
 <div class="fx-select">
 <button data-fx="0" class="active"><span>00</span>CLEAN</button>
@@ -29,6 +34,9 @@ const status=document.getElementById('status'),bridge=document.getElementById('b
 bridge.value=location.port==='8765'?location.origin:location.protocol+'//'+location.hostname+':8765';
 bridge.addEventListener('change',()=>{bridge.value=bridge.value.trim().replace(/\/$/,'')});
 async function send(name,value){try{const res=await fetch(bridge.value.trim().replace(/\/$/,'')+'/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,value}),signal:AbortSignal.timeout(1200)});if(!res.ok)throw Error('HTTP '+res.status);status.textContent='● CONNECTED';status.classList.add('ok')}catch(e){status.textContent='● BRIDGE OFFLINE';status.classList.remove('ok')}}
+document.querySelectorAll('[data-mam-layout]').forEach(button => {
+  button.addEventListener('click', () => send('mam_layout', Number(button.dataset.mamLayout)));
+});
 const timers=new Map();
 function throttle(name,value){if(timers.has(name))clearTimeout(timers.get(name));timers.set(name,setTimeout(()=>{timers.delete(name);send(name,value)},25))}
 let selected=0;const toggles={invert:false,freeze:false,blackout:false};

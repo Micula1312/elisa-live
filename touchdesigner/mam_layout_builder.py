@@ -70,17 +70,39 @@ def fragment(split):
     return "\n".join(lines)
 
 
+def connect_layout_osc(project, selector):
+    receiver = project.op("oscin1")
+    if receiver is None:
+        print("MAM OSC: /project1/oscin1 not found. Index remains manual.")
+        return
+    index = selector.par.index
+    fallback = int(index.eval()) if index.mode == ParMode.CONSTANT else 0
+    if index.mode != ParMode.CONSTANT:
+        if "elisa/fx/mam_layout" in index.expr:
+            print("MAM OSC already connected.")
+        else:
+            print("MAM OSC: Index already has a driver. Existing driver kept.")
+        return
+    index.expr = (
+        "next((int(chan.eval() >= 0.5) for chan in op('/project1/oscin1').chans() "
+        "if chan.name.lstrip('/') == 'elisa/fx/mam_layout'), "
+        f"{fallback})"
+    )
+    index.mode = ParMode.EXPRESSION
+    print("MAM OSC ready: /elisa/fx/mam_layout (0 = Full Room, 1 = Superfici).")
+
+
 def build():
     project = op("/project1")
+    existing = project.op("mam_layout")
+    if existing is not None:
+        connect_layout_osc(project, existing)
+        return
     res = project.op("res1")
     level = project.op("level3")
     ndi = project.op("ndiout1")
     if not res or not level or not ndi or not res.inputs or not level.inputs:
         raise RuntimeError("Expected /project1/res1, level3 and ndiout1.")
-    existing = project.op("mam_layout")
-    if existing is not None:
-        print("MAM already built. Use mam_layout Index 0 or 1.")
-        return
     previous = level.inputs[0]
     if previous != res and (not previous.inputs or previous.inputs[0] != res):
         raise RuntimeError("Expected res1 directly or as input 0 of the switch before level3.")
@@ -124,6 +146,7 @@ def build():
         for node in reversed(created):
             node.destroy()
         raise
+    connect_layout_osc(project, selector)
     print(f"MAM ready: mam_layout Index 0 = Full Room, 1 = Surfaces. Previous feed: {previous.path}")
 
 
