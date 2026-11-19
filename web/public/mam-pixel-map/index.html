@@ -4,6 +4,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MAM Pixel Map · Elisa Live</title>
+<style>
+  * { box-sizing: border-box }
+  body { margin: 0; background: #101311; color: #eff3ea; font: 14px/1.45 system-ui, sans-serif }
+  main { max-width: 1120px; margin: auto; padding: 20px clamp(12px, 3vw, 36px) }
+  header { display: flex; justify-content: space-between; gap: 16px; align-items: end; flex-wrap: wrap }
+  h1 { margin: 0; font: 700 clamp(23px, 5vw, 42px)/1.1 system-ui }
+  p { margin: 6px 0 12px; color: #c0cbbc }
+  .controls { display: flex; gap: 6px; margin-bottom: 10px }
+  button { font: inherit; color: inherit; background: transparent; border: 1px solid #637360; padding: 8px 12px; cursor: pointer }
+  button[aria-pressed=true] { background: #b9ff88; color: #111710; border-color: #b9ff88 }
+  svg { display: block; width: 100%; border: 1px solid #637360; color: #ffffff30 }
+  .surface { fill: transparent; stroke: #e9f0e8; stroke-width: 12 }
+  svg[data-mode=split] .surface { fill: var(--fill) }
+  svg[data-mode=full] .split, svg[data-mode=split] .full { display: none }
+  text { text-anchor: middle; fill: #f6faf3; font-size: 142px; font-weight: 700 }
+  .dimension { font: 112px monospace }
+  use { fill: #b9ff88 }
+  footer { padding-top: 12px; color: #c0cbbc }
+</style>
 </head>
 <body>
 <main>
@@ -122,7 +141,7 @@
   </svg>
   <footer>Geometria del builder TouchDesigner, ricavata dalla tavola annotata. Il posizionamento va verificato sulle slice in Resolume.</footer>
 </main>
-<script is:inline>
+<script>
   const map = document.querySelector("#atlas");
   const info = document.querySelector("#mode-info");
   const buttons = document.querySelectorAll("[data-mode][type=button]");
@@ -136,22 +155,3 @@
     buttons.forEach(item => item.setAttribute("aria-pressed", String(item === button)));
   }));
 </script>
-<style>
-  :global(*) { box-sizing: border-box }
-  :global(body) { margin: 0; background: #101311; color: #eff3ea; font: 14px/1.45 system-ui, sans-serif }
-  main { max-width: 1120px; margin: auto; padding: 20px clamp(12px, 3vw, 36px) }
-  header { display: flex; justify-content: space-between; gap: 16px; align-items: end; flex-wrap: wrap }
-  h1 { margin: 0; font: 700 clamp(23px, 5vw, 42px)/1.1 system-ui }
-  p { margin: 6px 0 12px; color: #c0cbbc }
-  .controls { display: flex; gap: 6px; margin-bottom: 10px }
-  button { font: inherit; color: inherit; background: transparent; border: 1px solid #637360; padding: 8px 12px; cursor: pointer }
-  button[aria-pressed=true] { background: #b9ff88; color: #111710; border-color: #b9ff88 }
-  svg { display: block; width: 100%; border: 1px solid #637360; color: #ffffff30 }
-  .surface { fill: transparent; stroke: #e9f0e8; stroke-width: 12 }
-  svg[data-mode=split] .surface { fill: var(--fill) }
-  svg[data-mode=full] .split, svg[data-mode=split] .full { display: none }
-  text { text-anchor: middle; fill: #f6faf3; font-size: 142px; font-weight: 700 }
-  .dimension { font: 112px monospace }
-  use { fill: #b9ff88 }
-  footer { padding-top: 12px; color: #c0cbbc }
-</style>
