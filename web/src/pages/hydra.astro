@@ -29,6 +29,8 @@
     #capital-counter .tears{color:#ff2400;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,36,0,.6)}
     #capital-counter.pop{animation:capitalPop .28s ease-out}@keyframes capitalPop{0%{transform:scale(1)}45%{transform:scale(1.22) rotate(-2deg)}100%{transform:scale(1)}}
   to{transform:translate(-50%,-34vh)}}
+    #transition-note{position:fixed;z-index:9;left:8vw;top:15vh;max-width:72vw;padding:.65em 1em;background:#eef2d9;color:#182416;border:2px solid #182416;box-shadow:6px 6px #182416;font:600 clamp(16px,2.3vw,46px)/1.2 monospace;pointer-events:none}
+    #transition-note::before{content:'ELISA / NOTA';display:block;font-size:.52em;margin-bottom:.65em;letter-spacing:.1em}
     #farewell-credits{position:fixed;inset:0;overflow:hidden;display:none;z-index:8;pointer-events:none;perspective:420px;background:linear-gradient(to bottom,transparent 0 54%,rgba(0,0,0,.16) 100%)}
     #farewell-credits.on{display:block}
     #farewell-credits-inner{position:absolute;left:12%;right:12%;top:100%;text-align:center;color:#39FF14;font:700 clamp(22px,3.1vw,54px)/1.55 Helvetica,Arial,sans-serif;white-space:pre-wrap;letter-spacing:.035em;transform-origin:50% 100%;transform:rotateX(22deg) translateY(0) scale(1)}
@@ -39,6 +41,7 @@
 <body>
   <canvas id="hydra-canvas"></canvas>
   <div id="master-fade"></div>
+  <aside id="transition-note" hidden></aside>
   <div id="global-invert" aria-hidden="true"></div>
   <div id="farewell-credits"><div id="farewell-credits-inner"></div></div>
   <canvas id="landscape-source" style="display:none"></canvas>
@@ -654,16 +657,99 @@
         trackingMode=('FaceDetector' in window)?'face':'motion';status.textContent='WEBCAM + '+trackingMode.toUpperCase()+' TRACK · ONLINE';ensureHandTracking();return true;
       }catch(err){status.textContent='WEBCAM ERROR · '+err.message;status.classList.add('error');return false}
     }
+    const transitionVideo = document.createElement('video');
+    transitionVideo.muted = true;
+    transitionVideo.loop = true;
+    transitionVideo.playsInline = true;
+    const transitionCanvas = document.createElement('canvas');
+    transitionCanvas.width = 960;
+    transitionCanvas.height = 540;
+    const transitionContext = transitionCanvas.getContext('2d');
+    const transitionNote = document.getElementById('transition-note');
+    const transitionClips = {};
+    const transitionNotes = {
+      dissolve: ['il corpo esce dal quadro', 'restano le immagini', 'il paesaggio continua'],
+      fusion: ['la rete cambia forma', 'le immagini fanno parte del paesaggio', 'online / offline'],
+    };
+    let transitionLastFrame = -1;
+    let transitionBeat = 0;
+    let transitionPeak = false;
+    let transitionStep = 0;
+    let transitionNoteUntil = 0;
+    let transitionLive = false;
+
+    function showTransitionNote(text, now) {
+      transitionNote.textContent = text;
+      transitionNote.hidden = false;
+      transitionNoteUntil = now + 2200;
+    }
+
+    function prepareTransition(id) {
+      transitionNote.hidden = true;
+      transitionVideo.pause();
+      transitionVideo.removeAttribute('src');
+      transitionVideo.load();
+      transitionLive = Object.hasOwn(transitionNotes, id);
+      if (!transitionLive) {
+        s2.init({src:typeCanvas});
+        return;
+      }
+      transitionStep = 0;
+      transitionPeak = false;
+      transitionBeat = performance.now();
+      transitionLastFrame = -1;
+      const gradient = transitionContext.createLinearGradient(0, 0, 960, 540);
+      gradient.addColorStop(0, '#102422');
+      gradient.addColorStop(1, '#010604');
+      transitionContext.fillStyle = gradient;
+      transitionContext.fillRect(0, 0, 960, 540);
+      s2.init({src:transitionCanvas});
+      if (transitionClips[id]) {
+        transitionVideo.src = transitionClips[id];
+        void transitionVideo.play().catch(error => console.warn('Landscape clip unavailable', error));
+      }
+      const initialObject = id === 'dissolve' ? 'swarm' : 'orb';
+      if (landscape.objects[initialObject].length < 4) addGenesisObject(initialObject);
+      void spawnArchiveImage();
+    }
+
+    function updateTransition(now) {
+      if (!transitionLive) return;
+      if (now > transitionNoteUntil) transitionNote.hidden = true;
+      if (transitionVideo.readyState >= 2 && transitionVideo.currentTime !== transitionLastFrame) {
+        transitionLastFrame = transitionVideo.currentTime;
+        const w = transitionCanvas.width, h = transitionCanvas.height;
+        const scale = Math.max(w / transitionVideo.videoWidth, h / transitionVideo.videoHeight);
+        const vw = transitionVideo.videoWidth * scale, vh = transitionVideo.videoHeight * scale;
+        transitionContext.drawImage(transitionVideo, (w - vw) / 2, (h - vh) / 2, vw, vh);
+      }
+      const peak = hit() > .22;
+      if (peak && !transitionPeak && now - transitionBeat > 1100) {
+        const objects = activeScene === 'dissolve' ? ['swarm', 'phone', 'diamond'] : ['tree', 'orb', 'totem', 'cola'];
+        const object = objects[transitionStep % objects.length];
+        if (landscape.objects[object].length < 4) addGenesisObject(object);
+        if (transitionStep % 2 === 0) void spawnArchiveImage();
+        if (transitionStep % 3 === 0) {
+          const notes = transitionNotes[activeScene];
+          showTransitionNote(notes[Math.floor(transitionStep / 3) % notes.length], now);
+        }
+        transitionStep++;
+        transitionBeat = now;
+      }
+      transitionPeak = peak;
+    }
+
     let activeScene='custom01';
     let landscapeT=0;
     function renderLandscape(){
       requestAnimationFrame(renderLandscape);
       landscapeT+=.006;
+      updateTransition(performance.now());
       const pos=landscape.mesh.geometry.attributes.position;
       const base=landscape.base;
       const lo=low(),mi=mid(),hi=high();
       landscape.flash*=.88;
-      if(activeScene!=='body')for(let i=0;i<pos.count;i++){
+      if(landscape.mesh.visible)for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
         const farewellDance=activeScene==='farewell'?(audioReact()*.85+audioChaos()*1.9):0;
         const danceSpeed=1+farewellDance*(.8+hi*2.4)*(.4+landscapeMotion()*1.2);
@@ -982,15 +1068,30 @@ render(o0)`;
   .out(o0)
 render(o0)`;
 
-    // Scene deck structure. CUSTOM 01 stays untouched; GENESIS is the first new authored scene.
-    // The other slots are placeholders to be rewritten together later.
+    const bodyDissolve = `src(s2)
+  .saturate(.7)
+  .modulate(noise(3,.035), () => .009 + mid()*.04)
+  .layer(src(s0).luma(.09,.12))
+  .layer(src(s3))
+  .out(o0)
+render(o0)`;
+
+    const fluidFusion = `src(s2)
+  .saturate(1.3)
+  .modulate(noise(2,.025), () => .012 + low()*.045)
+  .layer(src(s0).luma(.08,.10))
+  .layer(src(s3).modulate(noise(2,.03), () => high()*.06))
+  .out(o0)
+render(o0)`;
     const scenes={
       custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
       genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape},
       resonance:{label:'RESONANCE · PRE-HYPNOSIS / WEBCAM',code:resonanceGradient},
       hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
-      farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
       body:{label:'BODY · 3D LANDSCAPE',code:genesisLandscape},
+      dissolve:{label:'BODY DISSOLVE',code:bodyDissolve},
+      fusion:{label:'FLUID FUSION',code:fluidFusion},
+      farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
      };
     let currentScene='custom01';
     code.value=scenes[currentScene].code;
@@ -1015,9 +1116,10 @@ render(o0)`;
     run();
 
     let sceneRequest=0;
-    async function loadScene(id){
+    async function loadScene(id, clip){
+      if(!Object.hasOwn(scenes,id))return;
       const scene=scenes[id];
-      if(!scene)return;
+      if (typeof clip === 'string' && Object.hasOwn(transitionNotes,id)) transitionClips[id] = clip;
       const request=++sceneRequest;
       if(id==='body'){
         status.textContent='LOADING · BODY LANDSCAPE';
@@ -1026,12 +1128,14 @@ render(o0)`;
         if(request!==sceneRequest)return;
       }
       currentScene=id;activeScene=id;
-      landscape.mesh.visible=id!=='body';
+      const transition = Object.hasOwn(transitionNotes,id);
+      landscape.mesh.visible=id!=='body'&&!transition;
+      prepareTransition(id);
       if(bodyLandscape)bodyLandscape.visible=id==='body';
       if(id==='body')updateBodyCamera();
       if(id!=='resonance'){resonanceInvert=false;applyInvert()}
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
-      if(['genesis','body','farewell'].includes(id)){
+      if(transition||['genesis','body','farewell'].includes(id)){
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
@@ -1066,9 +1170,13 @@ render(o0)`;
       landscape.camera.position.x=nav.x;landscape.camera.position.z=10+nav.z;
     }
     function cleanHydra(){
+      ++sceneRequest;
+      prepareTransition('');
       try{solid(0,0,0,1).out(o0);render(o0);status.textContent='CLEAN';sceneTag.textContent='HYDRA · CLEAN'}catch(err){status.textContent='ERROR · '+err.message}
     }
     function blackoutHydra(){
+      ++sceneRequest;
+      prepareTransition('');
       try{
         solid(0,0,0,1).out(o0);solid(0,0,0,1).out(o1);solid(0,0,0,1).out(o2);solid(0,0,0,1).out(o3);
         render(o0);status.textContent='BLACK OUT';sceneTag.textContent='HYDRA · BLACK OUT';
@@ -1096,10 +1204,14 @@ render(o0)`;
     function updateFullscreenButton(){fullscreenButton.textContent=document.fullscreenElement?'⛶ EXIT FULLSCREEN':'⛶ FULLSCREEN'}
     fullscreenButton.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();updateFullscreenButton()}catch(err){status.textContent='FULLSCREEN · '+err.message}};
     document.addEventListener('fullscreenchange',updateFullscreenButton);
+    let lastRegiaCue;
     const handleRegia=m=>{
       m=m||{};
       if(m.type==='hydra-fullscreen'){status.textContent='FULLSCREEN · USE F11 ON HYDRA WINDOW ONCE'}
-      if(m.type==='hydra-scene')loadScene(m.scene);
+      if(m.type==='hydra-scene' && (!m.cueId || m.cueId !== lastRegiaCue)){
+        lastRegiaCue = m.cueId;
+        void loadScene(m.scene,m.clip);
+      }
       if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
       if(m.type==='hydra-farewell-credits'){farewellCreditsInner.textContent=String(m.text||'').trim()||'BLIVET'}
       if(m.type==='hydra-credits-play')showFarewellCredits(m.text||farewellCreditsInner.textContent)

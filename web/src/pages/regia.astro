@@ -222,11 +222,26 @@ footer {
 .phone-link-controls{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .phone-link input{flex:1 1 260px;min-width:0;padding:6px;color:inherit;background:#080908;border:1px solid #444}
 .touch-regia iframe{display:block;width:100%;height:720px;max-height:80vh;margin-top:12px;border:1px solid #444;background:#080908}
+.backup-panel{padding:12px 20px;border-bottom:1px solid #444}
+.backup-panel h2{font-size:12px;margin:0 0 8px}
+.cue-utilities,.landscape-files{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.landscape-files label{display:grid;gap:4px;font-size:12px}
+#hydraCueStatus,#backupStatus{font-size:11px;color:#aaa}
 </style>
 </head>
 <body>
 <div class="shell">
 <header><div class="title">AICHA / ELISA REGIA</div><div class="soul">MEDIA SOUL: <span id="soul">STANDBY</span></div></header>
+<section class="backup-panel">
+  <h2>USCITA / CLIP DI SICUREZZA</h2>
+  <div class="hydra-tools">
+    <button type="button" data-backup="0">CLIP 1</button>
+    <button type="button" data-backup="1">CLIP 2</button>
+    <button type="button" data-backup="2">CLIP 3</button>
+    <button type="button" data-backup="live">TORNA LIVE</button>
+    <span id="backupStatus" role="status"></span>
+  </div>
+</section>
 <div class="grid">
 <section class="panel">
 <h2>AUDIO MASTER / LIVE INPUT</h2>
@@ -260,17 +275,30 @@ footer {
 <div class="video-note">REMOTE WEB CONTROL Â· keep the performance page open in another browser window/display.</div></div>
 </div></section>
 <section class="hydra-deck">
-<h2>HYDRA / LIVE SCENES</h2>
-<div class="hydra-scene-label">SCENE SELECT — PRIMARY CONTROLS</div>
-<div class="hydra-buttons">
-<button data-hydra="custom01">01<br><strong>CORRUPTED</strong></button>
-<button data-hydra="genesis">02<br><strong>GENESIS</strong></button>
-<button data-hydra="resonance">03<br><strong>RESONANCE</strong></button>
-<button data-hydra="hypnosis">04<br><strong>HYPNOSIS</strong></button>
-<button data-hydra="farewell">05<br><strong>FINAL TREE</strong></button>
-<button data-hydra="body">06<br><strong>BODY LANDSCAPE</strong></button>
+<h2>HYDRA / SEQUENZA LIVE</h2>
+<div class="hydra-tools cue-utilities">
+  <button id="nextHydra" type="button">PROSSIMO CUE</button>
+  <label><input type="checkbox" id="autoMam"> AUTO MAM</label>
+  <span id="hydraCueStatus" role="status">Seleziona una scena</span>
 </div>
-<div class="video-note">06 BODY · focus the Hydra window · ↑/↓ move · ←/→ turn · Q/E rise/lower · R/F look up/down · HOME reset view</div>
+<div class="hydra-buttons">
+<button data-hydra="custom01" data-mam="2">01<br><strong>CORRUPTED</strong></button>
+<button data-hydra="genesis" data-mam="1">02<br><strong>GENESIS</strong></button>
+<button data-hydra="resonance" data-mam="0">03<br><strong>RESONANCE</strong></button>
+<button data-hydra="hypnosis">04<br><strong>HYPNOSIS</strong></button>
+<button data-hydra="body">05<br><strong>BODY LANDSCAPE</strong></button>
+<button data-hydra="dissolve">06<br><strong>BODY DISSOLVE</strong></button>
+<button data-hydra="fusion">07<br><strong>FLUID FUSION</strong></button>
+<button data-hydra="farewell">08<br><strong>FINAL TREE</strong></button>
+</div>
+<div class="hydra-subpanel">
+  <div class="hydra-scene-label">VIDEO PAESAGGIO</div>
+  <div class="landscape-files">
+    <label>Body Dissolve <input type="file" accept="video/*" data-landscape-clip="dissolve"></label>
+    <label>Fluid Fusion <input type="file" accept="video/*" data-landscape-clip="fusion"></label>
+  </div>
+</div>
+<div class="video-note">BODY · focus the Hydra window · ↑/↓ move · ←/→ turn · Q/E rise/lower · R/F look up/down · HOME reset view</div>
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">GENESIS + BODY / OBJECTS</div>
   <div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST ×6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
@@ -428,7 +456,64 @@ q("#voiceSubsStop").onclick=()=>{send({type:"voice-subtitles-stop"});q("#voiceSu
 q("#fxAmount").oninput=e=>{q("#fxAmountVal").textContent=Number(e.target.value).toFixed(2);send({type:"fx-amount",value:Number(e.target.value)})};
 q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).toFixed(1);send({type:"fx-react",value:Number(e.target.value)})};
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
-document.querySelectorAll("[data-hydra]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-hydra]").forEach(b=>b.classList.remove("live"));btn.classList.add("live");send({type:"hydra-scene",scene:btn.dataset.hydra})});
+const hydraCues = [...document.querySelectorAll("[data-hydra]")];
+const videoClips = {};
+const sendHydraCue = (scene, clip) => send({type:"hydra-scene", scene, clip, cueId:Date.now() + Math.random()});
+async function touchControl(name, value) {
+  const response = await fetch(location.protocol + "//" + location.hostname + ":8765/control", {
+    method: "POST", headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({name, value}), signal: AbortSignal.timeout(1200),
+  });
+  if (!response.ok) throw new Error("HTTP " + response.status);
+}
+function launchHydraCue(button) {
+  hydraCues.forEach(cue => {
+    cue.classList.toggle("live", cue === button);
+    cue.setAttribute("aria-pressed", String(cue === button));
+  });
+  const scene = button.dataset.hydra;
+  const label = button.querySelector("strong").textContent;
+  q("#hydraCueStatus").textContent = label;
+  sendHydraCue(scene, videoClips[scene] || "");
+  if (q("#autoMam").checked && button.dataset.mam !== undefined) {
+    void touchControl("mam_layout", Number(button.dataset.mam)).catch(() => {
+      if (button.classList.contains("live")) q("#hydraCueStatus").textContent = label + " · OSC NON INVIATO";
+    });
+  }
+}
+hydraCues.forEach(button => {
+  button.setAttribute("aria-pressed", "false");
+  button.onclick = () => launchHydraCue(button);
+});
+q("#nextHydra").onclick = () => {
+  const active = hydraCues.findIndex(button => button.classList.contains("live"));
+  if (hydraCues[active + 1]) launchHydraCue(hydraCues[active + 1]);
+};
+document.querySelectorAll("[data-landscape-clip]").forEach(input => {
+  input.onchange = () => {
+    if (!input.files?.[0]) return;
+    const scene = input.dataset.landscapeClip;
+    if (videoClips[scene]) URL.revokeObjectURL(videoClips[scene]);
+    videoClips[scene] = URL.createObjectURL(input.files[0]);
+    if (hydraCues.some(button => button.dataset.hydra === scene && button.classList.contains("live"))) {
+      sendHydraCue(scene, videoClips[scene]);
+    }
+  };
+});
+const backupButtons = [...document.querySelectorAll("[data-backup]")];
+backupButtons.forEach(button => button.onclick = async () => {
+  backupButtons.forEach(item => item.disabled = true);
+  try {
+    const clip = button.dataset.backup;
+    if (clip !== "live") await touchControl("clip_select", Number(clip));
+    await touchControl("source_mix", clip === "live" ? 0 : 1);
+    q("#backupStatus").textContent = button.textContent + " · OSC INVIATO";
+  } catch {
+    q("#backupStatus").textContent = "OSC NON INVIATO";
+  } finally {
+    backupButtons.forEach(item => item.disabled = false);
+  }
+});
 document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{send({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
 q("#forestBurst").onclick=()=>send({type:"hydra-forest-burst",count:6});
 document.querySelectorAll("[data-hypnosis-word]").forEach(btn=>btn.onclick=()=>{q("#hypnosisText").value=btn.dataset.hypnosisWord;send({type:"hydra-hypnosis-word",word:btn.dataset.hypnosisWord})});
@@ -463,7 +548,8 @@ setupFile.onchange=async()=>{
     const sub=!!w.subtitles;q("#subtitles").classList.toggle("on",sub);q("#subtitles").textContent="SUBTITLES "+(sub?"ON":"OFF");send({type:"subtitles",on:sub});
     if(typeof h.hypnosisText==="string")q("#hypnosisText").value=h.hypnosisText;
     if(typeof h.credits==="string"){q("#farewellCreditsText").value=h.credits;send({type:"hydra-farewell-credits",text:h.credits})}
-    if(h.scene){const b=document.querySelector('[data-hydra="'+h.scene+'"]');if(b){document.querySelectorAll("[data-hydra]").forEach(x=>x.classList.remove("live"));b.classList.add("live");send({type:"hydra-scene",scene:h.scene})}}
+    const cue = hydraCues.find(button => button.dataset.hydra === h.scene);
+    if (cue) launchHydraCue(cue);
     q("#setupName").value=data.name||file.name.replace(/\.json$/i,"");setupStatus.textContent="LOADED · "+(data.name||file.name);
   }catch(err){setupStatus.textContent="JSON ERROR · "+err.message}
   setupFile.value="";
