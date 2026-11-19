@@ -218,6 +218,9 @@ footer {
 @media(max-width:900px){.hydra-buttons{grid-template-columns:repeat(3,1fr)!important}}
 .touch-regia{border-top:1px solid #444;padding:16px 20px}
 .touch-regia summary{cursor:pointer;color:var(--acid);font-size:12px}
+.phone-link{margin-top:12px;font-size:12px}
+.phone-link-controls{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.phone-link input{flex:1 1 260px;min-width:0;padding:6px;color:inherit;background:#080908;border:1px solid #444}
 .touch-regia iframe{display:block;width:100%;height:720px;max-height:80vh;margin-top:12px;border:1px solid #444;background:#080908}
 </style>
 </head>
@@ -306,6 +309,15 @@ see you out there</textarea><div><button id="farewellCreditsSend">UPDATE</button
 </section>
 <details class="touch-regia">
   <summary>TOUCHDESIGNER / LIVE FX</summary>
+  <div class="phone-link">
+    <label for="phone-url">URL TELEFONO / HOTSPOT PC</label>
+    <div class="phone-link-controls">
+      <input id="phone-url" type="url" readonly>
+      <button id="phone-copy" type="button" disabled>COPIA URL</button>
+      <button id="phone-refresh" type="button">AGGIORNA</button>
+    </div>
+    <div id="phone-status" class="setup-status" role="status">Collega il telefono all’hotspot del PC.</div>
+  </div>
   <iframe src="/touch-control" title="Controller OSC TouchDesigner"></iframe>
 </details>
 <footer><span>DISPLAY REGIA â€” KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE Â· 32:27</span></footer>
@@ -472,6 +484,48 @@ q("#hydraHud").onclick=()=>{
   q("#hydraHud").classList.toggle("on",!hydraHudVisible);
 };
 syncCue(0);populate();
+</script>
+<script is:inline>
+  (() => {
+    const field = document.getElementById("phone-url");
+    const copy = document.getElementById("phone-copy");
+    const refresh = document.getElementById("phone-refresh");
+    const status = document.getElementById("phone-status");
+    async function updatePhoneUrl() {
+      refresh.disabled = true;
+      copy.disabled = true;
+      field.value = "";
+      try {
+        const response = await fetch("http://localhost:8765/phone-url", {
+          signal: AbortSignal.timeout(2000)
+        });
+        if (!response.ok) throw new Error("Bridge unavailable");
+        const { url } = await response.json();
+        field.value = url || "";
+        copy.disabled = !url;
+        status.textContent = url
+          ? "Collega il telefono all’hotspot del PC e apri questo URL."
+          : "IP hotspot non trovato. Attiva l’hotspot e premi AGGIORNA.";
+      } catch {
+        status.textContent = "Avvia o riavvia il bridge OSC e premi AGGIORNA.";
+      } finally {
+        refresh.disabled = false;
+      }
+    }
+    refresh.addEventListener("click", updatePhoneUrl);
+    field.closest("details").addEventListener("toggle", (event) => {
+      if (event.currentTarget.open && !refresh.disabled) updatePhoneUrl();
+    });
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(field.value);
+        status.textContent = "URL copiato.";
+      } catch {
+        field.select();
+        status.textContent = "Premi Ctrl+C per copiare l’URL.";
+      }
+    });
+  })();
 </script>
 </body>
 </html>
