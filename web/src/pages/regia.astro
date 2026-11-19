@@ -289,7 +289,7 @@ footer {
 <button data-hydra="genesis" data-mam="1">02<br><strong>GENESIS</strong></button>
 <button data-hydra="resonance" data-mam="0">03<br><strong>RESONANCE</strong></button>
 <button data-hydra="hypnosis">04<br><strong>HYPNOSIS</strong></button>
-<button data-hydra="body">05<br><strong>BODY LANDSCAPE</strong></button>
+<button data-hydra="body">05<br><strong>ELISA BODY REVEAL</strong></button>
 <button data-hydra="dissolve">06<br><strong>BODY DISSOLVE</strong></button>
 <button data-hydra="fusion">07<br><strong>FLUID FUSION</strong></button>
 <button data-hydra="farewell">08<br><strong>FINAL TREE</strong></button>
@@ -314,6 +314,22 @@ footer {
     <label>Body Dissolve <input type="file" accept="video/*" data-landscape-clip="dissolve"></label>
     <label>Fluid Fusion <input type="file" accept="video/*" data-landscape-clip="fusion"></label>
   </div>
+</div>
+<div id="bodyRevealControls" class="hydra-subpanel" hidden>
+  <div class="hydra-scene-label">ELISA BODY REVEAL</div>
+  <div class="hydra-tools">
+    <button type="button" data-reveal-model="A">FACCIA A</button>
+    <button type="button" data-reveal-model="B">FACCIA B</button>
+    <button type="button" data-reveal-model="C">FACCIA C</button>
+    <button type="button" data-reveal-action="play">INTRO BOCCA</button>
+    <button type="button" data-reveal-action="stop">STOP INTRO</button>
+    <button type="button" data-reveal-action="reset">RESET BOCCA</button>
+    <label>Intro (s) <input id="revealDuration" type="number" min="5" max="180" value="30"></label>
+    <label>BPM <input id="revealBpm" type="number" min="30" max="180" value="120"></label>
+    <button type="button" id="revealStrobe" aria-pressed="false">STROBO A/B/C</button>
+    <span id="revealStatus" role="status"></span>
+  </div>
+  <div class="video-note">Rotella · zoom / Tasto centrale + trascina · orbita / CC19–21 · zoom e orbita / Pad XY · animazione e lampo</div>
 </div>
 <div class="video-note">BODY · focus the Hydra window · ↑/↓ move · ←/→ turn · Q/E rise/lower · R/F look up/down · HOME reset view</div>
 <div class="hydra-subpanel">
@@ -486,6 +502,7 @@ const mouseSceneControls = {
   farewell: ["X · Contrasto e distorsione / Y · Luminosità", [["Stelle", "stars"], ["Invert", "invert"]]],
 };
 function showMouseActions(scene) {
+  q("#bodyRevealControls").hidden = scene !== "body";
   const [axes, actions] = mouseSceneControls[scene];
   q("#mouseAxes").textContent = axes;
   q("#hydraMouseActions").replaceChildren(...actions.map(([label, action]) => {
@@ -523,6 +540,40 @@ mousePad.addEventListener("pointermove", event => {
   if (mousePad.hasPointerCapture(event.pointerId)) moveMousePad(event);
 });
 showMouseActions("custom01");
+const strobeButton = q("#revealStrobe");
+const sendStrobe = enabled => control.postMessage({
+  type:"hydra-body-strobe", enabled, bpm:Number(q("#revealBpm").value),
+});
+let strobeRequested = false;
+strobeButton.onclick = () => {
+  strobeRequested = !strobeRequested;
+  q("#revealStatus").textContent = strobeRequested ? "CARICAMENTO FACCE…" : "";
+  sendStrobe(strobeRequested);
+};
+q("#revealBpm").onchange = () => {
+  if (strobeButton.getAttribute("aria-pressed") === "true") sendStrobe(true);
+};
+document.querySelectorAll("[data-reveal-model]").forEach(button => {
+  button.onclick = () => control.postMessage({type:"hydra-model",model:button.dataset.revealModel});
+});
+document.querySelectorAll("[data-reveal-action]").forEach(button => {
+  button.onclick = () => control.postMessage({
+    type:"hydra-face-intro",action:button.dataset.revealAction,duration:Number(q("#revealDuration").value),
+  });
+});
+control.addEventListener("message", ({data}) => {
+  if(data?.type==="hydra-body-strobe-state"){
+    strobeRequested = data.enabled;
+    strobeButton.setAttribute("aria-pressed",String(data.enabled));
+    strobeButton.classList.toggle("on",data.enabled);
+    q("#revealStatus").textContent=data.error ? "CARICAMENTO MODELLI · "+data.error : data.enabled ? "STROBO ATTIVO" : "";
+  }
+  if(data?.type==="hydra-model-state"){
+    document.querySelectorAll("[data-reveal-model]").forEach(button => {
+      button.classList.toggle("on",button.dataset.revealModel===data.model);
+    });
+  }
+});
 const sendHydraCue = (scene, clip) => send({type:"hydra-scene", scene, clip, cueId:Date.now() + Math.random()});
 async function touchControl(name, value) {
   const response = await fetch(location.protocol + "//" + location.hostname + ":8765/control", {
