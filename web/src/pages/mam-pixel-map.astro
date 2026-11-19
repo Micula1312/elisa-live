@@ -1,0 +1,293 @@
+---
+const width = undefined;
+const height = undefined;
+// Atlas coordinates from touchdesigner/mam_layout_builder.py.
+const surfaces = [
+  [
+    "Floor",
+    [
+      [
+        1100,
+        1200
+      ],
+      [
+        4326,
+        1200
+      ],
+      [
+        5960,
+        2108
+      ],
+      [
+        6838,
+        2108
+      ],
+      [
+        6838,
+        4598
+      ],
+      [
+        1100,
+        4598
+      ]
+    ],
+    1
+  ],
+  [
+    "Nord",
+    [
+      [
+        6838,
+        2108
+      ],
+      [
+        8038,
+        2108
+      ],
+      [
+        8038,
+        4598
+      ],
+      [
+        6838,
+        4598
+      ]
+    ],
+    1
+  ],
+  [
+    "Sud",
+    [
+      [
+        0,
+        1200
+      ],
+      [
+        1100,
+        1200
+      ],
+      [
+        1100,
+        4598
+      ],
+      [
+        0,
+        4598
+      ]
+    ],
+    3
+  ],
+  [
+    "West 1",
+    [
+      [
+        1100,
+        100
+      ],
+      [
+        4326,
+        0
+      ],
+      [
+        4326,
+        1200
+      ],
+      [
+        1100,
+        1200
+      ]
+    ],
+    0
+  ],
+  [
+    "West 2",
+    [
+      [
+        4326,
+        0
+      ],
+      [
+        6192,
+        0
+      ],
+      [
+        6192,
+        1200
+      ],
+      [
+        4326,
+        1200
+      ]
+    ],
+    0
+  ],
+  [
+    "West 3",
+    [
+      [
+        6192,
+        0
+      ],
+      [
+        7072,
+        0
+      ],
+      [
+        7072,
+        1200
+      ],
+      [
+        6192,
+        1200
+      ]
+    ],
+    0
+  ],
+  [
+    "Est 2",
+    [
+      [
+        1100,
+        4598
+      ],
+      [
+        4326,
+        4598
+      ],
+      [
+        4326,
+        5798
+      ],
+      [
+        1100,
+        5698
+      ]
+    ],
+    2
+  ],
+  [
+    "Est 1",
+    [
+      [
+        4326,
+        4598
+      ],
+      [
+        6838,
+        4598
+      ],
+      [
+        6838,
+        5798
+      ],
+      [
+        4326,
+        5798
+      ]
+    ],
+    2
+  ]
+];
+const shapes = surfaces.map(([name, points, turn]) => {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  const w = Math.max(...xs) - left;
+  const h = Math.max(...ys) - top;
+  return {
+    name, turn, left, top, w, h,
+    points: points.map(([x,y]) => x + "," + y).join(" "),
+    cx: left + w / 2, cy: top + h / 2,
+  };
+});
+---
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MAM Pixel Map · Elisa Live</title>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>MAM PIXEL MAP</h1><p>8038 × 5798 px · Elisa Live</p></div>
+    <div class="controls" role="group" aria-label="Preset di uscita">
+      <button type="button" data-mode="full" aria-pressed="true">Full Room</button>
+      <button type="button" data-mode="split" aria-pressed="false">Superfici</button>
+    </div>
+  </header>
+  <p id="mode-info" aria-live="polite">Un unico frame attraverso le superfici. Il bordo TOP punta verso Wall Nord.</p>
+  <svg id="atlas" data-mode="full" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="map-title">
+    <title id="map-title">Mappa MAM, con Wall Nord a destra e senza Wall Stage</title>
+    <defs>
+      <pattern id="grid" width="200" height="200" patternUnits="userSpaceOnUse">
+        <path d="M 200 0 H 0 V 200" fill="none" stroke="currentColor" stroke-width="9" />
+      </pattern>
+      <linearGradient id="full-frame" x1="0%" y1="100%" x2="100%" y2="0%" gradientUnits="objectBoundingBox">
+        <stop offset="0" stop-color="#202247" />
+        <stop offset=".62" stop-color="#224750" />
+        <stop offset="1" stop-color="#376645" />
+      </linearGradient>
+      <clipPath id="room-mask">{shapes.map(s => <polygon points={s.points} />)}</clipPath>
+      <path id="arrow" d="M -105 40 L 0 -90 L 105 40 Z" />
+    </defs>
+    <rect width={width} height={height} fill="#080a09" />
+    <g class="full" clip-path="url(#room-mask)">
+      <rect width={width} height={height} fill="url(#full-frame)" />
+      <rect width={width} height={height} fill="url(#grid)" />
+      <path d="M 6980 0 V 5798" stroke="#b9ff88" stroke-width="36" />
+    </g>
+    {shapes.map((s, i) => (
+      <g>
+        <polygon class="surface" points={s.points} style={`--fill:${["#264b42","#355e3e","#323a66","#4c3764","#503654","#365161","#4a4632","#374655"][i]}`} />
+        <clipPath id={`wall-${i}`}><polygon points={s.points} /></clipPath>
+        <rect class="split" x={s.left} y={s.top} width={s.w} height={s.h} fill="url(#grid)" clip-path={`url(#wall-${i})`} />
+        <g transform={`translate(${s.cx} ${s.cy + (s.name === "Floor" ? 290 : 0)})`}>
+          <text>{s.name === "Floor" ? "PAVIMENTO" : `WALL ${s.name.toUpperCase()}`}</text>
+          {s.name === "Nord" && <text class="dimension" y="150">1200 × 2490</text>}
+          <use class="split" href="#arrow" x="0" y="-210" transform={`translate(0 -210) rotate(${s.turn * 90}) translate(0 210)`} />
+        </g>
+      </g>
+    ))}
+    <g class="full" transform="translate(7440 4100)">
+      <text x="-130" class="dimension">TOP</text>
+      <use href="#arrow" x="210" y="-48" transform="rotate(90 210 -48)" />
+    </g>
+  </svg>
+  <footer>Geometria del builder TouchDesigner, ricavata dalla tavola annotata. Il posizionamento va verificato sulle slice in Resolume.</footer>
+</main>
+<script>
+  const map = document.querySelector<SVGSVGElement>("#atlas");
+  const info = document.querySelector("#mode-info");
+  const buttons = document.querySelectorAll<HTMLButtonElement>("[data-mode][type=button]");
+  buttons.forEach(button => button.addEventListener("click", () => {
+    if (!map || !info) return;
+    const split = button.dataset.mode === "split";
+    map.dataset.mode = split ? "split" : "full";
+    info.textContent = split
+      ? "Un ritaglio per superficie. Le frecce indicano dove punta il bordo TOP di ciascun ritaglio."
+      : "Un unico frame attraverso le superfici. Il bordo TOP punta verso Wall Nord.";
+    buttons.forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+  }));
+</script>
+<style>
+  :global(*) { box-sizing: border-box }
+  :global(body) { margin: 0; background: #101311; color: #eff3ea; font: 14px/1.45 system-ui, sans-serif }
+  main { max-width: 1120px; margin: auto; padding: 20px clamp(12px, 3vw, 36px) }
+  header { display: flex; justify-content: space-between; gap: 16px; align-items: end; flex-wrap: wrap }
+  h1 { margin: 0; font: 700 clamp(23px, 5vw, 42px)/1.1 system-ui }
+  p { margin: 6px 0 12px; color: #c0cbbc }
+  .controls { display: flex; gap: 6px; margin-bottom: 10px }
+  button { font: inherit; color: inherit; background: transparent; border: 1px solid #637360; padding: 8px 12px; cursor: pointer }
+  button[aria-pressed=true] { background: #b9ff88; color: #111710; border-color: #b9ff88 }
+  svg { display: block; width: 100%; border: 1px solid #637360; color: #ffffff30 }
+  .surface { fill: transparent; stroke: #e9f0e8; stroke-width: 12 }
+  svg[data-mode=split] .surface { fill: var(--fill) }
+  svg[data-mode=full] .split, svg[data-mode=split] .full { display: none }
+  text { text-anchor: middle; fill: #f6faf3; font-size: 142px; font-weight: 700 }
+  .dimension { font: 112px monospace }
+  use { fill: #b9ff88 }
+  footer { padding-top: 12px; color: #c0cbbc }
+</style>
