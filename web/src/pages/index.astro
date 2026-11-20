@@ -154,7 +154,7 @@
   <aside id="aichaDesktopPlayer">
     <div class="aicha-title"><span>♪ AICHA_PLAYER.EXE</span><button id="aichaMin" aria-label="minimize">_</button></div>
     <div class="aicha-body">
-      <div class="aicha-fakefile" id="aichaFakeFile" title="ELISA_MASTER.wav"><span class="ico">♫</span><span>ELISA_MASTER.wav<small>MASTER AUDIO · 32:27</small></span></div>
+      <div class="aicha-fakefile" id="aichaFakeFile" title="ELISA_MASTER.wav"><span class="ico">♫</span><span>ELISA_MASTER.wav<small>MASTER AUDIO · 23:00</small></span></div>
       <div class="aicha-track">ELISA_MASTER.wav</div>
       <div class="aicha-transport"><button id="aichaPlay">▶</button><button id="aichaZero">■</button><span class="aicha-mini-time" id="aichaTime">LIVE</span></div>
       <div class="aicha-signal"><i id="aichaSignal"></i></div>
@@ -167,7 +167,7 @@
   <div id="cueHud">S SCROLL · B BREATH I · D BREATH II · 1 SHATTER · F FLOAT · 2 CONSTELLATION · G DEPTH · H 2D→3D · J ORBIT · 3 RIBBON · K DISSOLVE · L HOLE</div>
   <aside id="videoPanel">
     <div class="ap-head"><span class="ap-title">ELISA / VIDEO FX</span><span class="ap-state" id="videoState">CLEAN</span></div>
-    <div class="vp-grid"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button data-fx="blur">BLUR</button><button id="videoReset" class="vp-reset">CLEAN</button><button id="subtitleToggle" class="on">SUBTITLES ON</button></div>
+    <div class="vp-grid"><button data-fx="acid">ACID</button><button id="videoReset" class="vp-reset">CLEAN</button></div>
     <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
@@ -205,9 +205,8 @@
 
 <script type="module">
   import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
-  import dialogues from "../data/dialogues.js";
   import * as THREE from "three";
-  const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleToggle=document.querySelector("#subtitleToggle"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
+  const panel=document.querySelector("#audioPanel"), videoPanel=document.querySelector("#videoPanel"), videoState=document.querySelector("#videoState"), videoAmount=document.querySelector("#videoAmount"), videoReact=document.querySelector("#videoReact"), vAmount=document.querySelector("#vAmount"), vReact=document.querySelector("#vReact"), videoReset=document.querySelector("#videoReset"), subtitleLayer=document.querySelector("#performanceSubtitles"), device=document.querySelector("#audioDevice"), arm=document.querySelector("#audioArm"), refresh=document.querySelector("#audioRefresh"), astate=document.querySelector("#audioState"), sensitivity=document.querySelector("#audioSensitivity"), sensValue=document.querySelector("#sensValue");
   const cycloneScene=document.querySelector("#cycloneScene"),slashLight=document.querySelector("#slashLight"),media3dState=document.querySelector("#media3dState"),autoScrollBtn=document.querySelector("#autoScrollBtn");
   const master=document.querySelector("#masterTrack"),trackPlay=document.querySelector("#trackPlay"),trackReset=document.querySelector("#trackReset"),audioSeek=document.querySelector("#audioSeek"),vTime=document.querySelector("#vTime");
   // Mirror /regia's live audio analysis into this performance window.
@@ -283,64 +282,6 @@
   videoAmount.addEventListener("input",()=>vAmount.textContent=Number(videoAmount.value).toFixed(2));
   videoReact.addEventListener("input",()=>vReact.textContent=Number(videoReact.value).toFixed(1));
 
-  let subtitlesEnabled=true,lastSubtitleKey="",subtitlePreviewUntil=0,voiceSubtitleStarted=0,voiceSubtitleRunning=false;
-  subtitleToggle.textContent="SUBTITLES ON";subtitleToggle.classList.add("on");
-  // Estimated reading times for rehearsal; refine against the recording.
-  const voiceWindow={start:491,end:660};
-  const voiceBlocks=["intro","genesis","hypnosis","resonance","crossing","farewell"];
-  const voiceLines=voiceBlocks.flatMap(module=>(dialogues[module]||[]).map(cue=>({...cue,module})));
-  const voiceWeights=voiceLines.map(cue=>Math.max(3,cue.text.split(/\s+/).length)+2);
-  const voiceTotal=voiceWeights.reduce((sum,n)=>sum+n,0);
-  let voiceCursor=voiceWindow.start;
-  const voiceTimeline=voiceLines.map((cue,i)=>{
-    const time=voiceCursor;
-    voiceCursor+=(voiceWindow.end-voiceWindow.start)*voiceWeights[i]/voiceTotal;
-    return {...cue,time,end:i===voiceLines.length-1?voiceWindow.end:voiceCursor};
-  });
-  let remoteTrackClock=null;
-  const restoreMasterClock=()=>{
-    try{
-      const saved=JSON.parse(localStorage.getItem("elisa-master-clock")||"null");
-      if(saved&&Number.isFinite(saved.time)){
-        remoteTrackClock={time:saved.time+(saved.playing?Math.max(0,(Date.now()-saved.sentAt)/1000):0),playing:!!saved.playing,received:performance.now()};
-      }
-    }catch{}
-  };
-  restoreMasterClock();
-  const setSubtitle=(cue,key)=>{
-    if(!cue){subtitleLayer.classList.remove("on");lastSubtitleKey="";return}
-    if(key!==lastSubtitleKey){
-      subtitleLayer.textContent=cue.text;
-      lastSubtitleKey=key;
-    }
-    subtitleLayer.classList.add("on");
-  };
-  const renderSubtitle=()=>{
-    if(!subtitlesEnabled){subtitleLayer.classList.remove("on");return}
-    if(voiceSubtitleRunning){
-      const t=voiceWindow.start+(performance.now()-voiceSubtitleStarted)/1000;
-      const cue=voiceTimeline.find(q=>t>=q.time&&t<q.end);
-      setSubtitle(cue,cue?"manual-voice:"+cue.time:"");
-      if(t>=voiceWindow.end)voiceSubtitleRunning=false;
-      return;
-    }
-    const t=remoteTrackClock
-      ?remoteTrackClock.time+(remoteTrackClock.playing?(performance.now()-remoteTrackClock.received)/1000:0)
-      :(master.currentTime||0);
-    const cue=voiceTimeline.find(q=>t>=q.time&&t<q.end);
-    setSubtitle(cue,cue?"master-voice:"+cue.time:"");
-  };
-  subtitleToggle.addEventListener("click",()=>{
-    subtitlesEnabled=!subtitlesEnabled;
-    subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");
-    subtitleToggle.classList.toggle("on",subtitlesEnabled);
-    if(subtitlesEnabled)renderSubtitle(); else setSubtitle(null,"");
-  });
-  master.addEventListener("timeupdate",renderSubtitle);
-  master.addEventListener("seeked",renderSubtitle);
-  master.addEventListener("play",renderSubtitle);
-  // timeupdate can be sparse while the show is running; keep subtitle cue timing responsive.
-  setInterval(()=>{if(subtitlesEnabled)renderSubtitle()},120);
   // Dev/rehearsal source: /public/audio/elisa_master.wav. Live source remains the selected hardware audio input.
 
   // PERFORMANCE FEED ENGINE — manual scroll, endless recycled archive, slow audio "breathing".
@@ -836,26 +777,23 @@
   };
   const handleRegiaMessage=m=>{
     m=m||{};
-    if(m.type==="master-clock"&&Number.isFinite(m.time)){
-      remoteTrackClock={time:m.time,playing:!!m.playing,received:performance.now()};
-      subtitlePreviewUntil=0;renderSubtitle();return;
-    }
     if(m.type==="cue"){
       if(m.key==="s"){setAutoScroll(true);return}
       if(["1","2","3","b","d","f","g","h","j","k","l"].includes(m.key))toggleCue(m.key);
     }
-    if(m.type==="fx"&&m.fx in videoFx){videoFx[m.fx]=!!m.on;syncVideoFx()}
+    if((m.type==="fx"||m.type==="fx-set")&&m.fx==="acid"){videoFx[m.fx]=!!m.on;syncVideoFx()}
     if(m.type==="fx-clean"){Object.keys(videoFx).forEach(k=>videoFx[k]=false);syncVideoFx()}
     if(m.type==="fx-amount"){videoAmount.value=String(m.value);vAmount.textContent=Number(m.value).toFixed(2);applyVideoFx()}
     if(m.type==="fx-react"){videoReact.value=String(m.value);vReact.textContent=Number(m.value).toFixed(1);applyVideoFx()}
-    if(m.type==="voice-subtitles-play"){voiceSubtitleStarted=performance.now();voiceSubtitleRunning=true;subtitlesEnabled=true;subtitleToggle.textContent="SUBTITLES ON";subtitleToggle.classList.add("on");renderSubtitle();return}
-    if(m.type==="voice-subtitles-stop"){voiceSubtitleRunning=false;setSubtitle(null,"");return}
-    if(m.type==="subtitles"){subtitlesEnabled=!!m.on;subtitleToggle.textContent="SUBTITLES "+(subtitlesEnabled?"ON":"OFF");subtitleToggle.classList.toggle("on",subtitlesEnabled);if(subtitlesEnabled){subtitlePreviewUntil=0;renderSubtitle()}else setSubtitle(null,"")}
+    if(m.type==="subtitle-card"){
+      const text=typeof m.text==="string"?m.text:"";
+      subtitleLayer.textContent=text;
+      subtitleLayer.classList.toggle("on",!!text);
+    }
   };
   const regiaChannel=new BroadcastChannel("elisa-regia");
   regiaChannel.onmessage=e=>handleRegiaMessage(e.data);
-  regiaChannel.postMessage({type:"master-clock-request"});
-  addEventListener("storage",e=>{if(e.key==="elisa-master-clock"){restoreMasterClock();renderSubtitle();return}if(e.key==="elisa-regia-command"&&e.newValue){try{handleRegiaMessage(JSON.parse(e.newValue).message)}catch{}}});
+  addEventListener("storage",e=>{if(e.key==="elisa-regia-command"&&e.newValue){try{handleRegiaMessage(JSON.parse(e.newValue).message)}catch{}}});
   const moveSpace=(dx,dy,dz=0)=>{spaceX+=dx;spaceY+=dy;spaceZ+=dz;syncCueMonitor()};
   const zoomSpace=(delta)=>{spaceZoom=Math.max(.35,Math.min(3,spaceZoom+delta));syncCueMonitor()};
   videoPanel.querySelectorAll(".cue-led").forEach(btn=>btn.addEventListener("click",()=>toggleCue(btn.dataset.cue)));

@@ -29,6 +29,8 @@
     #capital-counter .tears{color:#ff2400;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,36,0,.6)}
     #capital-counter.pop{animation:capitalPop .28s ease-out}@keyframes capitalPop{0%{transform:scale(1)}45%{transform:scale(1.22) rotate(-2deg)}100%{transform:scale(1)}}
   to{transform:translate(-50%,-34vh)}}
+    #performanceSubtitles{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);width:min(72vw,1100px);z-index:10;text-align:center;color:#ffe600;font:600 clamp(22px,2.2vw,40px)/1.3 Helvetica,Arial,sans-serif;-webkit-text-stroke:1px #000;paint-order:stroke fill;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 3px #000;white-space:pre-line;pointer-events:none;opacity:0;transition:opacity .4s ease}
+    #performanceSubtitles.on{opacity:1}
     #farewell-credits{position:fixed;inset:0;overflow:hidden;display:none;z-index:8;pointer-events:none;perspective:420px;background:linear-gradient(to bottom,transparent 0 54%,rgba(0,0,0,.16) 100%)}
     #farewell-credits.on{display:block}
     #farewell-credits-inner{position:absolute;left:12%;right:12%;top:100%;text-align:center;color:#39FF14;font:700 clamp(22px,3.1vw,54px)/1.55 Helvetica,Arial,sans-serif;white-space:pre-wrap;letter-spacing:.035em;transform-origin:50% 100%;transform:rotateX(22deg) translateY(0) scale(1)}
@@ -39,6 +41,7 @@
 <body>
   <canvas id="hydra-canvas"></canvas>
   <div id="master-fade"></div>
+  <div id="performanceSubtitles" aria-live="polite" aria-atomic="true"></div>
   <div id="global-invert" aria-hidden="true"></div>
   <div id="farewell-credits"><div id="farewell-credits-inner"></div></div>
   <canvas id="landscape-source" style="display:none"></canvas>
@@ -73,6 +76,7 @@
     const editorToggle=document.getElementById('editor-toggle');
     const midiMonitor=document.getElementById('midi-monitor');
     const masterFade=document.getElementById('master-fade');
+    const subtitleLayer=document.getElementById('performanceSubtitles');
     const farewellCredits=document.getElementById('farewell-credits'),farewellCreditsInner=document.getElementById('farewell-credits-inner');
     let farewellTree=null,farewellSun3D=null,farewellStartedAt=0;
     const capitalCounter=document.getElementById('capital-counter'),moneyCount=document.getElementById('money-count'),tearCount=document.getElementById('tear-count');
@@ -1535,6 +1539,8 @@ render(o0)`;
       try{solid(0,0,0,1).out(o0);render(o0);status.textContent='CLEAN';sceneTag.textContent='HYDRA · CLEAN'}catch(err){status.textContent='ERROR · '+err.message}
     }
     function blackoutHydra(){
+      subtitleLayer.classList.remove('on');
+      subtitleLayer.textContent='';
       ++sceneRequest;
       stopBodyStrobe();stopBodyIntro();stopBodyMidi();endBodyDrag();
       prepareTransition('');
@@ -1594,6 +1600,11 @@ render(o0)`;
       if(m.type==='hydra-face-intro')void controlBodyIntro(m.action,m.duration);
       if(m.type==='hydra-body-strobe')void setBodyStrobe(m.enabled===true,m.bpm);
       if(m.type==='hydra-mouse-action')handleMouseAction(m.scene,m.action);
+      if(m.type==='subtitle-card'){
+        const text=typeof m.text==='string'?m.text:'';
+        subtitleLayer.textContent=text;
+        subtitleLayer.classList.toggle('on',!!text);
+      }
       if(m.type==='hydra-fullscreen'){status.textContent='FULLSCREEN · USE F11 ON HYDRA WINDOW ONCE'}
       if(m.type==='hydra-scene' && (!m.cueId || m.cueId !== lastRegiaCue)){
         lastRegiaCue = m.cueId;

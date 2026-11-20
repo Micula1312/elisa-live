@@ -230,6 +230,13 @@ footer {
 .mouse-pad{width:min(100%,320px);height:120px;border:1px solid #55774b;background:#131b11;position:relative;touch-action:none;cursor:crosshair;margin:8px 0}
 .mouse-pad::before{content:"";position:absolute;left:var(--x,0%);top:var(--y,100%);width:10px;height:10px;border-radius:50%;background:#39ff14;transform:translate(-50%,-50%);pointer-events:none}
 .mouse-ranges{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.mouse-ranges label{display:grid;gap:3px;font-size:11px}
+.feed-time{display:block;margin-top:4px;color:#b9ff88;font:11px monospace}
+.subtitle-panel{border-top:1px solid #444;margin-top:16px;padding-top:12px}
+.subtitle-panel h3{font-size:12px;margin:0}
+.subtitle-texts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
+.subtitle-texts label{display:grid;gap:4px;font-size:12px}
+.subtitle-texts textarea{width:100%;background:#131713;color:#fff;border:1px solid #555;padding:8px;resize:vertical}
+#subtitleStatus{font-size:11px;color:#b9ff88}
 </style>
 </head>
 <body>
@@ -260,9 +267,9 @@ footer {
 </section>
 <section class="panel">
 <h2>MASTER TRACK / PERFORMANCE CLOCK</h2>
-<div class="clock"><span id="now">00:00</span> <small>/ <span id="total">32:27</span></small></div>
+<div class="clock"><span id="now">00:00</span> <small>/ <span id="total">23:00</span></small></div>
 <audio id="master" src="/audio/elisa_master.wav" preload="metadata"></audio>
-<div class="timeline"><div class="markers" id="markers"></div><input class="seek" id="seek" type="range" min="0" max="1000" step="1" value="0"></div><div class="nextcue" id="nextCue">NEXT â€” 01:00 FACE ID</div>
+<div class="timeline"><div class="markers" id="markers"></div><input class="seek" id="seek" type="range" min="0" max="1000" step="1" value="0"></div><div class="nextcue" id="nextCue">NEXT · 03:00 S · SCROLL</div>
 <div class="trackactions"><button id="play">â–¶ PLAY MASTER</button><button id="zero">â†º 00:00</button></div>
 <label class="vol"><span>VOLUME</span><input id="volume" type="range" min="0" max="1" step=".01" value="1"><span id="volVal">100%</span></label>
 <div class="live-timer"><div><div class="live-timer-label">LIVE PERFORMANCE TIMER</div><div class="live-timer-clock" id="liveTimer">00:00.0</div></div><div class="live-timer-actions"><button id="liveTimerStart">START</button><button id="liveTimerReset">RESET</button></div></div>
@@ -271,25 +278,42 @@ footer {
 <section class="video">
 <h2>WEB / VIDEO REGIA</h2>
 <div class="video-grid">
-<div><div class="state">INTERFACE FX</div><div class="fx"><button data-fx="acid">ACID</button><button data-fx="glitch">GLITCH</button><button data-fx="pixel">PIXEL</button><button data-fx="blur">BLUR</button><button id="fxClean">CLEAN</button><button id="subtitles" class="on">SUBTITLES ON</button><button id="voiceSubsPlay">▶ VOICES</button><button id="voiceSubsStop">STOP VOICES</button></div>
+<div><div class="state">INTERFACE FX</div><div class="fx"><button type="button" data-fx="acid">ACID</button><button type="button" id="fxClean">CLEAN</button></div>
 <label class="vrow"><span>AMOUNT</span><input id="fxAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="fxAmountVal">.55</span></label>
 <label class="vrow"><span>REACT</span><input id="fxReact" type="range" min="0" max="2" step=".05" value="1"><span id="fxReactVal">1.0</span></label></div>
 <div><div class="state">FEED / SPACE CUES</div><div class="cues">
-  <button data-cue="s">S · SCROLL</button>
-  <button data-cue="b">B · BREATH I</button>
-  <button data-cue="d">D · BREATH II</button>
-  <button data-cue="f">F · FLOAT</button>
-  <button data-cue="g">G · ENTER 3D</button>
-  <button data-cue="1">1 · SHATTER</button>
-  <button data-cue="2">2 · CONSTELLATION</button>
-  <button data-cue="3">3 · RIBBON</button>
-  <button data-cue="h">H · ORBIT</button>
-  <button data-cue="j">J · DISTANCE</button>
-  <button data-cue="k">K · FLOW</button>
-  <button data-cue="l">L · IMPLODE</button>
+  <button type="button" data-cue="s">S · SCROLL<small class="feed-time">3:00</small></button>
+  <button type="button" data-cue="b">B · BREATH I<small class="feed-time">3:20</small></button>
+  <button type="button" data-cue="d">D · BREATH II<small class="feed-time">3:40</small></button>
+  <button type="button" data-cue="f">F · FLOAT<small class="feed-time">4:00</small></button>
+  <button type="button" data-cue="g">G · ENTER 3D<small class="feed-time">4:25</small></button>
+  <button type="button" data-cue="1">1 · SHATTER<small class="feed-time">4:55</small></button>
+  <button type="button" data-cue="2">2 · CONSTELLATION<small class="feed-time">5:20</small></button>
+  <button type="button" data-cue="3">3 · RIBBON<small class="feed-time">5:45</small></button>
+  <button type="button" data-cue="h">H · ORBIT<small class="feed-time">6:10</small></button>
+  <button type="button" data-cue="j">J · DISTANCE<small class="feed-time">6:35</small></button>
+  <button type="button" data-cue="k">K · FLOW<small class="feed-time">7:00</small></button>
+  <button type="button" data-cue="l">L · IMPLODE<small class="feed-time">7:30</small></button>
 </div>
+<p class="video-note">7:30 · L + PLAY SOTTOTITOLI 1. 8:00 · passaggio manuale a Hydra.</p>
 <div class="video-note">REMOTE WEB CONTROL Â· keep the performance page open in another browser window/display.</div></div>
-</div></section>
+</div>
+  <section class="subtitle-panel" aria-label="Sottotitoli manuali">
+    <h3>SOTTOTITOLI MANUALI</h3>
+    <p class="video-note">Una riga per schermata. PLAY mostra la prima, AVANTI passa alla successiva e STOP la toglie.</p>
+    <div class="subtitle-texts">
+      <label>Blocco 1<textarea id="subtitleText1" rows="3"></textarea></label>
+      <label>Blocco 2<textarea id="subtitleText2" rows="3"></textarea></label>
+    </div>
+    <div class="hydra-tools">
+      <button type="button" data-subtitle-play="1">PLAY SOTTOTITOLI 1</button>
+      <button type="button" data-subtitle-play="2">PLAY SOTTOTITOLI 2</button>
+      <button type="button" id="subtitleNext" disabled>AVANTI</button>
+      <button type="button" id="subtitleStop" disabled>STOP</button>
+      <span id="subtitleStatus" role="status"></span>
+    </div>
+  </section>
+</section>
 <section class="hydra-deck">
 <h2>HYDRA / SEQUENZA LIVE</h2>
 <div class="hydra-tools cue-utilities">
@@ -394,7 +418,7 @@ see you out there</textarea><div><button id="farewellCreditsSend">UPDATE</button
   </div>
   <iframe src="/touch-control" title="Controller OSC TouchDesigner"></iframe>
 </details>
-<footer><span>DISPLAY REGIA â€” KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE Â· 32:27</span></footer>
+<footer><span>DISPLAY REGIA â€” KEEP OUT OF SCREEN GRAB</span><span>ELISA LIVE Â· 23:00</span></footer>
 </div>
 <script type="module">
 import {listAudioInputs,startAudio,startTrack,setSensitivity} from "../lib/audio-engine.js";
@@ -426,8 +450,8 @@ liveTimerStart.onclick=()=>{
 };
 liveTimerReset.onclick=()=>{liveTimerRunning=false;cancelAnimationFrame(liveTimerRaf);liveTimerElapsed=0;liveTimerStarted=0;liveTimerStart.textContent="START";liveTimerStart.classList.remove("running");renderLiveTimer()};
 const fmt=t=>{t=Math.max(0,Number(t)||0);return String(Math.floor(t/60)).padStart(2,"0")+":"+String(Math.floor(t%60)).padStart(2,"0")};
-const SHOW_DURATION=1947;
-const cues=[[0,"TEXT INTRO",1],[60,"FACE ID",1],[90,"LOADER",0],[120,"HYDRA I",1],[260,"FOTO",0],[313,"VIDEO VERT.",0],[380,"FOTO",0],[500,"3D TOUCH",1],[680,"HYDRA II",1],[800,"ROTAZIONI",0],[900,"FORESTA + NUMERI",1],[1080,"FORESTA + IMMAGINI",0],[1240,"ARCHIVIO 3D",1],[1460,"HYDRA III",1],[1550,"TRANSIZIONE",0],[1610,"NUCLEO ROSSO",1],[1680,"ALBERO",0],[1770,"BLIVET",1],[1840,"HYDRA IV",1]];
+const SHOW_DURATION=23*60;
+const cues=[[180,"S · Scroll",0],[200,"B · Breath I",0],[220,"D · Breath II",0],[240,"F · Float",0],[265,"G · Enter 3D",1],[295,"1 · Shatter",0],[320,"2 · Constellation",0],[345,"3 · Ribbon",0],[370,"H · Orbit",0],[395,"J · Distance",0],[420,"K · Flow",0],[450,"L · Implode + sottotitoli 1",1],[480,"PASSA A HYDRA",1],[1380,"FINE TRACCIA",1]];
 const markers=q("#markers"),nextCue=q("#nextCue");
 cues.forEach(([t,label,major])=>{const m=document.createElement("i");m.className="marker"+(major?" major":"");m.style.left=(t/SHOW_DURATION*100)+"%";m.dataset.time=t;m.title=fmt(t)+" Â· "+label;markers.appendChild(m)});
 function syncCue(t){const upcoming=cues.find(([ct])=>ct>t+.5);[...markers.children].forEach(m=>m.classList.toggle("next",upcoming&&Number(m.dataset.time)===upcoming[0]));nextCue.textContent=upcoming?"NEXT â€” "+fmt(upcoming[0])+" "+upcoming[1]:"END OF SHOW"}
@@ -496,9 +520,36 @@ control.addEventListener("message",e=>{if(e.data?.type==="master-clock-request")
 
 document.querySelectorAll("[data-fx]").forEach(btn=>btn.onclick=()=>{btn.classList.toggle("on");send({type:"fx",fx:btn.dataset.fx,on:btn.classList.contains("on")})});
 q("#fxClean").onclick=()=>{document.querySelectorAll("[data-fx]").forEach(b=>b.classList.remove("on"));send({type:"fx-clean"})};
-q("#subtitles").onclick=e=>{const on=e.currentTarget.classList.toggle("on");e.currentTarget.textContent="SUBTITLES "+(on?"ON":"OFF");send({type:"subtitles",on})};
-q("#voiceSubsPlay").onclick=e=>{send({type:"voice-subtitles-play"});e.currentTarget.classList.add("on")};
-q("#voiceSubsStop").onclick=()=>{send({type:"voice-subtitles-stop"});q("#voiceSubsPlay").classList.remove("on")};
+const subtitleInputs=[q("#subtitleText1"),q("#subtitleText2")];
+subtitleInputs.forEach((input,i)=>{
+  try{input.value=localStorage.getItem("elisa-subtitle-block-"+i)||""}catch{}
+  input.addEventListener("input",()=>{
+    try{localStorage.setItem("elisa-subtitle-block-"+i,input.value)}catch{}
+  });
+});
+let subtitleRun=null;
+function renderManualSubtitle(){
+  const text=subtitleRun?.cards[subtitleRun.position]||"";
+  send({type:"subtitle-card",text});
+  q("#subtitleStop").disabled=!subtitleRun;
+  q("#subtitleNext").disabled=!subtitleRun||subtitleRun.position+1>=subtitleRun.cards.length;
+  q("#subtitleStatus").textContent=subtitleRun
+    ? `BLOCCO ${subtitleRun.block} · ${subtitleRun.position+1}/${subtitleRun.cards.length}`
+    : "";
+}
+document.querySelectorAll("[data-subtitle-play]").forEach(button=>{
+  button.onclick=()=>{
+    const block=Number(button.dataset.subtitlePlay);
+    const cards=subtitleInputs[block-1].value.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+    if(!cards.length){q("#subtitleStatus").textContent="INSERISCI IL TESTO DEL BLOCCO "+block;return}
+    subtitleRun={block,cards,position:0};
+    renderManualSubtitle();
+  };
+});
+q("#subtitleNext").onclick=()=>{
+  if(subtitleRun && subtitleRun.position+1<subtitleRun.cards.length){subtitleRun.position++;renderManualSubtitle()}
+};
+q("#subtitleStop").onclick=()=>{subtitleRun=null;renderManualSubtitle()};
 q("#fxAmount").oninput=e=>{q("#fxAmountVal").textContent=Number(e.target.value).toFixed(2);send({type:"fx-amount",value:Number(e.target.value)})};
 q("#fxReact").oninput=e=>{q("#fxReactVal").textContent=Number(e.target.value).toFixed(1);send({type:"fx-react",value:Number(e.target.value)})};
 document.querySelectorAll("[data-cue]").forEach(btn=>btn.onclick=()=>send({type:"cue",key:btn.dataset.cue}));
@@ -658,7 +709,7 @@ const setupStatus=q("#setupStatus"),setupFile=q("#setupFile");
 const captureSetup=()=>({
   version:1,name:q("#setupName").value.trim()||"ELISA LIVE",savedAt:new Date().toISOString(),
   audio:{sensitivity:Number(q("#sensitivity").value),volume:Number(q("#volume").value)},
-  web:{fxAmount:Number(q("#fxAmount").value),fxReact:Number(q("#fxReact").value),fx:[...document.querySelectorAll("[data-fx]")].filter(b=>b.classList.contains("on")).map(b=>b.dataset.fx),subtitles:q("#subtitles").classList.contains("on")},
+  web:{fxAmount:Number(q("#fxAmount").value),fxReact:Number(q("#fxReact").value),fx:[...document.querySelectorAll("[data-fx]")].filter(b=>b.classList.contains("on")).map(b=>b.dataset.fx),subtitleBlocks:subtitleInputs.map(input=>input.value)},
   hydra:{scene:document.querySelector("[data-hydra].live")?.dataset.hydra||null,hypnosisText:q("#hypnosisText").value,credits:q("#farewellCreditsText").value}
 });
 q("#setupSave").onclick=()=>{
@@ -676,7 +727,9 @@ setupFile.onchange=async()=>{
     if(Number.isFinite(w.fxAmount)){q("#fxAmount").value=w.fxAmount;q("#fxAmountVal").textContent=Number(w.fxAmount).toFixed(2);send({type:"fx-amount",value:Number(w.fxAmount)})}
     if(Number.isFinite(w.fxReact)){q("#fxReact").value=w.fxReact;q("#fxReactVal").textContent=Number(w.fxReact).toFixed(1);send({type:"fx-react",value:Number(w.fxReact)})}
     document.querySelectorAll("[data-fx]").forEach(b=>{const on=(w.fx||[]).includes(b.dataset.fx);b.classList.toggle("on",on);send({type:"fx-set",fx:b.dataset.fx,on})});
-    const sub=!!w.subtitles;q("#subtitles").classList.toggle("on",sub);q("#subtitles").textContent="SUBTITLES "+(sub?"ON":"OFF");send({type:"subtitles",on:sub});
+    if(Array.isArray(w.subtitleBlocks))subtitleInputs.forEach((input,i)=>{
+      if(typeof w.subtitleBlocks[i]==="string"){input.value=w.subtitleBlocks[i];input.dispatchEvent(new Event("input"))}
+    });
     if(typeof h.hypnosisText==="string")q("#hypnosisText").value=h.hypnosisText;
     if(typeof h.credits==="string"){q("#farewellCreditsText").value=h.credits;send({type:"hydra-farewell-credits",text:h.credits})}
     const cue = hydraCues.find(button => button.dataset.hydra === h.scene);
