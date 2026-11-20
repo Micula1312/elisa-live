@@ -639,19 +639,21 @@
       }
       return modelTemplates.get(id);
     }
+    let redObjectGeneration = 0;
     function addGenesisObject(id, model = null, useFallback = false){
       if (!Object.hasOwn(landscape.objects,id)) return;
       if (Object.hasOwn(liveModels,id) && !model && !useFallback) {
         const request = sceneRequest;
+        const generation = redObjectGeneration;
         void loadLiveModel(id).then(template => {
-          if (request !== sceneRequest) return;
+          if (request !== sceneRequest || generation !== redObjectGeneration) return;
           const instance = template.clone(true);
           const outline = new THREE.LineBasicMaterial({color:ACID});
           instance.traverse(node => { if (node.isLineSegments) node.material = outline; });
           addGenesisObject(id, instance);
         }).catch(error => {
           console.warn('Genesis model unavailable', error);
-          if (request === sceneRequest && ['phone','cola'].includes(id)) addGenesisObject(id,null,true);
+          if (request === sceneRequest && generation === redObjectGeneration && ['phone','cola'].includes(id)) addGenesisObject(id,null,true);
         });
         return;
       }
@@ -772,6 +774,25 @@
             });
           }
           for(const {material,baseOpacity} of data.fadeMaterials)material.opacity=baseOpacity*opacity;
+        }
+      }
+    }
+
+    function clearGreenObjects() {
+      for (const kind of ['tree','swarm','orb','totem']) {
+        const objects = landscape.objects[kind];
+        objects.forEach(removeLandscapeObject);
+        objects.length = 0;
+      }
+      farewellTree = null;
+    }
+    function dissolveRedObjects() {
+      redObjectGeneration++;
+      const now = performance.now();
+      for (const kind of movingObjects) {
+        for (const {userData} of landscape.objects[kind]) {
+          const fadeEnd = now - userData.spawn + 1400;
+          userData.dissolveAfter = Math.min(userData.dissolveAfter ?? Infinity, fadeEnd);
         }
       }
     }
@@ -1843,6 +1864,8 @@ render(o0)`;
       if(m.type==='hydra-credits-stop')farewellCredits.classList.remove('on')
       if(m.type==='hydra-clean')cleanHydra();
       if(m.type==='hydra-object-add')addGenesisFromRegia(m.object);
+      if(m.type==='hydra-objects-clear-green')clearGreenObjects();
+      if(m.type==='hydra-objects-dissolve-red')dissolveRedObjects();
       if(m.type==='hydra-forest-burst')addForestBurst(m.count||6);
       if(m.type==='hydra-blackout')blackoutHydra();
       if(m.type==='hydra-back')back();
