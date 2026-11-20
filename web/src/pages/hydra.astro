@@ -831,7 +831,7 @@
         // Acid archive treatment is applied at draw time, leaving original files untouched.
         // Saturated green, harsh contrast and a slight chromatic offset make each
         // image arrive already manipulated in GENESIS / FAREWELL.
-        const acidOn=['genesis','body','farewell'].includes(currentScene);
+        const acidOn=['genesis','body','dissolve','farewell'].includes(currentScene);
         if(acidOn){
           archiveCtx.filter='grayscale(1) contrast(2.2) brightness(.88)';
           archiveCtx.drawImage(p.img,-w/2,-h/2,w,h);
@@ -1415,8 +1415,17 @@ render(o0)`;
   .saturate(.7)
   .scale(() => 1 + param2()*.35)
   .modulate(noise(3,.035), () => .009 + mid()*.04 + param1()*.09)
-  .layer(src(s0).luma(.09,.12))
-  .layer(src(s3))
+  .layer(
+    src(s0)
+      .luma(.09,.12)
+      .color(.22,1,.08)
+      .modulate(noise(1.8,.025), () => .004 + mid()*.025 + hit()*.012)
+  )
+  .layer(
+    src(s3)
+      .modulate(noise(() => 1.1 + mid()*2.4 + audioChaos()*2.6,.02),
+        () => .004 + high()*.038 + audioChaos()*.045)
+  )
   .out(o0)
 render(o0)`;
 
