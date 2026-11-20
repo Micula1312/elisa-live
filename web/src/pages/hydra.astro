@@ -511,7 +511,7 @@
       if(moving)bodyMidi.focus.lerp(bodyOrbitTarget,alpha);
       setBodyOrbit(bodyMidi.radius,bodyMidi.theta,bodyMidi.phi);
       // A world-space focus transition replaces the quaternion feedback loop.
-      setBodyCameraPose(landscape.camera.position.clone(),bodyMidi.focus);
+      setBodyCameraPose(bodyNavigationCamera().position.clone(),bodyMidi.focus);
     }
 
     function endBodyDrag(){
