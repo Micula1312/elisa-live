@@ -183,12 +183,20 @@
       }
     }
     const MIDIMIX_FADERS={19:'param1',23:'param2',27:'audioReact',31:'audioChaos',49:'landscapeMotion',53:'archiveMotion'};
+    const bodyLayerLevels = {
+      body: {body:1},
+      dissolve: {body:1, video:0},
+      fusion: {body:1, video:0},
+    };
     const MIDIMIX_CAMERA={24:19,25:20,26:21};
     const MIDIMIX_PRIMARY={custom01:'invert',genesis:'single',resonance:'punch',hypnosis:'drop',body:'single',dissolve:'single',fusion:'single',farewell:'stars'};
     function handleMIDImix(kind,channel,number,value){
       if(channel!==1)return;
       if(kind===0xb0){
-        if(Object.hasOwn(MIDIMIX_FADERS,number))setHydraMacro(MIDIMIX_FADERS[number],value/127);
+        const layers = bodyLayerLevels[currentScene];
+        if(number===57 && layers) layers.body = value/127;
+        else if(number===61 && layers?.video !== undefined) layers.video = value/127;
+        else if(Object.hasOwn(MIDIMIX_FADERS,number))setHydraMacro(MIDIMIX_FADERS[number],value/127);
         else if(currentScene==='body'&&Object.hasOwn(MIDIMIX_CAMERA,number))driveBodyMidi(MIDIMIX_CAMERA[number],value);
         return;
       }
@@ -1062,17 +1070,13 @@
     const transitionContext = transitionCanvas.getContext('2d');
     const transitionClips = {};
     const transitionScenes = new Set(['dissolve', 'fusion']);
-    let transitionLastFrame = '';
     let transitionBeat = 0;
     let transitionPeak = false;
     let transitionStep = 0;
     let transitionLive = false;
     const dissolveCamera = landscape.camera.clone();
     dissolveCamera.layers.set(1);
-    const dissolveDuration = 6500;
-    let dissolveStartedAt = 0;
     let dissolveBody = null;
-    let dissolveProgress = 1;
 
     let dissolveConfig = {clips:[], mode:'0', bpm:90};
     let dissolveCurrent = null, dissolveIncoming = null;
@@ -1103,7 +1107,7 @@
     function setDissolveConfig(config) {
       if (dissolveConfig.mode !== config.mode || dissolveConfig.bpm !== config.bpm) dissolveNext = 0;
       dissolveConfig = config;
-      if (activeScene !== 'dissolve' || !dissolveStartedAt) return;
+      if (activeScene !== 'dissolve' || !transitionLive) return;
       const index = config.mode === 'auto'
         ? (dissolveIncoming?.index ?? dissolveCurrent?.index ?? config.clips.findIndex(Boolean))
         : Number(config.mode);
@@ -1136,16 +1140,9 @@
       queueDissolveClip(order.find(i => clips[i] && clips[i] !== dissolveCurrent?.url));
     }
 
-    function updateDissolve(now) {
-      if (!dissolveStartedAt) return;
-      // Keep the face visible until the background has a frame, with a fallback for bad clips.
-      if (dissolveIncoming && !dissolveCurrent && now - dissolveStartedAt < 2000) return;
-      const t = Math.min(1, Math.max(0, (now - dissolveStartedAt - 600) / dissolveDuration));
-      dissolveProgress = t * t * (3 - 2 * t);
-    }
-
     function renderDissolvingBody() {
-      if (!dissolveBody || dissolveProgress >= 1) return;
+      const opacity = bodyLayerLevels[activeScene]?.body ?? 0;
+      if (!transitionLive || !dissolveBody || opacity <= 0) return;
       const {model, wire, center, home} = dissolveBody;
       dissolveCamera.aspect = landscape.camera.aspect;
       dissolveCamera.updateProjectionMatrix();
@@ -1154,7 +1151,7 @@
       model.traverse(child => child.layers.enable(1));
       model.visible = true;
       wire.transparent = true;
-      wire.opacity = 1 - dissolveProgress;
+      wire.opacity = opacity;
       landscape.renderer.autoClear = false;
       landscape.renderer.clearDepth();
       try {
@@ -1170,8 +1167,6 @@
 
     function prepareTransition(id) {
       transitionLive = transitionScenes.has(id);
-      dissolveStartedAt = transitionLive ? performance.now() : 0;
-      dissolveProgress = transitionLive ? 0 : 1;
       if (!transitionLive) dissolveBody = null;
       unloadVideo(transitionVideo);
       if (dissolveCurrent) unloadVideo(dissolveCurrent.video);
@@ -1186,7 +1181,6 @@
       transitionStep = 0;
       transitionPeak = false;
       transitionBeat = performance.now();
-      transitionLastFrame = '';
       drawTransitionFrame(performance.now());
       s2.init({src:transitionCanvas});
       if (id === 'dissolve') setDissolveConfig(dissolveConfig);
@@ -1199,14 +1193,11 @@
     function drawTransitionFrame(now) {
       const ctx = transitionContext;
       const {width:w, height:h} = transitionCanvas;
-      if (dissolveStartedAt) {
-        if (activeScene === 'dissolve') tickDissolveClips(now);
-        updateDissolve(now);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, w, h);
-      }
+      if (activeScene === 'dissolve') tickDissolveClips(now);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, w, h);
       ctx.save();
-      ctx.globalAlpha = dissolveProgress;
+      ctx.globalAlpha = bodyLayerLevels[activeScene].video;
       const drawCover = video => {
         const scale = Math.max(w / video.videoWidth, h / video.videoHeight);
         const vw = video.videoWidth * scale, vh = video.videoHeight * scale;
@@ -1231,11 +1222,7 @@
 
     function updateTransition(now) {
       if (!transitionLive) return;
-      const frame = transitionVideo.readyState >= 2 ? transitionVideo.currentTime : 'gradient';
-      if (dissolveStartedAt || frame !== transitionLastFrame) {
-        transitionLastFrame = frame;
-        drawTransitionFrame(now);
-      }
+      drawTransitionFrame(now);
       const peak = hit() > .22;
       if (peak && !transitionPeak && now - transitionBeat > 1100) {
         const objects = activeScene === 'dissolve' ? ['swarm', 'phone', 'diamond'] : ['tree', 'orb', 'totem', 'cola'];
@@ -1249,6 +1236,25 @@
     }
 
     let landscapeT=0, genesisTerrainTime=0;
+    function renderMainLandscape() {
+      const wire = activeScene === 'body' ? bodyModelCache.get(selectedBodyModel)?.wire : null;
+      if (!wire) {
+        landscape.renderer.render(landscape.scene, landscape.camera);
+        return;
+      }
+      const opacity = bodyLayerLevels.body.body;
+      wire.visible = opacity > 0;
+      wire.transparent = opacity < 1;
+      wire.opacity = opacity;
+      try {
+        landscape.renderer.render(landscape.scene, landscape.camera);
+      } finally {
+        wire.visible = true;
+        wire.transparent = false;
+        wire.opacity = 1;
+      }
+    }
+
     function renderLandscape(){
       requestAnimationFrame(renderLandscape);
       landscapeT+=.006;
@@ -1355,7 +1361,7 @@
         }
       }else if(farewellStars.length)clearFarewellStars();
       updateObjectPulseAndDissolve(performance.now(),lo,mi,hit());
-      landscape.renderer.render(landscape.scene,landscape.camera);
+      renderMainLandscape();
       renderDissolvingBody();
     }
     renderLandscape();
@@ -1498,7 +1504,9 @@ render(o0)`;
     .modulate(noise(() => 2 + audioChaos()*4,.035), () => .015 + param2()*.11)`;
     window.fusionCameraMix = () => {
       if (activeScene !== 'fusion' || !localCamOn || !webcamReady || webcamVideo.readyState < 2) return 0;
-      return dissolveProgress * (transitionVideo.readyState >= 2 ? .35 : 1);
+      const {body, video} = bodyLayerLevels.fusion;
+      const cameraShare = transitionVideo.readyState >= 2 ? 1 - .65 * video : 1;
+      return Math.min(1, Math.max(1 - body, video)) * cameraShare;
     };
 
     const resonanceGradient=`// clouds of passage — by Nesso — www.nesso.xyz
@@ -1673,7 +1681,7 @@ render(o0)`;
       if(id!=='resonance'){resonanceInvert=false;applyInvert()}
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
       if(transition||['genesis','body','farewell'].includes(id)){
-        try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera);renderDissolvingBody()}
+        try{s0.init({src:landscapeCanvas});renderMainLandscape();renderDissolvingBody()}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
       if(id==='hypnosis'||id==='resonance'||id==='fusion'){
