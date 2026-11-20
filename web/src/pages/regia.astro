@@ -325,14 +325,14 @@ footer {
   <span id="hydraCueStatus" role="status">Seleziona una scena</span>
 </div>
 <div class="hydra-buttons">
-<button data-hydra="custom01" data-mam="2">01<br><strong>CORRUPTED</strong></button>
-<button data-hydra="genesis" data-mam="1">02<br><strong>GENESIS</strong></button>
-<button data-hydra="body">03<br><strong>ELISA BODY REVEAL</strong></button>
-<button data-hydra="dissolve">04<br><strong>BODY DISSOLVE</strong></button>
-<button data-hydra="fusion">05<br><strong>FLUID FUSION</strong></button>
-<button data-hydra="resonance" data-mam="0">06<br><strong>RESONANCE</strong></button>
-<button data-hydra="hypnosis">07<br><strong>HYPNOSIS</strong></button>
-<button data-hydra="farewell">08<br><strong>FINAL TREE</strong></button>
+<button data-hydra="custom01" data-mam="0">01<br><strong>CORRUPTED</strong></button>
+<button data-hydra="genesis" data-mam="2">02<br><strong>GENESIS</strong></button>
+<button data-hydra="body" data-mam="1">03<br><strong>ELISA BODY REVEAL</strong></button>
+<button data-hydra="dissolve" data-mam="1">04<br><strong>BODY DISSOLVE</strong></button>
+<button data-hydra="fusion" data-mam="1">05<br><strong>FLUID FUSION</strong></button>
+<button data-hydra="resonance" data-mam="1">06<br><strong>RESONANCE</strong></button>
+<button data-hydra="hypnosis" data-mam="1">07<br><strong>HYPNOSIS</strong></button>
+<button data-hydra="farewell" data-mam="2">08<br><strong>FINAL TREE</strong></button>
 </div>
 <details class="hydra-subpanel">
   <summary>Layout MAM per scena</summary>
@@ -674,7 +674,8 @@ const mamLayoutOptions = [
 const mamStorageKey = "elisa-mam-scene-layouts";
 let mamSettings = {};
 try {
-  mamSettings = JSON.parse(localStorage.getItem(mamStorageKey)) || {};
+  const saved = JSON.parse(localStorage.getItem(mamStorageKey));
+  if (saved) mamSettings = saved.revision === 2 ? saved : {enabled:saved.enabled};
 } catch {}
 const mamSelectors = new Map();
 autoMam.checked = mamSettings.enabled === true;
@@ -695,7 +696,7 @@ autoMam.addEventListener("change", saveMamSettings);
 function saveMamSettings() {
   const scenes = Object.fromEntries([...mamSelectors].map(([scene, select]) => [scene, select.value]));
   try {
-    localStorage.setItem(mamStorageKey, JSON.stringify({enabled:autoMam.checked, scenes}));
+    localStorage.setItem(mamStorageKey, JSON.stringify({revision:2, enabled:autoMam.checked, scenes}));
   } catch {}
 }
 
