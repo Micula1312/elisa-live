@@ -696,8 +696,8 @@ backupButtons.forEach(button => button.onclick = async () => {
     backupButtons.forEach(item => item.disabled = false);
   }
 });
-document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{send({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
-q("#forestBurst").onclick=()=>send({type:"hydra-forest-burst",count:6});
+document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{control.postMessage({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
+q("#forestBurst").onclick=()=>control.postMessage({type:"hydra-forest-burst",count:6});
 document.querySelectorAll("[data-hypnosis-word]").forEach(btn=>btn.onclick=()=>{q("#hypnosisText").value=btn.dataset.hypnosisWord;send({type:"hydra-hypnosis-word",word:btn.dataset.hypnosisWord})});
 const sendHypnosisText=()=>{const word=q("#hypnosisText").value.trim();if(word)send({type:"hydra-hypnosis-word",word})};
 q("#hypnosisSend").onclick=sendHypnosisText;
