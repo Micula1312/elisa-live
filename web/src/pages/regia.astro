@@ -389,6 +389,10 @@ footer {
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">GENESIS + BODY / OBJECTS</div>
   <div class="genesis-objects"><button data-hydra-object="tree">+ TREE</button><button id="forestBurst">+ FOREST ×6</button><button data-hydra-object="swarm">+ SPORES</button><button data-hydra-object="phone">+ PHONE</button><button data-hydra-object="laptop">+ LAPTOP</button><button data-hydra-object="sneaker">+ SNEAKER</button><button data-hydra-object="figure">+ FIGURA</button><button data-hydra-object="pistol">+ PISTOL</button><button data-hydra-object="diamond">+ DIAMOND</button><button data-hydra-object="cola">+ COLA</button></div>
+  <div class="hydra-tools">
+    <button type="button" id="clearGreenObjects" style="border-color:#527449">CLEAR VERDI</button>
+    <button type="button" id="dissolveRedObjects" style="border-color:#762012;color:#ff6a52">DISSOLVI ROSSI</button>
+  </div>
 </div>
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">HYPNOSIS / TYPE</div>
@@ -830,6 +834,8 @@ backupButtons.forEach(button => button.onclick = async () => {
   }
 });
 document.querySelectorAll("[data-hydra-object]").forEach(btn=>btn.onclick=()=>{control.postMessage({type:"hydra-object-add",object:btn.dataset.hydraObject});btn.animate([{transform:"scale(1)"},{transform:"scale(.94)"},{transform:"scale(1)"}],{duration:160})});
+q("#clearGreenObjects").onclick=()=>control.postMessage({type:"hydra-objects-clear-green"});
+q("#dissolveRedObjects").onclick=()=>control.postMessage({type:"hydra-objects-dissolve-red"});
 q("#forestBurst").onclick=()=>control.postMessage({type:"hydra-forest-burst",count:6});
 document.querySelectorAll("[data-hypnosis-word]").forEach(btn=>btn.onclick=()=>{q("#hypnosisText").value=btn.dataset.hypnosisWord;send({type:"hydra-hypnosis-word",word:btn.dataset.hypnosisWord})});
 const sendHypnosisText=()=>{const word=q("#hypnosisText").value.trim();if(word)send({type:"hydra-hypnosis-word",word})};
