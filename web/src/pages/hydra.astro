@@ -194,7 +194,7 @@
       if(channel!==1)return;
       if(kind===0xb0){
         const layers = bodyLayerLevels[currentScene];
-        if(number===57 && layers) layers.body = value/127;
+        if(number===57 && layers) layers.body = currentScene === 'body' ? value/127 : 1 - value/127;
         else if(number===61 && layers?.video !== undefined) layers.video = value/127;
         else if(Object.hasOwn(MIDIMIX_FADERS,number))setHydraMacro(MIDIMIX_FADERS[number],value/127);
         else if(currentScene==='body'&&Object.hasOwn(MIDIMIX_CAMERA,number))driveBodyMidi(MIDIMIX_CAMERA[number],value);
@@ -1140,6 +1140,24 @@
       queueDissolveClip(order.find(i => clips[i] && clips[i] !== dissolveCurrent?.url));
     }
 
+    let bodyBassPulse = 0;
+    let bodyPulseTime = performance.now();
+    function renderBodyMotion(entry, camera) {
+      const {model, center} = entry;
+      const x = model.position.x, y = model.position.y, z = model.position.z;
+      const sx = model.scale.x, sy = model.scale.y, sz = model.scale.z;
+      const pulse = bodyBassPulse * .026;
+      // Scale around the framed center so the model stays in the camera's composition.
+      model.position.set(x + (x-center.x)*pulse, y + (y-center.y)*pulse, z + (z-center.z)*pulse);
+      model.scale.multiplyScalar(1 + pulse);
+      try {
+        landscape.renderer.render(landscape.scene, camera);
+      } finally {
+        model.position.set(x, y, z);
+        model.scale.set(sx, sy, sz);
+      }
+    }
+
     function renderDissolvingBody() {
       const opacity = bodyLayerLevels[activeScene]?.body ?? 0;
       if (!transitionLive || !dissolveBody || opacity <= 0) return;
@@ -1155,7 +1173,7 @@
       landscape.renderer.autoClear = false;
       landscape.renderer.clearDepth();
       try {
-        landscape.renderer.render(landscape.scene, dissolveCamera);
+        renderBodyMotion(dissolveBody, dissolveCamera);
       } finally {
         landscape.renderer.autoClear = true;
         wire.opacity = 1;
@@ -1237,17 +1255,19 @@
 
     let landscapeT=0, genesisTerrainTime=0;
     function renderMainLandscape() {
-      const wire = activeScene === 'body' ? bodyModelCache.get(selectedBodyModel)?.wire : null;
-      if (!wire) {
+      const entry = activeScene === 'body' ? bodyModelCache.get(selectedBodyModel) : null;
+      if (!entry) {
         landscape.renderer.render(landscape.scene, landscape.camera);
         return;
       }
+      const {wire} = entry;
       const opacity = bodyLayerLevels.body.body;
       wire.visible = opacity > 0;
       wire.transparent = opacity < 1;
       wire.opacity = opacity;
       try {
-        landscape.renderer.render(landscape.scene, landscape.camera);
+        if (bodyIntro.running) landscape.renderer.render(landscape.scene, landscape.camera);
+        else renderBodyMotion(entry, landscape.camera);
       } finally {
         wire.visible = true;
         wire.transparent = false;
@@ -1255,10 +1275,14 @@
       }
     }
 
-    function renderLandscape(){
+    function renderLandscape(now = performance.now()){
       requestAnimationFrame(renderLandscape);
       landscapeT+=.006;
-      updateTransition(performance.now());
+      const step = Math.max(0, Math.min(100, now - bodyPulseTime));
+      bodyPulseTime = now;
+      const bass = Math.min(1, low()*.72 + hit()*.28);
+      bodyBassPulse += (bass - bodyBassPulse) * (1 - Math.exp(-step / 105));
+      updateTransition(now);
       const pos=landscape.mesh.geometry.attributes.position;
       const base=landscape.base;
       const lo=low(),mi=mid(),hi=high();
