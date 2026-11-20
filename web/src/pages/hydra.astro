@@ -781,7 +781,7 @@
           const hero=mode==='hero';
           archiveFloaters.push({
             img,file,x:hero?.5:.12+Math.random()*.76,y:hero?.5:.15+Math.random()*.7,
-            widthRatio:hero?.26:.12+Math.random()*.07,
+            widthRatio:hero?.17:.07+Math.random()*.045,
             lifetime:hero?7:5.5,
             vx:(Math.random()-.5)*(.00022+audioChaos()*.00042),
             vy:(Math.random()-.5)*(.00016+audioChaos()*.00022),
@@ -814,7 +814,7 @@
         const pulse=1+Math.min(.55,(lo*.24+mi*.12)*breathing+impact*.18);
         const motionScale=1+archiveMotion()*.16;
         const w=Math.min(archiveCanvas.width*p.widthRatio*pulse*motionScale,
-          archiveCanvas.width*.38,archiveCanvas.height*.40/ratio);
+          archiveCanvas.width*.25,archiveCanvas.height*.28/ratio);
         const h=w*ratio;
         const opacity=Math.min(1,age/.26,(p.lifetime-age)/.85)*p.life;
         archiveCtx.save();archiveCtx.globalAlpha=opacity;
@@ -1423,11 +1423,11 @@ render(o0)`;
     const scenes={
       custom01:{label:'CUSTOM 01 · CORRUPTED',code:starter},
       genesis:{label:'GENESIS · 3D LANDSCAPE',code:genesisLandscape(terrainAudioModulation)},
-      resonance:{label:'RESONANCE · PRE-HYPNOSIS / WEBCAM',code:resonanceGradient},
-      hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
       body:{label:'ELISA BODY REVEAL',code:genesisLandscape()},
       dissolve:{label:'BODY DISSOLVE',code:bodyDissolve},
       fusion:{label:'FLUID FUSION',code:fluidFusion},
+      resonance:{label:'RESONANCE · PRE-HYPNOSIS / WEBCAM',code:resonanceGradient},
+      hypnosis:{label:'HYPNOSIS · WEBCAM / TYPE',code:hypnosisWebcam},
       farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
      };
     let currentScene='custom01';
