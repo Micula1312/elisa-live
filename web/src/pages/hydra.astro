@@ -259,7 +259,11 @@
     window.rawHigh=()=>window.ELISA_SHARED_AUDIO.high||0;
     window.rawHit=()=>window.ELISA_SHARED_AUDIO.transient||0;
     window.rawLevel=()=>window.ELISA_SHARED_AUDIO.level||0;
-    const audioGain=()=>Math.max(0,audioReact())*(1+audioChaos()*1.65);
+    let activeScene='custom01';
+    const audioGain=()=>{
+      const sceneGain=activeScene==='custom01'?.32:activeScene==='genesis'?.38:1;
+      return Math.max(0,audioReact())*sceneGain*(1+audioChaos()*1.65);
+    };
     window.low=()=>Math.min(1.5,rawLow()*audioGain());
     window.mid=()=>Math.min(1.5,rawMid()*audioGain()*(1+audioChaos()*.35));
     window.high=()=>Math.min(1.8,rawHigh()*audioGain()*(1+audioChaos()*.9));
@@ -1082,8 +1086,7 @@
       transitionPeak = peak;
     }
 
-    let activeScene='custom01';
-    let landscapeT=0;
+    let landscapeT=0, genesisTerrainTime=0;
     function renderLandscape(){
       requestAnimationFrame(renderLandscape);
       landscapeT+=.006;
@@ -1092,18 +1095,22 @@
       const base=landscape.base;
       const lo=low(),mi=mid(),hi=high();
       landscape.flash*=.88;
-      const terrainDance = ['genesis','farewell'].includes(activeScene) ? audioReact()*.85 + audioChaos()*1.9 : 0;
+      const isGenesis=activeScene==='genesis';
+      if(isGenesis)genesisTerrainTime+=.003*(1+mi*.55+hi*.25);
+      const terrainTime=isGenesis?genesisTerrainTime:landscapeT;
+      const motion=isGenesis?landscapeMotion()*.38:landscapeMotion();
+      const terrainDance=activeScene==='farewell'?audioReact()*.85+audioChaos()*1.9:isGenesis?.32:0;
       if(landscape.mesh.visible)for(let i=0;i<pos.count;i++){
         const k=i*3,x=base[k],z=base[k+2];
-        const danceSpeed=1+terrainDance*(.8+hi*2.4)*(.4+landscapeMotion()*1.2);
-        const ridge=Math.sin(x*.28+landscapeT*.45*danceSpeed)*1.05+Math.sin(z*.12-landscapeT*.7*danceSpeed)*.72;
-        const detail=Math.sin(x*.92+z*.19+landscapeT*(1.7+terrainDance*3.2))*(.12+hi*(.55+terrainDance*1.45)+landscapeMotion()*2.2);
-        const swell=Math.sin(z*.055+landscapeT*(.35+terrainDance*.9))*(.55+lo*(2.8+terrainDance*5.8))*(.4+landscapeMotion()*1.2);
-        const beatDance=Math.sin(x*.42+z*.14+landscapeT*(1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*terrainDance);
-        pos.setY(i,-1.45+ridge*(.52+landscapeMotion()*1.5)+swell+detail+Math.sin((x+z)*.11+landscapeT)*mi*(.9+terrainDance*1.8)+beatDance);
+        const danceSpeed=1+terrainDance*(.8+hi*2.4)*(.4+motion*1.2);
+        const ridge=Math.sin(x*.28+terrainTime*.45*(isGenesis?1:danceSpeed))*1.05+Math.sin(z*.12-terrainTime*.7*(isGenesis?1:danceSpeed))*.72;
+        const detail=Math.sin(x*.92+z*.19+terrainTime*(1.7+terrainDance*3.2))*(.12+hi*(.55+terrainDance*1.45)+motion*2.2);
+        const swell=Math.sin(z*.055+terrainTime*(.35+terrainDance*.9))*(.55+lo*(2.8+terrainDance*5.8))*(.4+motion*1.2);
+        const beatDance=Math.sin(x*.42+z*.14+terrainTime*(isGenesis?1.1:1.1+mi*5))*((lo*1.9+mi*1.25+hit()*2.6)*terrainDance);
+        pos.setY(i,-1.45+ridge*(.52+motion*1.5)+swell+detail+Math.sin((x+z)*.11+terrainTime)*mi*(.9+terrainDance*1.8)+beatDance);
       }
       pos.needsUpdate=true;
-      landscape.mesh.position.z=-28+(landscapeT*1.35%3.2);
+      landscape.mesh.position.z=-28+(isGenesis?Math.sin(genesisTerrainTime*.55)*.55:landscapeT*1.35%3.2);
       if(activeScene==='body'){const now=performance.now();tickBodyIntro();tickBodyMidi(now);tickBodyStrobe(now);updateBodyCamera();}
       else {
         landscape.camera.position.x=landscape.nav.x+Math.sin(landscapeT*.13)*.35;
