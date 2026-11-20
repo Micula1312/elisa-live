@@ -29,8 +29,6 @@
     #capital-counter .tears{color:#ff2400;font-size:clamp(12px,1.25vw,18px);letter-spacing:.04em;text-shadow:0 0 10px rgba(255,36,0,.6)}
     #capital-counter.pop{animation:capitalPop .28s ease-out}@keyframes capitalPop{0%{transform:scale(1)}45%{transform:scale(1.22) rotate(-2deg)}100%{transform:scale(1)}}
   to{transform:translate(-50%,-34vh)}}
-    #transition-note{position:fixed;z-index:9;left:8vw;top:15vh;max-width:72vw;padding:.65em 1em;background:#eef2d9;color:#182416;border:2px solid #182416;box-shadow:6px 6px #182416;font:600 clamp(16px,2.3vw,46px)/1.2 monospace;pointer-events:none}
-    #transition-note::before{content:'ELISA / NOTA';display:block;font-size:.52em;margin-bottom:.65em;letter-spacing:.1em}
     #farewell-credits{position:fixed;inset:0;overflow:hidden;display:none;z-index:8;pointer-events:none;perspective:420px;background:linear-gradient(to bottom,transparent 0 54%,rgba(0,0,0,.16) 100%)}
     #farewell-credits.on{display:block}
     #farewell-credits-inner{position:absolute;left:12%;right:12%;top:100%;text-align:center;color:#39FF14;font:700 clamp(22px,3.1vw,54px)/1.55 Helvetica,Arial,sans-serif;white-space:pre-wrap;letter-spacing:.035em;transform-origin:50% 100%;transform:rotateX(22deg) translateY(0) scale(1)}
@@ -41,7 +39,6 @@
 <body>
   <canvas id="hydra-canvas"></canvas>
   <div id="master-fade"></div>
-  <aside id="transition-note" hidden></aside>
   <div id="global-invert" aria-hidden="true"></div>
   <div id="farewell-credits"><div id="farewell-credits-inner"></div></div>
   <canvas id="landscape-source" style="display:none"></canvas>
@@ -977,27 +974,24 @@
     transitionCanvas.width = 960;
     transitionCanvas.height = 540;
     const transitionContext = transitionCanvas.getContext('2d');
-    const transitionNote = document.getElementById('transition-note');
     const transitionClips = {};
     const transitionNotes = {
       dissolve: ['il corpo esce dal quadro', 'restano le immagini', 'il paesaggio continua'],
       fusion: ['la rete cambia forma', 'le immagini fanno parte del paesaggio', 'online / offline'],
     };
-    let transitionLastFrame = -1;
+    let transitionLastFrame = '';
     let transitionBeat = 0;
     let transitionPeak = false;
     let transitionStep = 0;
-    let transitionNoteUntil = 0;
+    let transitionNote = null;
     let transitionLive = false;
 
     function showTransitionNote(text, now) {
-      transitionNote.textContent = text;
-      transitionNote.hidden = false;
-      transitionNoteUntil = now + 2200;
+      transitionNote = {text:text.toUpperCase(), startedAt:now};
     }
 
     function prepareTransition(id) {
-      transitionNote.hidden = true;
+      transitionNote = null;
       transitionVideo.pause();
       transitionVideo.removeAttribute('src');
       transitionVideo.load();
@@ -1009,12 +1003,8 @@
       transitionStep = 0;
       transitionPeak = false;
       transitionBeat = performance.now();
-      transitionLastFrame = -1;
-      const gradient = transitionContext.createLinearGradient(0, 0, 960, 540);
-      gradient.addColorStop(0, '#102422');
-      gradient.addColorStop(1, '#010604');
-      transitionContext.fillStyle = gradient;
-      transitionContext.fillRect(0, 0, 960, 540);
+      transitionLastFrame = '';
+      drawTransitionFrame(performance.now());
       s2.init({src:transitionCanvas});
       if (transitionClips[id]) {
         transitionVideo.src = transitionClips[id];
@@ -1025,15 +1015,52 @@
       void spawnArchiveImage();
     }
 
-    function updateTransition(now) {
-      if (!transitionLive) return;
-      if (now > transitionNoteUntil) transitionNote.hidden = true;
-      if (transitionVideo.readyState >= 2 && transitionVideo.currentTime !== transitionLastFrame) {
-        transitionLastFrame = transitionVideo.currentTime;
-        const w = transitionCanvas.width, h = transitionCanvas.height;
+    function drawTransitionFrame(now) {
+      const ctx = transitionContext;
+      const {width:w, height:h} = transitionCanvas;
+      if (transitionVideo.readyState >= 2 && transitionVideo.videoWidth && transitionVideo.videoHeight) {
         const scale = Math.max(w / transitionVideo.videoWidth, h / transitionVideo.videoHeight);
         const vw = transitionVideo.videoWidth * scale, vh = transitionVideo.videoHeight * scale;
-        transitionContext.drawImage(transitionVideo, (w - vw) / 2, (h - vh) / 2, vw, vh);
+        ctx.drawImage(transitionVideo, (w - vw) / 2, (h - vh) / 2, vw, vh);
+      } else {
+        const gradient = transitionContext.createLinearGradient(0, 0, 960, 540);
+        gradient.addColorStop(0, '#102422');
+        gradient.addColorStop(1, '#010604');
+        transitionContext.fillStyle = gradient;
+        transitionContext.fillRect(0, 0, 960, 540);
+      }
+      if (!transitionNote) return;
+      const age = now - transitionNote.startedAt;
+      if (age >= 2200) {
+        transitionNote = null;
+        return;
+      }
+      const envelope = Math.min(1, age / 180, (2200 - age) / 280);
+      const jitter = Math.sin(age * .033) * (1 + high() * 7);
+      ctx.save();
+      ctx.globalAlpha = envelope;
+      ctx.translate(72 + jitter, 92 + (1 - envelope) * 12);
+      ctx.font = 'bold 24px monospace';
+      const width = Math.min(780, ctx.measureText(transitionNote.text).width + 38);
+      ctx.fillStyle = '#140f1f';
+      ctx.fillRect(0, 0, width, 82);
+      ctx.strokeStyle = '#b5ff64';
+      ctx.strokeRect(0, 0, width, 82);
+      ctx.fillStyle = '#e8689f';
+      ctx.fillText(transitionNote.text, 21 + jitter, 57, width - 38);
+      ctx.fillStyle = '#c4ff82';
+      ctx.fillText(transitionNote.text, 18, 55, width - 38);
+      ctx.font = '12px monospace';
+      ctx.fillText('ELISA / NOTA', 18, 24);
+      ctx.restore();
+    }
+
+    function updateTransition(now) {
+      if (!transitionLive) return;
+      const frame = transitionVideo.readyState >= 2 ? transitionVideo.currentTime : 'gradient';
+      if (transitionNote || frame !== transitionLastFrame) {
+        transitionLastFrame = frame;
+        drawTransitionFrame(now);
       }
       const peak = hit() > .22;
       if (peak && !transitionPeak && now - transitionBeat > 1100) {
