@@ -1071,12 +1071,54 @@
     let transitionStep = 0;
     let transitionNote = null;
     let transitionLive = false;
+    const dissolveCamera = landscape.camera.clone();
+    dissolveCamera.layers.set(1);
+    const dissolveDuration = 6500;
+    let dissolveStartedAt = 0;
+    let dissolveBody = null;
+    let dissolveProgress = 1;
+
+    function updateDissolve(now) {
+      if (!dissolveStartedAt) return;
+      // Keep the face visible until the background has a frame, with a fallback for bad clips.
+      if (transitionClips.dissolve && transitionVideo.readyState < 2 &&
+          !transitionVideo.error && now - dissolveStartedAt < 2000) return;
+      const t = Math.min(1, Math.max(0, (now - dissolveStartedAt - 600) / dissolveDuration));
+      dissolveProgress = t * t * (3 - 2 * t);
+    }
+
+    function renderDissolvingBody() {
+      if (!dissolveBody || dissolveProgress >= 1) return;
+      const {model, wire, center, home} = dissolveBody;
+      dissolveCamera.aspect = landscape.camera.aspect;
+      dissolveCamera.updateProjectionMatrix();
+      dissolveCamera.position.set(center.x, home.y, home.z);
+      dissolveCamera.lookAt(center);
+      model.traverse(child => child.layers.enable(1));
+      model.visible = true;
+      wire.transparent = true;
+      wire.opacity = 1 - dissolveProgress;
+      landscape.renderer.autoClear = false;
+      landscape.renderer.clearDepth();
+      try {
+        landscape.renderer.render(landscape.scene, dissolveCamera);
+      } finally {
+        landscape.renderer.autoClear = true;
+        wire.opacity = 1;
+        wire.transparent = false;
+        model.visible = false;
+        model.traverse(child => child.layers.disable(1));
+      }
+    }
 
     function showTransitionNote(text, now) {
       transitionNote = {text:text.toUpperCase(), startedAt:now};
     }
 
     function prepareTransition(id) {
+      dissolveStartedAt = id === 'dissolve' ? performance.now() : 0;
+      dissolveProgress = id === 'dissolve' ? 0 : 1;
+      if (id !== 'dissolve') dissolveBody = null;
       transitionNote = null;
       transitionVideo.pause();
       transitionVideo.removeAttribute('src');
@@ -1104,6 +1146,13 @@
     function drawTransitionFrame(now) {
       const ctx = transitionContext;
       const {width:w, height:h} = transitionCanvas;
+      if (dissolveStartedAt) {
+        updateDissolve(now);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+      }
+      ctx.save();
+      ctx.globalAlpha = dissolveProgress;
       if (transitionVideo.readyState >= 2 && transitionVideo.videoWidth && transitionVideo.videoHeight) {
         const scale = Math.max(w / transitionVideo.videoWidth, h / transitionVideo.videoHeight);
         const vw = transitionVideo.videoWidth * scale, vh = transitionVideo.videoHeight * scale;
@@ -1115,6 +1164,7 @@
         transitionContext.fillStyle = gradient;
         transitionContext.fillRect(0, 0, 960, 540);
       }
+      ctx.restore();
       if (!transitionNote) return;
       const age = now - transitionNote.startedAt;
       if (age >= 2200) {
@@ -1144,7 +1194,7 @@
     function updateTransition(now) {
       if (!transitionLive) return;
       const frame = transitionVideo.readyState >= 2 ? transitionVideo.currentTime : 'gradient';
-      if (transitionNote || frame !== transitionLastFrame) {
+      if (dissolveProgress < 1 || transitionNote || frame !== transitionLastFrame) {
         transitionLastFrame = frame;
         drawTransitionFrame(now);
       }
@@ -1272,6 +1322,7 @@
       }else if(farewellStars.length)clearFarewellStars();
       updateObjectPulseAndDissolve(performance.now(),lo,mi,hit());
       landscape.renderer.render(landscape.scene,landscape.camera);
+      renderDissolvingBody();
     }
     renderLandscape();
 
@@ -1554,6 +1605,17 @@ render(o0)`;
         if(request!==sceneRequest)return;
         activateBodyModel(model,entry);
       }
+      if (id === 'dissolve') {
+        try {
+          const entry = await ensureBodyLandscape(selectedBodyModel);
+          if (request !== sceneRequest) return;
+          dissolveBody = entry;
+        } catch (error) {
+          if (request !== sceneRequest) return;
+          dissolveBody = null;
+          console.warn('Body Dissolve model unavailable', error);
+        }
+      }
       currentScene=id;activeScene=id;
       if(id==='genesis'||id==='body'){
         for(const modelId of Object.keys(liveModels)) void loadLiveModel(modelId).catch(()=>{});
@@ -1570,7 +1632,7 @@ render(o0)`;
       if(id!=='resonance'){resonanceInvert=false;applyInvert()}
       try{s3.init({src:id==='hypnosis'?heartCanvas:archiveCanvas})}catch{}
       if(transition||['genesis','body','farewell'].includes(id)){
-        try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera)}
+        try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera);renderDissolvingBody()}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
       if(id==='hypnosis'||id==='resonance'){

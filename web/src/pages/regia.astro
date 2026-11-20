@@ -348,8 +348,8 @@ footer {
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">VIDEO PAESAGGIO</div>
   <div class="landscape-files">
-    <label>Body Dissolve <input type="file" accept="video/*" data-landscape-clip="dissolve"></label>
-    <label>Fluid Fusion <input type="file" accept="video/*" data-landscape-clip="fusion"></label>
+    <label>Body Dissolve <input type="file" accept="video/*" data-landscape-clip="dissolve"><span class="video-note" data-clip-status="dissolve" aria-live="polite"></span></label>
+    <label>Fluid Fusion <input type="file" accept="video/*" data-landscape-clip="fusion"><span class="video-note" data-clip-status="fusion" aria-live="polite"></span></label>
   </div>
 </div>
 <div id="bodyRevealControls" class="hydra-subpanel" hidden>
@@ -656,7 +656,9 @@ function launchHydraCue(button) {
   showMouseActions(scene);
   const label = button.querySelector("strong").textContent;
   q("#hydraCueStatus").textContent = label;
-  sendHydraCue(scene, videoClips[scene] || "");
+  void restoreLandscapeClips.then(() => {
+    if (button.classList.contains("live")) sendHydraCue(scene, videoClips[scene] || "");
+  });
   if (q("#autoMam").checked && button.dataset.mam !== undefined) {
     void touchControl("mam_layout", Number(button.dataset.mam)).catch(() => {
       if (button.classList.contains("live")) q("#hydraCueStatus").textContent = label + " · OSC NON INVIATO";
@@ -671,14 +673,60 @@ q("#nextHydra").onclick = () => {
   const active = hydraCues.findIndex(button => button.classList.contains("live"));
   if (hydraCues[active + 1]) launchHydraCue(hydraCues[active + 1]);
 };
-document.querySelectorAll("[data-landscape-clip]").forEach(input => {
-  input.onchange = () => {
-    if (!input.files?.[0]) return;
+const landscapeInputs = [...document.querySelectorAll("[data-landscape-clip]")];
+const landscapeDb = new Promise((resolve, reject) => {
+  const request = indexedDB.open("elisa-landscape-clips", 1);
+  request.onupgradeneeded = () => request.result.createObjectStore("clips");
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+
+function setLandscapeClip(scene, file) {
+  if (videoClips[scene]) URL.revokeObjectURL(videoClips[scene]);
+  videoClips[scene] = URL.createObjectURL(file);
+}
+
+const restoreLandscapeClips = landscapeDb.then(db => Promise.all(landscapeInputs.map(input => {
+  const scene = input.dataset.landscapeClip;
+  const status = q(`[data-clip-status="${scene}"]`);
+  return new Promise((resolve, reject) => {
+    const request = db.transaction("clips").objectStore("clips").get(scene);
+    request.onsuccess = () => {
+      const file = request.result;
+      if (file && !videoClips[scene]) {
+        setLandscapeClip(scene, file);
+        status.textContent = file.name + " · salvato su questo browser";
+      }
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
+}))).catch(error => console.warn("Landscape clip restore failed", error));
+
+landscapeInputs.forEach(input => {
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
     const scene = input.dataset.landscapeClip;
-    if (videoClips[scene]) URL.revokeObjectURL(videoClips[scene]);
-    videoClips[scene] = URL.createObjectURL(input.files[0]);
+    const status = q(`[data-clip-status="${scene}"]`);
+    setLandscapeClip(scene, file);
+    const url = videoClips[scene];
+    status.textContent = file.name + " · salvataggio…";
     if (hydraCues.some(button => button.dataset.hydra === scene && button.classList.contains("live"))) {
-      sendHydraCue(scene, videoClips[scene]);
+      sendHydraCue(scene, url);
+    }
+    try {
+      const db = await landscapeDb;
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction("clips", "readwrite");
+        transaction.oncomplete = resolve;
+        transaction.onabort = () => reject(transaction.error);
+        transaction.objectStore("clips").put(file, scene);
+      });
+      if (videoClips[scene] === url) status.textContent = file.name + " · salvato su questo browser";
+    } catch (error) {
+      if (videoClips[scene] === url) status.textContent = file.name + " · disponibile solo per questa sessione";
+      console.warn("Landscape clip save failed", error);
     }
   };
 });
