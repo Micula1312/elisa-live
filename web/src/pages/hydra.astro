@@ -134,6 +134,9 @@
     function applyInvert(){document.getElementById('global-invert').style.display=(resonanceInvert||performance.now()<resonancePadPunchUntil)?'block':'none'}
     // Every press makes a brief pulse, never a held/infinite invert.
     function setInvert(on){if(on){resonancePadPunchUntil=performance.now()+105;applyInvert()}}
+    canvas.addEventListener('click',event=>{
+      if(event.button===0)setInvert(true);
+    });
     function updateResonanceStrobe(now){
       if(currentScene!=='resonance'||midiTarget!=='hydra'){
         if(resonanceInvert){resonanceInvert=false;applyInvert()}
