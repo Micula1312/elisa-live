@@ -1048,7 +1048,7 @@
       if(webcamReady)return true;
       try{
         const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:360},frameRate:{ideal:24,max:30}},audio:false});
-        webcamVideo.srcObject=stream;await webcamVideo.play();s1.init({src:webcamVideo});webcamReady=true;
+        webcamVideo.srcObject=stream;await webcamVideo.play();webcamReady=true;updateDualCams();
         trackingMode=('FaceDetector' in window)?'face':'motion';status.textContent='WEBCAM + '+trackingMode.toUpperCase()+' TRACK · ONLINE';ensureHandTracking();return true;
       }catch(err){status.textContent='WEBCAM ERROR · '+err.message;status.classList.add('error');return false}
     }
@@ -1103,7 +1103,7 @@
     function setDissolveConfig(config) {
       if (dissolveConfig.mode !== config.mode || dissolveConfig.bpm !== config.bpm) dissolveNext = 0;
       dissolveConfig = config;
-      if (!dissolveStartedAt) return;
+      if (activeScene !== 'dissolve' || !dissolveStartedAt) return;
       const index = config.mode === 'auto'
         ? (dissolveIncoming?.index ?? dissolveCurrent?.index ?? config.clips.findIndex(Boolean))
         : Number(config.mode);
@@ -1169,16 +1169,16 @@
     }
 
     function prepareTransition(id) {
-      dissolveStartedAt = id === 'dissolve' ? performance.now() : 0;
-      dissolveProgress = id === 'dissolve' ? 0 : 1;
-      if (id !== 'dissolve') dissolveBody = null;
+      transitionLive = transitionScenes.has(id);
+      dissolveStartedAt = transitionLive ? performance.now() : 0;
+      dissolveProgress = transitionLive ? 0 : 1;
+      if (!transitionLive) dissolveBody = null;
       unloadVideo(transitionVideo);
       if (dissolveCurrent) unloadVideo(dissolveCurrent.video);
       if (dissolveIncoming) unloadVideo(dissolveIncoming.video);
       dissolveCurrent = dissolveIncoming = null;
       dissolveNext = 0;
       dissolveAttempt = -1;
-      transitionLive = transitionScenes.has(id);
       if (!transitionLive) {
         s2.init({src:typeCanvas});
         return;
@@ -1200,7 +1200,7 @@
       const ctx = transitionContext;
       const {width:w, height:h} = transitionCanvas;
       if (dissolveStartedAt) {
-        tickDissolveClips(now);
+        if (activeScene === 'dissolve') tickDissolveClips(now);
         updateDissolve(now);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, w, h);
@@ -1212,14 +1212,24 @@
         const vw = video.videoWidth * scale, vh = video.videoHeight * scale;
         ctx.drawImage(video, (w - vw) / 2, (h - vh) / 2, vw, vh);
       };
-      const video = dissolveStartedAt ? dissolveCurrent?.video : transitionVideo;
+      const fusionCamera = activeScene === 'fusion' && localCamOn &&
+        webcamReady && webcamVideo.readyState >= 2 && webcamVideo.videoWidth;
+      if (fusionCamera) {
+        ctx.save();
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+        drawCover(webcamVideo);
+        ctx.restore();
+      }
+      const video = activeScene === 'dissolve' ? dissolveCurrent?.video : transitionVideo;
       if (video?.readyState >= 2 && video.videoWidth && video.videoHeight) {
+        if (fusionCamera) ctx.globalAlpha *= .65;
         drawCover(video);
         if (dissolveIncoming?.started != null && dissolveIncoming.video.readyState >= 2) {
           ctx.globalAlpha *= Math.min(1,(now - dissolveIncoming.started) / videoFadeMs);
           drawCover(dissolveIncoming.video);
         }
-      } else {
+      } else if (!fusionCamera) {
         const gradient = transitionContext.createLinearGradient(0, 0, 960, 540);
         gradient.addColorStop(0, '#102422');
         gradient.addColorStop(1, '#010604');
@@ -1639,7 +1649,7 @@ render(o0)`;
         if(request!==sceneRequest)return;
         activateBodyModel(model,entry);
       }
-      if (id === 'dissolve') {
+      if (transitionScenes.has(id)) {
         try {
           const entry = await ensureBodyLandscape(selectedBodyModel);
           if (request !== sceneRequest) return;
@@ -1647,7 +1657,7 @@ render(o0)`;
         } catch (error) {
           if (request !== sceneRequest) return;
           dissolveBody = null;
-          console.warn('Body Dissolve model unavailable', error);
+          console.warn('Transition body model unavailable', error);
         }
       }
       currentScene=id;activeScene=id;
@@ -1669,7 +1679,7 @@ render(o0)`;
         try{s0.init({src:landscapeCanvas});landscape.renderer.render(landscape.scene,landscape.camera);renderDissolvingBody()}
         catch(err){status.textContent='GENESIS SOURCE ERROR · '+err.message;status.classList.add('error');return}
       }
-      if(id==='hypnosis'||id==='resonance'){
+      if(id==='hypnosis'||id==='resonance'||id==='fusion'){
         // Camera access is optional: never block a scene transition from regia.
         // A missing/denied webcam simply leaves the source blank until available.
         // Do not wait for browser camera permission before switching scenes.
