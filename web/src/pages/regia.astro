@@ -348,9 +348,18 @@ footer {
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">VIDEO PAESAGGIO</div>
   <div class="landscape-files">
-    <label>Body Dissolve <input type="file" accept="video/*" data-landscape-clip="dissolve"><span class="video-note" data-clip-status="dissolve" aria-live="polite"></span></label>
+    <label>Body Dissolve · A <input type="file" accept="video/*" data-landscape-clip="dissolve"><span class="video-note" data-clip-status="dissolve" aria-live="polite"></span></label>
+    <label>Body Dissolve · B <input type="file" accept="video/*" data-landscape-clip="dissolve-b"><span class="video-note" data-clip-status="dissolve-b" aria-live="polite"></span></label>
+    <label>Body Dissolve · C <input type="file" accept="video/*" data-landscape-clip="dissolve-c"><span class="video-note" data-clip-status="dissolve-c" aria-live="polite"></span></label>
     <label>Fluid Fusion <input type="file" accept="video/*" data-landscape-clip="fusion"><span class="video-note" data-clip-status="fusion" aria-live="polite"></span></label>
   </div>
+</div>
+<div class="hydra-tools" role="group" aria-label="Video Body Dissolve">
+  <button type="button" data-dissolve-mode="0" aria-pressed="true">Video A</button>
+  <button type="button" data-dissolve-mode="1" aria-pressed="false">Video B</button>
+  <button type="button" data-dissolve-mode="2" aria-pressed="false">Video C</button>
+  <button type="button" data-dissolve-mode="auto" aria-pressed="false">Auto BPM</button>
+  <label>BPM <input id="dissolveBpm" type="number" min="30" max="240" value="90"></label>
 </div>
 <div id="bodyRevealControls" class="hydra-subpanel" hidden>
   <div class="hydra-scene-label">ELISA BODY REVEAL</div>
@@ -561,7 +570,7 @@ const mouseSceneControls = {
   resonance: ["X · Interferenza / Y · Scala e distorsione", [["Invert", "invert"], ["Flash", "punch"]]],
   hypnosis: ["X · Scala e deformazione / Y · Dispersione", [["Disintegra", "drop"], ["Invert", "invert"]]],
   body: ["X · Deformazione / Y · Scala", [["←", "ArrowLeft"], ["→", "ArrowRight"], ["Avanti", "ArrowUp"], ["Indietro", "ArrowDown"], ["Sali", "q"], ["Scendi", "e"], ["Guarda su", "r"], ["Guarda giù", "f"], ["Home", "Home"], ["Post", "single"], ["Raffica", "burst"], ["Post grande", "hero"], ["Pioggia", "rain"], ["Drop", "drop"]]],
-  dissolve: ["X · Distorsione / Y · Zoom paesaggio", [["Post", "single"], ["Raffica", "burst"], ["Nota", "note"], ["Drop", "drop"]]],
+  dissolve: ["X · Distorsione / Y · Zoom paesaggio", [["Post", "single"], ["Raffica", "burst"], ["Drop", "drop"]]],
   fusion: ["X · Distorsione / Y · Zoom paesaggio", [["Post", "single"], ["Pioggia", "rain"], ["Nota", "note"], ["Drop", "drop"]]],
   farewell: ["X · Contrasto e distorsione / Y · Luminosità", [["Stelle", "stars"], ["Invert", "invert"]]],
 };
@@ -639,7 +648,7 @@ control.addEventListener("message", ({data}) => {
     });
   }
 });
-const sendHydraCue = (scene, clip) => send({type:"hydra-scene", scene, clip, cueId:Date.now() + Math.random()});
+const sendHydraCue = (scene, clip) => send({type:"hydra-scene", scene, clip, ...(scene === "dissolve" ? {dissolveVideos:dissolveVideoConfig()} : {}), cueId:Date.now() + Math.random()});
 async function touchControl(name, value) {
   const response = await fetch(location.protocol + "//" + location.hostname + ":8765/control", {
     method: "POST", headers: {"Content-Type":"application/json"},
@@ -657,7 +666,8 @@ function launchHydraCue(button) {
   const label = button.querySelector("strong").textContent;
   q("#hydraCueStatus").textContent = label;
   void restoreLandscapeClips.then(() => {
-    if (button.classList.contains("live")) sendHydraCue(scene, videoClips[scene] || "");
+    if (!button.classList.contains("live")) return;
+    sendHydraCue(scene, videoClips[scene] || "");
   });
   if (q("#autoMam").checked && button.dataset.mam !== undefined) {
     void touchControl("mam_layout", Number(button.dataset.mam)).catch(() => {
@@ -673,6 +683,23 @@ q("#nextHydra").onclick = () => {
   const active = hydraCues.findIndex(button => button.classList.contains("live"));
   if (hydraCues[active + 1]) launchHydraCue(hydraCues[active + 1]);
 };
+const dissolveKeys = ["dissolve", "dissolve-b", "dissolve-c"];
+let dissolveMode = "0";
+function dissolveVideoConfig() {
+  return {clips:dissolveKeys.map(key => videoClips[key] || ""), mode:dissolveMode,
+    bpm:Number(q("#dissolveBpm").value)};
+}
+function sendDissolveVideos() {
+  control.postMessage({type:"hydra-dissolve-videos", ...dissolveVideoConfig()});
+}
+const dissolveButtons = [...document.querySelectorAll("[data-dissolve-mode]")];
+dissolveButtons.forEach(button => button.onclick = () => {
+  dissolveMode = button.dataset.dissolveMode;
+  dissolveButtons.forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+  void restoreLandscapeClips.then(sendDissolveVideos);
+});
+q("#dissolveBpm").onchange = () => void restoreLandscapeClips.then(sendDissolveVideos);
+
 const landscapeInputs = [...document.querySelectorAll("[data-landscape-clip]")];
 const landscapeDb = new Promise((resolve, reject) => {
   const request = indexedDB.open("elisa-landscape-clips", 1);
@@ -712,9 +739,8 @@ landscapeInputs.forEach(input => {
     setLandscapeClip(scene, file);
     const url = videoClips[scene];
     status.textContent = file.name + " · salvataggio…";
-    if (hydraCues.some(button => button.dataset.hydra === scene && button.classList.contains("live"))) {
-      sendHydraCue(scene, url);
-    }
+    if (dissolveKeys.includes(scene)) sendDissolveVideos();
+    else control.postMessage({type:"hydra-fusion-video", clip:url});
     try {
       const db = await landscapeDb;
       await new Promise((resolve, reject) => {

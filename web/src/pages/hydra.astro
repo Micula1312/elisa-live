@@ -184,7 +184,7 @@
     }
     const MIDIMIX_FADERS={19:'param1',23:'param2',27:'audioReact',31:'audioChaos',49:'landscapeMotion',53:'archiveMotion'};
     const MIDIMIX_CAMERA={24:19,25:20,26:21};
-    const MIDIMIX_PRIMARY={custom01:'invert',genesis:'single',resonance:'punch',hypnosis:'drop',body:'single',dissolve:'note',fusion:'note',farewell:'stars'};
+    const MIDIMIX_PRIMARY={custom01:'invert',genesis:'single',resonance:'punch',hypnosis:'drop',body:'single',dissolve:'single',fusion:'note',farewell:'stars'};
     function handleMIDImix(kind,channel,number,value){
       if(channel!==1)return;
       if(kind===0xb0){
@@ -1062,7 +1062,7 @@
     const transitionContext = transitionCanvas.getContext('2d');
     const transitionClips = {};
     const transitionNotes = {
-      dissolve: ['il corpo esce dal quadro', 'restano le immagini', 'il paesaggio continua'],
+      dissolve: [],
       fusion: ['la rete cambia forma', 'le immagini fanno parte del paesaggio', 'online / offline'],
     };
     let transitionLastFrame = '';
@@ -1078,11 +1078,72 @@
     let dissolveBody = null;
     let dissolveProgress = 1;
 
+    let dissolveConfig = {clips:[], mode:'0', bpm:90};
+    let dissolveCurrent = null, dissolveIncoming = null;
+    let dissolveNext = 0, dissolveAttempt = -1;
+    const videoFadeMs = 700;
+
+    function unloadVideo(video) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+    function playLandscape(video, url) {
+      video.src = url;
+      void video.play().catch(error => {
+        if (error.name !== 'AbortError') console.warn('Landscape clip unavailable', error);
+      });
+    }
+    function queueDissolveClip(index) {
+      const url = dissolveConfig.clips[index];
+      if (!url || url === dissolveCurrent?.url || url === dissolveIncoming?.url) return;
+      if (dissolveIncoming) unloadVideo(dissolveIncoming.video);
+      const video = document.createElement('video');
+      video.muted = video.playsInline = video.loop = true;
+      dissolveIncoming = {video,url,index,started:null,requestedAt:performance.now()};
+      dissolveAttempt = index;
+      playLandscape(video,url);
+    }
+    function setDissolveConfig(config) {
+      if (dissolveConfig.mode !== config.mode || dissolveConfig.bpm !== config.bpm) dissolveNext = 0;
+      dissolveConfig = config;
+      if (!dissolveStartedAt) return;
+      const index = config.mode === 'auto'
+        ? (dissolveIncoming?.index ?? dissolveCurrent?.index ?? config.clips.findIndex(Boolean))
+        : Number(config.mode);
+      if (dissolveIncoming && config.clips[index] !== dissolveIncoming.url) {
+        unloadVideo(dissolveIncoming.video);
+        dissolveIncoming = null;
+      }
+      queueDissolveClip(index);
+    }
+    function tickDissolveClips(now) {
+      const incoming = dissolveIncoming;
+      if (incoming?.video.readyState >= 2 && incoming.video.videoWidth) {
+        incoming.started ??= now;
+        if (!dissolveCurrent || now - incoming.started >= videoFadeMs) {
+          if (dissolveCurrent) unloadVideo(dissolveCurrent.video);
+          dissolveCurrent = incoming;
+          dissolveIncoming = null;
+        }
+      } else if (incoming && (incoming.video.error || now - incoming.requestedAt > 5000)) {
+        unloadVideo(incoming.video);
+        dissolveIncoming = null;
+      }
+      if (dissolveConfig.mode !== 'auto' || dissolveIncoming) return;
+      const period = 240000 / Math.max(30,Math.min(240,dissolveConfig.bpm || 90));
+      if (!dissolveNext) dissolveNext = now + period;
+      if (now < dissolveNext) return;
+      dissolveNext += period * (1 + Math.floor((now - dissolveNext) / period));
+      const {clips} = dissolveConfig;
+      const order = clips.map((_,i) => (dissolveAttempt + i + 1) % clips.length);
+      queueDissolveClip(order.find(i => clips[i] && clips[i] !== dissolveCurrent?.url));
+    }
+
     function updateDissolve(now) {
       if (!dissolveStartedAt) return;
       // Keep the face visible until the background has a frame, with a fallback for bad clips.
-      if (transitionClips.dissolve && transitionVideo.readyState < 2 &&
-          !transitionVideo.error && now - dissolveStartedAt < 2000) return;
+      if (dissolveIncoming && !dissolveCurrent && now - dissolveStartedAt < 2000) return;
       const t = Math.min(1, Math.max(0, (now - dissolveStartedAt - 600) / dissolveDuration));
       dissolveProgress = t * t * (3 - 2 * t);
     }
@@ -1120,9 +1181,12 @@
       dissolveProgress = id === 'dissolve' ? 0 : 1;
       if (id !== 'dissolve') dissolveBody = null;
       transitionNote = null;
-      transitionVideo.pause();
-      transitionVideo.removeAttribute('src');
-      transitionVideo.load();
+      unloadVideo(transitionVideo);
+      if (dissolveCurrent) unloadVideo(dissolveCurrent.video);
+      if (dissolveIncoming) unloadVideo(dissolveIncoming.video);
+      dissolveCurrent = dissolveIncoming = null;
+      dissolveNext = 0;
+      dissolveAttempt = -1;
       transitionLive = Object.hasOwn(transitionNotes, id);
       if (!transitionLive) {
         s2.init({src:typeCanvas});
@@ -1134,10 +1198,8 @@
       transitionLastFrame = '';
       drawTransitionFrame(performance.now());
       s2.init({src:transitionCanvas});
-      if (transitionClips[id]) {
-        transitionVideo.src = transitionClips[id];
-        void transitionVideo.play().catch(error => console.warn('Landscape clip unavailable', error));
-      }
+      if (id === 'dissolve') setDissolveConfig(dissolveConfig);
+      else if (transitionClips[id]) playLandscape(transitionVideo, transitionClips[id]);
       const initialObject = id === 'dissolve' ? 'swarm' : 'orb';
       if (landscape.objects[initialObject].length < 4) addGenesisObject(initialObject);
       void spawnArchiveImage();
@@ -1147,16 +1209,25 @@
       const ctx = transitionContext;
       const {width:w, height:h} = transitionCanvas;
       if (dissolveStartedAt) {
+        tickDissolveClips(now);
         updateDissolve(now);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, w, h);
       }
       ctx.save();
       ctx.globalAlpha = dissolveProgress;
-      if (transitionVideo.readyState >= 2 && transitionVideo.videoWidth && transitionVideo.videoHeight) {
-        const scale = Math.max(w / transitionVideo.videoWidth, h / transitionVideo.videoHeight);
-        const vw = transitionVideo.videoWidth * scale, vh = transitionVideo.videoHeight * scale;
-        ctx.drawImage(transitionVideo, (w - vw) / 2, (h - vh) / 2, vw, vh);
+      const drawCover = video => {
+        const scale = Math.max(w / video.videoWidth, h / video.videoHeight);
+        const vw = video.videoWidth * scale, vh = video.videoHeight * scale;
+        ctx.drawImage(video, (w - vw) / 2, (h - vh) / 2, vw, vh);
+      };
+      const video = dissolveStartedAt ? dissolveCurrent?.video : transitionVideo;
+      if (video?.readyState >= 2 && video.videoWidth && video.videoHeight) {
+        drawCover(video);
+        if (dissolveIncoming?.started != null && dissolveIncoming.video.readyState >= 2) {
+          ctx.globalAlpha *= Math.min(1,(now - dissolveIncoming.started) / videoFadeMs);
+          drawCover(dissolveIncoming.video);
+        }
       } else {
         const gradient = transitionContext.createLinearGradient(0, 0, 960, 540);
         gradient.addColorStop(0, '#102422');
@@ -1194,7 +1265,7 @@
     function updateTransition(now) {
       if (!transitionLive) return;
       const frame = transitionVideo.readyState >= 2 ? transitionVideo.currentTime : 'gradient';
-      if (dissolveProgress < 1 || transitionNote || frame !== transitionLastFrame) {
+      if (dissolveStartedAt || transitionNote || frame !== transitionLastFrame) {
         transitionLastFrame = frame;
         drawTransitionFrame(now);
       }
@@ -1204,7 +1275,7 @@
         const object = objects[transitionStep % objects.length];
         if (landscape.objects[object].length < 4) addGenesisObject(object);
         if (transitionStep % 2 === 0) void spawnArchiveImage();
-        if (transitionStep % 3 === 0) {
+        if (activeScene === 'fusion' && transitionStep % 3 === 0) {
           const notes = transitionNotes[activeScene];
           showTransitionNote(notes[Math.floor(transitionStep / 3) % notes.length], now);
         }
@@ -1716,7 +1787,7 @@ render(o0)`;
         setDrop(true);
         mouseDropTimer = setTimeout(() => setDrop(false), 240);
       } else if (action === 'stars' && scene === 'farewell') spawnFarewellStars();
-      else if (action === 'note' && transitionLive) {
+      else if (action === 'note' && scene === 'fusion') {
         const notes = transitionNotes[scene];
         showTransitionNote(notes[mouseNote++ % notes.length], performance.now());
       } else if (['single','burst','hero','rain'].includes(action)) void spawnArchiveImage(action);
@@ -1738,8 +1809,14 @@ render(o0)`;
         subtitleLayer.classList.toggle('on',!!text);
       }
       if(m.type==='hydra-fullscreen'){status.textContent='FULLSCREEN · USE F11 ON HYDRA WINDOW ONCE'}
+      if(m.type==='hydra-dissolve-videos') setDissolveConfig(m);
+      if(m.type==='hydra-fusion-video'){
+        transitionClips.fusion = m.clip;
+        if(currentScene==='fusion') playLandscape(transitionVideo,m.clip);
+      }
       if(m.type==='hydra-scene' && (!m.cueId || m.cueId !== lastRegiaCue)){
         lastRegiaCue = m.cueId;
+        if(m.dissolveVideos) setDissolveConfig(m.dissolveVideos);
         void loadScene(m.scene,m.clip);
       }
       if(m.type==='hydra-hypnosis-word')setHypnosisWord(m.word);
