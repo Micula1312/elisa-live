@@ -205,6 +205,7 @@ footer {
 .hydra-buttons button:hover{border-color:var(--acid)!important;background:#10200d!important}
 .hydra-buttons button.live{background:var(--acid)!important;border-color:var(--acid)!important;color:#000!important;box-shadow:0 0 18px rgba(57,255,20,.24)}
 .hydra-buttons button.live strong{color:#000!important}
+.hydra-cue-time{display:block;margin-top:2px;font-size:9px;font-variant-numeric:tabular-nums;opacity:.84}
 .hydra-buttons button.todo{opacity:.45}
 .hydra-subpanel{border-top:1px solid #242824;padding:4px 0 3px;margin-top:2px}
 .mam-scene-layouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:6px;padding:4px 0}
@@ -325,14 +326,14 @@ footer {
   <span id="hydraCueStatus" role="status">Seleziona una scena</span>
 </div>
 <div class="hydra-buttons">
-<button data-hydra="custom01" data-mam="0">01<br><strong>CORRUPTED</strong></button>
-<button data-hydra="genesis" data-mam="2">02<br><strong>GENESIS</strong></button>
-<button data-hydra="body" data-mam="1">03<br><strong>ELISA BODY REVEAL</strong></button>
-<button data-hydra="dissolve" data-mam="1">04<br><strong>BODY DISSOLVE</strong></button>
-<button data-hydra="fusion" data-mam="1">05<br><strong>FLUID FUSION</strong></button>
-<button data-hydra="resonance" data-mam="1">06<br><strong>RESONANCE</strong></button>
-<button data-hydra="hypnosis" data-mam="1">07<br><strong>HYPNOSIS</strong></button>
-<button data-hydra="farewell" data-mam="2">08<br><strong>FINAL TREE</strong></button>
+<button data-hydra="custom01" data-mam="0">01<br><strong>CORRUPTED</strong><small class="hydra-cue-time">9:00</small></button>
+<button data-hydra="genesis" data-mam="2">02<br><strong>GENESIS</strong><small class="hydra-cue-time">10:20</small></button>
+<button data-hydra="body" data-mam="1">03<br><strong>ELISA BODY REVEAL</strong><small class="hydra-cue-time">≈13:25</small></button>
+<button data-hydra="dissolve" data-mam="1">04<br><strong>BODY DISSOLVE</strong><small class="hydra-cue-time">≈15:05</small></button>
+<button data-hydra="fusion" data-mam="1">05<br><strong>FLUID FUSION</strong><small class="hydra-cue-time">≈16:00</small></button>
+<button data-hydra="resonance" data-mam="1">06<br><strong>RESONANCE</strong><small class="hydra-cue-time">≈17:00</small></button>
+<button data-hydra="hypnosis" data-mam="1">07<br><strong>HYPNOSIS</strong><small class="hydra-cue-time">≈18:25</small></button>
+<button data-hydra="farewell" data-mam="2">08<br><strong>FINAL TREE</strong><small class="hydra-cue-time">≈19:25</small></button>
 </div>
 <details class="hydra-subpanel">
   <summary>Layout MAM per scena</summary>
