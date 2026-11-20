@@ -709,7 +709,7 @@ const landscapeDb = new Promise((resolve, reject) => {
 });
 
 function setLandscapeClip(scene, file) {
-  if (videoClips[scene]) URL.revokeObjectURL(videoClips[scene]);
+  if (videoClips[scene]?.startsWith("blob:")) URL.revokeObjectURL(videoClips[scene]);
   videoClips[scene] = URL.createObjectURL(file);
 }
 
@@ -728,7 +728,20 @@ const restoreLandscapeClips = landscapeDb.then(db => Promise.all(landscapeInputs
     };
     request.onerror = () => reject(request.error);
   });
-}))).catch(error => console.warn("Landscape clip restore failed", error));
+}))).catch(error => console.warn("Landscape clip restore failed", error))
+  .then(() => Promise.all(dissolveKeys.map(async (key, index) => {
+    if (videoClips[key]) return;
+    const name = "abc"[index] + ".mp4";
+    const url = "/videos/body-dissolve/" + name;
+    try {
+      const response = await fetch(url, {method:"HEAD", cache:"no-cache", signal:AbortSignal.timeout(2000)});
+      if (!response.ok || !response.headers.get("content-type")?.startsWith("video/") || videoClips[key]) return;
+      videoClips[key] = url;
+      q(`[data-clip-status="${key}"]`).textContent = name + " · da cartella";
+    } catch {
+      // An empty slot is valid when its default file has not been installed.
+    }
+  })));
 
 landscapeInputs.forEach(input => {
   input.onchange = async () => {
