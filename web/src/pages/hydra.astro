@@ -184,7 +184,7 @@
     }
     const MIDIMIX_FADERS={19:'param1',23:'param2',27:'audioReact',31:'audioChaos',49:'landscapeMotion',53:'archiveMotion'};
     const MIDIMIX_CAMERA={24:19,25:20,26:21};
-    const MIDIMIX_PRIMARY={custom01:'invert',genesis:'single',resonance:'punch',hypnosis:'drop',body:'single',dissolve:'single',fusion:'note',farewell:'stars'};
+    const MIDIMIX_PRIMARY={custom01:'invert',genesis:'single',resonance:'punch',hypnosis:'drop',body:'single',dissolve:'single',fusion:'single',farewell:'stars'};
     function handleMIDImix(kind,channel,number,value){
       if(channel!==1)return;
       if(kind===0xb0){
@@ -1061,15 +1061,11 @@
     transitionCanvas.height = 540;
     const transitionContext = transitionCanvas.getContext('2d');
     const transitionClips = {};
-    const transitionNotes = {
-      dissolve: [],
-      fusion: ['la rete cambia forma', 'le immagini fanno parte del paesaggio', 'online / offline'],
-    };
+    const transitionScenes = new Set(['dissolve', 'fusion']);
     let transitionLastFrame = '';
     let transitionBeat = 0;
     let transitionPeak = false;
     let transitionStep = 0;
-    let transitionNote = null;
     let transitionLive = false;
     const dissolveCamera = landscape.camera.clone();
     dissolveCamera.layers.set(1);
@@ -1172,22 +1168,17 @@
       }
     }
 
-    function showTransitionNote(text, now) {
-      transitionNote = {text:text.toUpperCase(), startedAt:now};
-    }
-
     function prepareTransition(id) {
       dissolveStartedAt = id === 'dissolve' ? performance.now() : 0;
       dissolveProgress = id === 'dissolve' ? 0 : 1;
       if (id !== 'dissolve') dissolveBody = null;
-      transitionNote = null;
       unloadVideo(transitionVideo);
       if (dissolveCurrent) unloadVideo(dissolveCurrent.video);
       if (dissolveIncoming) unloadVideo(dissolveIncoming.video);
       dissolveCurrent = dissolveIncoming = null;
       dissolveNext = 0;
       dissolveAttempt = -1;
-      transitionLive = Object.hasOwn(transitionNotes, id);
+      transitionLive = transitionScenes.has(id);
       if (!transitionLive) {
         s2.init({src:typeCanvas});
         return;
@@ -1236,36 +1227,12 @@
         transitionContext.fillRect(0, 0, 960, 540);
       }
       ctx.restore();
-      if (!transitionNote) return;
-      const age = now - transitionNote.startedAt;
-      if (age >= 2200) {
-        transitionNote = null;
-        return;
-      }
-      const envelope = Math.min(1, age / 180, (2200 - age) / 280);
-      const jitter = Math.sin(age * .033) * (1 + high() * 7);
-      ctx.save();
-      ctx.globalAlpha = envelope;
-      ctx.translate(72 + jitter, 92 + (1 - envelope) * 12);
-      ctx.font = 'bold 24px monospace';
-      const width = Math.min(780, ctx.measureText(transitionNote.text).width + 38);
-      ctx.fillStyle = '#140f1f';
-      ctx.fillRect(0, 0, width, 82);
-      ctx.strokeStyle = '#b5ff64';
-      ctx.strokeRect(0, 0, width, 82);
-      ctx.fillStyle = '#e8689f';
-      ctx.fillText(transitionNote.text, 21 + jitter, 57, width - 38);
-      ctx.fillStyle = '#c4ff82';
-      ctx.fillText(transitionNote.text, 18, 55, width - 38);
-      ctx.font = '12px monospace';
-      ctx.fillText('ELISA / NOTA', 18, 24);
-      ctx.restore();
     }
 
     function updateTransition(now) {
       if (!transitionLive) return;
       const frame = transitionVideo.readyState >= 2 ? transitionVideo.currentTime : 'gradient';
-      if (dissolveStartedAt || transitionNote || frame !== transitionLastFrame) {
+      if (dissolveStartedAt || frame !== transitionLastFrame) {
         transitionLastFrame = frame;
         drawTransitionFrame(now);
       }
@@ -1275,10 +1242,6 @@
         const object = objects[transitionStep % objects.length];
         if (landscape.objects[object].length < 4) addGenesisObject(object);
         if (transitionStep % 2 === 0) void spawnArchiveImage();
-        if (activeScene === 'fusion' && transitionStep % 3 === 0) {
-          const notes = transitionNotes[activeScene];
-          showTransitionNote(notes[Math.floor(transitionStep / 3) % notes.length], now);
-        }
         transitionStep++;
         transitionBeat = now;
       }
@@ -1659,7 +1622,7 @@ render(o0)`;
     async function loadScene(id, clip, options = {}){
       if(!Object.hasOwn(scenes,id))return;
       const scene=scenes[id];
-      if (typeof clip === 'string' && Object.hasOwn(transitionNotes,id)) transitionClips[id] = clip;
+      if (typeof clip === 'string' && transitionScenes.has(id)) transitionClips[id] = clip;
       const request=++sceneRequest;
       stopBodyStrobe();endBodyDrag();stopBodyIntro();stopBodyMidi();
       if(id!=='body'){
@@ -1691,7 +1654,7 @@ render(o0)`;
       if(id==='genesis'||id==='body'){
         for(const modelId of Object.keys(liveModels)) void loadLiveModel(modelId).catch(()=>{});
       }
-      const transition = Object.hasOwn(transitionNotes,id);
+      const transition = transitionScenes.has(id);
       landscape.mesh.visible=id!=='body'&&!transition;
       prepareTransition(id);
       if(bodyLandscape)bodyLandscape.visible=id==='body';
@@ -1776,7 +1739,6 @@ render(o0)`;
     fullscreenButton.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();updateFullscreenButton()}catch(err){status.textContent='FULLSCREEN · '+err.message}};
     document.addEventListener('fullscreenchange',updateFullscreenButton);
     let mouseDropTimer;
-    let mouseNote = 0;
     function handleMouseAction(scene, action) {
       if (scene !== currentScene) return;
       if (action === 'invert') setInvert(true);
@@ -1787,10 +1749,7 @@ render(o0)`;
         setDrop(true);
         mouseDropTimer = setTimeout(() => setDrop(false), 240);
       } else if (action === 'stars' && scene === 'farewell') spawnFarewellStars();
-      else if (action === 'note' && scene === 'fusion') {
-        const notes = transitionNotes[scene];
-        showTransitionNote(notes[mouseNote++ % notes.length], performance.now());
-      } else if (['single','burst','hero','rain'].includes(action)) void spawnArchiveImage(action);
+      else if (['single','burst','hero','rain'].includes(action)) void spawnArchiveImage(action);
       else if (scene === 'body' && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','q','e','r','f','Home'].includes(action)) moveBodyCamera(action);
     }
     let lastRegiaCue;
