@@ -207,6 +207,9 @@ footer {
 .hydra-buttons button.live strong{color:#000!important}
 .hydra-buttons button.todo{opacity:.45}
 .hydra-subpanel{border-top:1px solid #242824;padding:4px 0 3px;margin-top:2px}
+.mam-scene-layouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:6px;padding:4px 0}
+.mam-scene-layouts label{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px}
+.mam-scene-layouts select{background:#151715;color:inherit;border:1px solid #515651;padding:4px;font:inherit}
 .hydra-subpanel button{opacity:.78}
 .hydra-subpanel button:hover{opacity:1}
 .genesis-objects,.hypnosis-type,.hydra-tools{gap:3px!important}
@@ -331,6 +334,11 @@ footer {
 <button data-hydra="hypnosis">07<br><strong>HYPNOSIS</strong></button>
 <button data-hydra="farewell">08<br><strong>FINAL TREE</strong></button>
 </div>
+<details class="hydra-subpanel">
+  <summary>Layout MAM per scena</summary>
+  <p class="video-note">Con AUTO MAM, il layout si applica al prossimo cue Hydra. Dal telefono puoi cambiarlo in qualsiasi momento.</p>
+  <div id="mamSceneLayouts" class="mam-scene-layouts"></div>
+</details>
 <div class="hydra-subpanel">
   <div class="hydra-scene-label">MOUSE / INTERAZIONI HYDRA</div>
   <div id="mouseAxes" class="video-note">X · PARAM 1 / Y · PARAM 2</div>
@@ -656,6 +664,41 @@ async function touchControl(name, value) {
   });
   if (!response.ok) throw new Error("HTTP " + response.status);
 }
+const autoMam = q("#autoMam");
+const mamLayoutOptions = [
+  ["", "Mantieni layout"],
+  ["0", "1 · Full Room"],
+  ["1", "2 · Superfici"],
+  ["2", "3 · Solo pareti"],
+];
+const mamStorageKey = "elisa-mam-scene-layouts";
+let mamSettings = {};
+try {
+  mamSettings = JSON.parse(localStorage.getItem(mamStorageKey)) || {};
+} catch {}
+const mamSelectors = new Map();
+autoMam.checked = mamSettings.enabled === true;
+for (const button of hydraCues) {
+  const scene = button.dataset.hydra;
+  const label = document.createElement("label");
+  label.textContent = button.querySelector("strong").textContent;
+  const select = document.createElement("select");
+  for (const [value, text] of mamLayoutOptions) select.add(new Option(text, value));
+  const saved = mamSettings.scenes?.[scene];
+  select.value = mamLayoutOptions.some(([value]) => value === saved) ? saved : button.dataset.mam ?? "";
+  label.append(select);
+  q("#mamSceneLayouts").append(label);
+  mamSelectors.set(scene, select);
+  select.addEventListener("change", saveMamSettings);
+}
+autoMam.addEventListener("change", saveMamSettings);
+function saveMamSettings() {
+  const scenes = Object.fromEntries([...mamSelectors].map(([scene, select]) => [scene, select.value]));
+  try {
+    localStorage.setItem(mamStorageKey, JSON.stringify({enabled:autoMam.checked, scenes}));
+  } catch {}
+}
+
 function launchHydraCue(button) {
   hydraCues.forEach(cue => {
     cue.classList.toggle("live", cue === button);
@@ -669,8 +712,9 @@ function launchHydraCue(button) {
     if (!button.classList.contains("live")) return;
     sendHydraCue(scene, videoClips[scene] || "");
   });
-  if (q("#autoMam").checked && button.dataset.mam !== undefined) {
-    void touchControl("mam_layout", Number(button.dataset.mam)).catch(() => {
+  const layout = mamSelectors.get(scene).value;
+  if (autoMam.checked && layout !== "") {
+    void touchControl("mam_layout", Number(layout)).catch(() => {
       if (button.classList.contains("live")) q("#hydraCueStatus").textContent = label + " · OSC NON INVIATO";
     });
   }
