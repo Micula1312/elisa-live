@@ -171,10 +171,17 @@
     <label class="vp-row"><span>AMOUNT</span><input id="videoAmount" type="range" min="0" max="1" step=".01" value=".55"><span id="vAmount">.55</span></label>
     <label class="vp-row"><span>REACT</span><input id="videoReact" type="range" min="0" max="2" step=".05" value="1"><span id="vReact">1.0</span></label>
     <div class="cue-monitor" id="cueMonitor"><button class="cue-led" id="autoScrollBtn"><b>S</b><small>SCROLL</small></button>
-      <button class="cue-led" data-cue="b"><b>B</b><small>BREATH I</small></button><button class="cue-led" data-cue="d"><b>D</b><small>BREATH II</small></button>
-      <button class="cue-led" data-cue="1"><b>1</b><small>SHATTER</small></button><button class="cue-led" data-cue="f"><b>F</b><small>ZOOM DRIFT</small></button><button class="cue-led" data-cue="2"><b>2</b><small>CONSTELLATION</small></button><button class="cue-led" data-cue="g"><b>G</b><small>ENTER 3D</small></button>
-      <button class="cue-led" data-cue="h"><b>H</b><small>ORBIT 3D</small></button><button class="cue-led" data-cue="j"><b>J</b><small>DISTANCE</small></button>
-      <button class="cue-led" data-cue="3"><b>3</b><small>RIBBON</small></button><button class="cue-led" data-cue="k"><b>K</b><small>POINT FLOW</small></button><button class="cue-led" data-cue="l"><b>L</b><small>IMPLODE</small></button>
+      <button class="cue-led" data-cue="b"><b>B</b><small>BREATH I</small></button>
+      <button class="cue-led" data-cue="d"><b>D</b><small>BREATH II</small></button>
+      <button class="cue-led" data-cue="f"><b>F</b><small>ZOOM DRIFT</small></button>
+      <button class="cue-led" data-cue="g"><b>G</b><small>ENTER 3D</small></button>
+      <button class="cue-led" data-cue="1"><b>1</b><small>SHATTER</small></button>
+      <button class="cue-led" data-cue="2"><b>2</b><small>CONSTELLATION</small></button>
+      <button class="cue-led" data-cue="3"><b>3</b><small>RIBBON</small></button>
+      <button class="cue-led" data-cue="h"><b>H</b><small>ORBIT 3D</small></button>
+      <button class="cue-led" data-cue="j"><b>J</b><small>DISTANCE</small></button>
+      <button class="cue-led" data-cue="k"><b>K</b><small>POINT FLOW</small></button>
+      <button class="cue-led" data-cue="l"><b>L</b><small>IMPLODE</small></button>
     </div>
     <div class="space-nav"><button id="spaceZoomOut">− ZOOM</button><button id="spaceZoomIn">+ ZOOM</button><div class="space-readout" id="spaceReadout">SPACE x 0 · y 0 · z 0 · zoom 1.00</div><div class="space-readout" id="media3dState">3D MEDIA — waiting</div></div>
     <div class="vp-hint">V = show/hide · S starts persistent autoscroll · G enters matched 3D · wheel/arrows navigate</div>
@@ -676,7 +683,11 @@
         const focusScale=Math.min(focusSize*.74/2.15,focusSize*camera.aspect*.78/1.72);
         m.scale.setScalar(THREE.MathUtils.lerp(stageScale,focusScale,focusEdge));
         m.quaternion.copy(camera.quaternion);
-        if(m.material.map)m.material.opacity=THREE.MathUtils.lerp((.98-high*.08)*(1-particleMix*.82)*(1-holeMix*.75),1,focusEdge);
+        if(m.material.map){
+          const flowOpaque=vortexEnabled&&!holeEnabled;
+          const opacity=flowOpaque?1:(.98-high*.08)*(1-particleMix*.82)*(1-holeMix*.75);
+          m.material.opacity=THREE.MathUtils.lerp(opacity,1,focusEdge);
+        }
       });
       particleMix+=(Number(vortexEnabled)-particleMix)*.035;
       holeMix+=(Number(holeEnabled)-holeMix)*.04;
@@ -988,7 +999,7 @@
       if(floatEnabled||spatialBody)post.style.transform=`translate3d(${stageX.toFixed(2)}px,${stageY.toFixed(2)}px,${z.toFixed(1)}px) scale(${stageScale.toFixed(4)})`;
       else if(isSlip)post.style.transform=`translate3d(0,0,0) scale(${zoomOut.toFixed(4)})`;
       else post.style.transform="";
-      if(vortexEnabled)ph.style.opacity=String(Math.max(.28,1-high*.38-hit*.18));
+      if(holeEnabled)ph.style.opacity=String(Math.max(.28,1-high*.38-hit*.18));
       else ph.style.opacity="1";
       const bFlash=(!slipEnabled&&breathEnabled&&flashEnergy>.16&&i%4===0)?Math.min(.75,(flashEnergy-.16)*1.9):0;
       ph.style.filter=`brightness(${(1+hit*(i%5===0?.16:.025)+bFlash).toFixed(3)}) contrast(${(1+bFlash*.28).toFixed(3)})`;
