@@ -132,8 +132,17 @@
     // Inversion changes capped at roughly 6 Hz.
     let resonanceInvert=false,lastResonanceSwitch=0,resonancePadPunchUntil=0;
     function applyInvert(){document.getElementById('global-invert').style.display=(resonanceInvert||performance.now()<resonancePadPunchUntil)?'block':'none'}
-    // Every press makes a brief pulse, never a held/infinite invert.
-    function setInvert(on){if(on){resonancePadPunchUntil=performance.now()+105;applyInvert()}}
+    let invertPulseTimer;
+    function pulseInvert(duration){
+      clearTimeout(invertPulseTimer);
+      resonancePadPunchUntil=performance.now()+duration;
+      applyInvert();
+      invertPulseTimer=setTimeout(()=>{
+        resonancePadPunchUntil=0;
+        applyInvert();
+      },duration);
+    }
+    function setInvert(on){if(on)pulseInvert(105)}
     canvas.addEventListener('click',event=>{
       if(event.button===0)setInvert(true);
     });
@@ -150,8 +159,7 @@
         resonanceInvert=wanted;lastResonanceSwitch=now;applyInvert();
       }
     }
-    function resonanceStrobeLoop(now){updateResonanceStrobe(now);if(resonancePadPunchUntil&&now>=resonancePadPunchUntil){resonancePadPunchUntil=0;applyInvert()}requestAnimationFrame(resonanceStrobeLoop)}
-    requestAnimationFrame(resonanceStrobeLoop);
+    function resonanceStrobeLoop(now){updateResonanceStrobe(now);requestAnimationFrame(resonanceStrobeLoop)}
     function setDrop(on){
       window.ELISA_CTRL.drop=on?1:0;
       if(on)archiveDrop();
@@ -219,7 +227,7 @@
             spawnArchiveImage(modes[((d1-100)%4+4)%4]);
           }else if(currentScene==='hypnosis')setDrop(true);
           else if(currentScene==='farewell')spawnFarewellStars();
-          else{resonancePadPunchUntil=performance.now()+130;applyInvert()}
+          else pulseInvert(130)
         }else if(currentScene==='hypnosis')setDrop(false);
       }
       midiMonitor.classList.remove('off');
@@ -1431,6 +1439,7 @@ render(o0)`;
       farewell:{label:'FAREWELL · TREE / SUN',code:farewellLandscape},
      };
     let currentScene='custom01';
+    requestAnimationFrame(resonanceStrobeLoop);
     code.value=scenes[currentScene].code;
     const history=[];
     let lastRun=code.value;
@@ -1567,8 +1576,7 @@ render(o0)`;
       if (scene !== currentScene) return;
       if (action === 'invert') setInvert(true);
       else if (action === 'punch') {
-        resonancePadPunchUntil = performance.now() + 130;
-        applyInvert();
+        pulseInvert(130);
       } else if (action === 'drop') {
         clearTimeout(mouseDropTimer);
         setDrop(true);
