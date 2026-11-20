@@ -363,7 +363,7 @@ see you out there</textarea><div><button id="farewellCreditsSend">UPDATE</button
   <div class="setup-tools"><input id="setupName" type="text" value="ELISA LIVE" placeholder="SETUP NAME"><button id="setupSave">SAVE JSON</button><button id="setupLoad">LOAD JSON</button><input id="setupFile" type="file" accept=".json,application/json" hidden></div>
   <div class="setup-status" id="setupStatus">SAVE / RESTORE REGIA CONTROLS</div>
 </div>
-<div class="hydra-subpanel"><div class="hydra-scene-label">MIDI ROUTING / AKAI</div><div class="hydra-tools"><button id="midiHydra">● HYDRA</button><button id="midiTD">TOUCHDESIGNER</button></div><div class="setup-status" id="midiRouteStatus">MIDI TARGET · HYDRA</div></div><div class="hydra-subpanel utility-panel">
+<div class="hydra-subpanel"><div class="hydra-scene-label">MIDI ROUTING / AKAI</div><div class="video-note">MIDIMIX · Fader 1–6: X, Y, Audio React, Chaos, movimento 3D, movimento post. REC ARM 1–8: cue Hydra. MUTE 1–3: azione scena, Drop, Invert. Body Reveal: tre knob della colonna 3 per la camera, MUTE 4–8 per Strobo, A, B, C e Intro.</div><div class="hydra-tools"><button id="midiHydra">● HYDRA</button><button id="midiTD">TOUCHDESIGNER</button></div><div class="setup-status" id="midiRouteStatus">MIDI TARGET · HYDRA</div></div><div class="hydra-subpanel utility-panel">
   <div class="hydra-scene-label">MASTER / UTILITY</div>
   <div class="hydra-tools"><button id="hydraBlackout">BLACK OUT</button><button id="hydraClean">CLEAN</button><button id="hydraBack">BACK</button><button id="hydraEditor">EDITOR</button><button id="hydraHud" class="on">SHOW HUD</button><button id="hydraFullscreen">⛶ OPEN HYDRA OUTPUT</button><button id="hydraCamLocal" class="on">CAM 01 ON</button><button id="hydraCamRemote" class="on">CAM 02 ON</button></div>
 </div>
@@ -562,6 +562,7 @@ document.querySelectorAll("[data-reveal-action]").forEach(button => {
   });
 });
 control.addEventListener("message", ({data}) => {
+  if(data?.type==="hydra-midi-cue" && Number.isInteger(data.index) && hydraCues[data.index]) launchHydraCue(hydraCues[data.index]);
   if(data?.type==="hydra-body-strobe-state"){
     strobeRequested = data.enabled;
     strobeButton.setAttribute("aria-pressed",String(data.enabled));
