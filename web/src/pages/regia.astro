@@ -730,12 +730,13 @@ const restoreLandscapeClips = landscapeDb.then(db => Promise.all(landscapeInputs
   });
 }))).catch(error => console.warn("Landscape clip restore failed", error))
   .then(() => Promise.all(dissolveKeys.map(async (key, index) => {
-    if (videoClips[key]) return;
+    const restoredUrl = videoClips[key];
     const name = "abc"[index] + ".mp4";
     const url = "/videos/body-dissolve/" + name;
     try {
       const response = await fetch(url, {method:"HEAD", cache:"no-cache", signal:AbortSignal.timeout(2000)});
-      if (!response.ok || !response.headers.get("content-type")?.startsWith("video/") || videoClips[key]) return;
+      if (!response.ok || !response.headers.get("content-type")?.startsWith("video/") || videoClips[key] !== restoredUrl) return;
+      if (restoredUrl?.startsWith("blob:")) URL.revokeObjectURL(restoredUrl);
       videoClips[key] = url;
       q(`[data-clip-status="${key}"]`).textContent = name + " · da cartella";
     } catch {
