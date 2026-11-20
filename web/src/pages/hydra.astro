@@ -96,7 +96,7 @@
     // MIDI probe: browser reads the same USB controller independently from TouchDesigner.
     window.ELISA_MIDI={device:'',type:'',channel:0,cc:null,note:null,value:0,norm:0};
     // Four global performance macros. CC 16–19 are readable directly from Hydra live code.
-    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5,resonanceCam:0,drop:0,fadeWhite:0,fadeBlack:0};
+    window.ELISA_CTRL={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5,resonanceCam:1,drop:0,fadeWhite:0,fadeBlack:0};
     const MIDI_MACROS={16:'param1',17:'param2',18:'audioReact',19:'audioChaos',20:'landscapeMotion',21:'archiveMotion'};
     // Ease CC16–19 between incoming 7-bit MIDI steps; fades CC20/21 remain immediate.
     const smoothTargets={param1:0,param2:0,audioReact:1,audioChaos:0,landscapeMotion:.5,archiveMotion:.5};
@@ -179,7 +179,7 @@
       if (!Object.hasOwn(smoothTargets,key) || !Number.isFinite(value)) return;
       smoothTargets[key] = Math.max(0, Math.min(1, value));
       if (key === 'audioChaos' && currentScene === 'resonance') {
-        window.ELISA_CTRL.resonanceCam = smoothTargets[key];
+        window.ELISA_CTRL.resonanceCam = 1 - smoothTargets[key];
       }
     }
     const MIDIMIX_FADERS={19:'param1',23:'param2',27:'audioReact',31:'audioChaos',49:'landscapeMotion',53:'archiveMotion'};
